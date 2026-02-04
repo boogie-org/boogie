@@ -147,7 +147,7 @@ namespace Microsoft.BaseTypes
     [Pure]
     public override string ToString()
     {
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       return Cce.NonNull(val.ToString());
     }
 
@@ -161,7 +161,7 @@ namespace Microsoft.BaseTypes
     public string ToString(string format)
     {
       
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       if (format.StartsWith("d") || format.StartsWith("D"))
       {
         string res = this.Abs.ToString();
@@ -188,7 +188,7 @@ namespace Microsoft.BaseTypes
     private string toHex(string format)
     {
       
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       string res = "";
       System.Numerics.BigInteger rem = this.Abs.val;
 
@@ -219,7 +219,7 @@ namespace Microsoft.BaseTypes
     private string addMinus(int signum, string suffix)
     {
       
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       if (signum < 0)
       {
         return "-" + suffix;
@@ -232,7 +232,7 @@ namespace Microsoft.BaseTypes
     private string prefixWithZeros(int minLength, string suffix)
     {
       
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       StringBuilder res = new StringBuilder();
       while (res.Length + suffix.Length < minLength)
       {
@@ -313,7 +313,7 @@ namespace Microsoft.BaseTypes
     /// <returns></returns>
     public BigNum Gcd(BigNum _y)
     {
-      Contract.Ensures(!Contract.Result<BigNum>().IsNegative);
+      
       BigNum x = this.Abs;
       BigNum y = _y.Abs;
 

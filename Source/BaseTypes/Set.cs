@@ -140,7 +140,7 @@ namespace Microsoft.Boogie
     public T Take()
     {
       
-      Contract.Ensures(Count == Contract.OldValue(Count) - 1);
+      
       T r = Choose();
       Remove(r);
       return r;
@@ -224,7 +224,7 @@ namespace Microsoft.Boogie
 
     public object Clone()
     {
-      Contract.Ensures(Contract.Result<object>() != null);
+      
       return new GSet<T>(new Dictionary<T, int>(ht), new List<T>(arr));
     }
 
@@ -236,7 +236,7 @@ namespace Microsoft.Boogie
     [Pure]
     public override string ToString()
     {
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       string s = null;
       foreach (object key in ht.Keys)
       {
@@ -270,7 +270,7 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(Contract.Result<GSet<T>>() != null);
+      
       GSet<T>
         res = (GSet<T>) Cce.NonNull(a.Clone());
       res.Intersect(b);
@@ -282,8 +282,8 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(Contract.Result<GSet<T>>() != null);
-      //  Contract.Ensures(Contract.ForAll(result, x => a[x] || b[x] ));
+      
+      //  
       GSet<T>
         res = (GSet<T>) Cce.NonNull(a.Clone());
       res.AddRange(b);
@@ -296,7 +296,7 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(Contract.Result<GSet<T>>() != null);
+      
       GSet<T> inter = new GSet<T>();
 
       foreach (T elem in a)

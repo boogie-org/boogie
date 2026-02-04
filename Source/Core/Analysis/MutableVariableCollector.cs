@@ -19,7 +19,7 @@ public class MutableVariableCollector : ReadOnlyVisitor
 
   public override Expr VisitIdentifierExpr(IdentifierExpr node)
   {
-    Contract.Ensures(Contract.Result<Expr>() != null);
+    
 
     if (node.Decl != null && node.Decl.IsMutable)
     {

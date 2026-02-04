@@ -48,7 +48,7 @@ namespace Boogie.Util
     [Pure]
     public override string ToString()
     {
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       return "<TeeWriter: " + a.ToString() + ", " + b.ToString() + ">";
     }
 

@@ -37,7 +37,7 @@ namespace Microsoft.Boogie
     public string Open()
     {
       //modifies this.*;
-      Contract.Ensures(IsOpen);
+      
       if (wr != null)
       {
         Close();
@@ -77,7 +77,7 @@ namespace Microsoft.Boogie
       
       
       //modifies this.*;
-      Contract.Ensures(IsOpen);
+      
       Contract.Assert(wr != null);
       Cce.BeginExpose(this);
       wr.WriteStartElement("method");
@@ -91,7 +91,7 @@ namespace Microsoft.Boogie
       
       
       //modifies this.*;
-      Contract.Ensures(IsOpen);
+      
       Contract.Assert(wr != null);
       Cce.BeginExpose(this);
       {
@@ -118,7 +118,7 @@ namespace Microsoft.Boogie
       
       
       //modifies this.*;
-      Contract.Ensures(IsOpen);
+      
       Contract.Assert(wr != null);
 
       Cce.BeginExpose(this);
@@ -158,7 +158,7 @@ namespace Microsoft.Boogie
       
       
       //modifies this.*, errorToken.*, relatedToken.*, trace.*;
-      Contract.Ensures(IsOpen);
+      
       Contract.Assert(wr != null);
       Cce.BeginExpose(this);
       {
@@ -205,7 +205,7 @@ namespace Microsoft.Boogie
       
       
       //modifies this.*, offendingNode.*, trace.*;
-      Contract.Ensures(IsOpen);
+      
       Contract.Assert(wr != null);
       cce.BeginExpose(this);
       {
@@ -268,7 +268,7 @@ namespace Microsoft.Boogie
       
       
       //modifies this.*;
-      Contract.Ensures(IsOpen);
+      
       Contract.Assert(wr != null);
       Cce.BeginExpose(this);
       {
@@ -282,7 +282,7 @@ namespace Microsoft.Boogie
     {
       
       //modifies this.*;
-      Contract.Ensures(IsOpen);
+      
       Contract.Assert(wr != null);
       Cce.BeginExpose(this);
       {
@@ -296,7 +296,7 @@ namespace Microsoft.Boogie
       
       
       //modifies this.*;
-      Contract.Ensures(IsOpen);
+      
       Contract.Assert(wr != null);
       Cce.BeginExpose(this);
       {
@@ -313,7 +313,7 @@ namespace Microsoft.Boogie
       
       
       //modifies this.*;
-      Contract.Ensures(IsOpen);
+      
       Contract.Assert(wr != null);
       Cce.BeginExpose(this);
       {
@@ -327,7 +327,7 @@ namespace Microsoft.Boogie
     {
       
       //modifies this.*;
-      Contract.Ensures(IsOpen);
+      
       Contract.Assert(wr != null);
       Cce.BeginExpose(this);
       {
@@ -341,7 +341,7 @@ namespace Microsoft.Boogie
       
       
       //modifies this.*;
-      Contract.Ensures(IsOpen);
+      
       Contract.Assert(wr != null);
       Cce.BeginExpose(this);
       {

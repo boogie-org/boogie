@@ -21,7 +21,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       get
       {
-        Contract.Ensures(Contract.Result<VCExprOpPrinter>() != null);
+        
 
         if (OpPrinterVar == null)
         {

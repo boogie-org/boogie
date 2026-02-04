@@ -179,7 +179,7 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(Cce.NonNullElements(Contract.Result<HashSet<Variable>>()));
+      
       if (varsLiveAtExit.ContainsKey(impl.Name))
       {
         return varsLiveAtExit[impl.Name];
@@ -207,7 +207,7 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(Cce.NonNullElements(Contract.Result<HashSet<Variable>>()));
+      
       if (varsLiveAtEntry.ContainsKey(impl.Name))
       {
         return varsLiveAtEntry[impl.Name];
@@ -242,7 +242,7 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(Cce.NonNullElements(Contract.Result<HashSet<Variable>>()));
+      
       Procedure
         proc = Cce.NonNull(cmd.Proc);
       if (varsLiveSummary.ContainsKey(proc.Name))
@@ -295,7 +295,7 @@ namespace Microsoft.Boogie
 
       public GenKillWeight getWeightAfter()
       {
-        Contract.Ensures(Contract.Result<GenKillWeight>() != null);
+        
         return cfg.weightAfter[block];
       }
 
@@ -334,7 +334,7 @@ namespace Microsoft.Boogie
 
       public string getLabel()
       {
-        Contract.Ensures(Contract.Result<string>() != null);
+        
         return cfg.impl.Name + "::" + block.Label;
       }
     }
@@ -415,7 +415,7 @@ namespace Microsoft.Boogie
 
       public WorkItem Get()
       {
-        Contract.Ensures(Contract.Result<WorkItem>() != null);
+        
         // Get minimum priority
         int p = Cce.NonNull(priorities.Keys)[0];
         priorities[p] = priorities[p] - 1;
@@ -444,7 +444,7 @@ namespace Microsoft.Boogie
     private GenKillWeight getSummary(CallCmd cmd)
     {
       
-      Contract.Ensures(Contract.Result<GenKillWeight>() != null);
+      
       Contract.Assert(cmd.Proc != null);
       string
         procName = cmd.Proc.Name;
@@ -723,14 +723,14 @@ namespace Microsoft.Boogie
     private GenKillWeight GetWeight(Cmd cmd)
     {
       
-      Contract.Ensures(Contract.Result<GenKillWeight>() != null);
+      
       return GetWeight(cmd, null, null);
     }
 
     private GenKillWeight GetWeightCall(CallCmd cmd)
     {
       
-      Contract.Ensures(Contract.Result<GenKillWeight>() != null);
+      
       GenKillWeight
         w1 = getWeightBeforeCall(cmd);
       GenKillWeight
@@ -746,7 +746,7 @@ namespace Microsoft.Boogie
     private GenKillWeight GetWeight(Cmd cmd, Implementation impl, Program prog)
     {
       
-      Contract.Ensures(Contract.Result<GenKillWeight>() != null);
+      
 
       if (weightCache.ContainsKey(cmd))
       {
@@ -925,7 +925,7 @@ namespace Microsoft.Boogie
     private static GenKillWeight getWeightAfterCall(Cmd cmd)
     {
       
-      Contract.Ensures(Contract.Result<GenKillWeight>() != null);
+      
 
       if (weightCacheAfterCall.ContainsKey(cmd))
       {
@@ -977,7 +977,7 @@ namespace Microsoft.Boogie
     private static GenKillWeight getWeightBeforeCall(Cmd cmd)
     {
       
-      Contract.Ensures(Contract.Result<GenKillWeight>() != null);
+      
       Contract.Assert((cmd is CallCmd));
       if (weightCacheBeforeCall.ContainsKey(cmd))
       {

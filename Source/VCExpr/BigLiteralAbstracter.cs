@@ -31,7 +31,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     public Object Clone()
     {
-      Contract.Ensures(Contract.Result<Object>() != null);
+      
 
       return new BigLiteralAbstracter(this);
     }
@@ -47,7 +47,7 @@ namespace Microsoft.Boogie.VCExprAST
     public VCExpr Abstract(VCExpr expr)
     {
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
 
       return Mutate(expr, true);
     }
@@ -74,7 +74,7 @@ namespace Microsoft.Boogie.VCExprAST
     // was called
     public VCExpr GetNewAxioms()
     {
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       VCExpr res = Gen.NAry(VCExpressionGenerator.AndOp, IncAxioms);
       IncAxioms.Clear();
       return res;
@@ -125,7 +125,7 @@ namespace Microsoft.Boogie.VCExprAST
     private VCExpr Represent(BigNum lit)
     {
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
 
       if (lit.IsNegative)
       {
@@ -141,7 +141,7 @@ namespace Microsoft.Boogie.VCExprAST
     private VCExpr RepresentPos(BigNum lit)
     {
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
 
       int index = GetIndexFor(lit);
       if (index >= 0)
@@ -190,7 +190,7 @@ namespace Microsoft.Boogie.VCExprAST
     private VCExpr AddConstantFor(BigNum lit)
     {
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
 
       VCExprVar res = Gen.Variable("int#" + lit, Type.Int);
       int index = GetIndexFor(lit);
@@ -253,7 +253,7 @@ namespace Microsoft.Boogie.VCExprAST
     public override VCExpr Visit(VCExprLiteral node, bool arg)
     {
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       VCExprIntLit intLit = node as VCExprIntLit;
       if (intLit != null)
       {

@@ -12,8 +12,8 @@ public class StmtList
   {
     get
     {
-      Contract.Ensures(Contract.Result<IList<BigBlock>>() != null);
-      Contract.Ensures(Contract.Result<IList<BigBlock>>().IsReadOnly);
+      
+      
       return this.bigBlocks.AsReadOnly();
     }
   }
@@ -37,7 +37,7 @@ public class StmtList
   {
     get
     {
-      Contract.Ensures(Cce.NonNullElements(Contract.Result<IEnumerable<string>>()));
+      
       return this.labels.AsEnumerable<string>();
     }
   }

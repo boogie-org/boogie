@@ -113,7 +113,7 @@ public class Buffer {
 	}
 
 	public string GetString (int beg, int end) {
-	  Contract.Ensures(Contract.Result<string>() != null);
+	  
 		int len = 0;
 		char[] buf = new char[end - beg];
 		int oldPos = Pos;
@@ -240,7 +240,7 @@ public class Scanner {
 
 	public Buffer buffer {
 		get {
-			Contract.Ensures(Contract.Result<Buffer>() != null);
+			
 			return this._buffer;
 		}
 		set {
@@ -367,7 +367,7 @@ public class Scanner {
 	}
 
 	string ReadToEOL(){
-	Contract.Ensures(Contract.Result<string>() != null);
+	
 	  int p = buffer.Pos;
 	  int ch = buffer.Read();
 	  // replace isolated '\r' by '\n' in order to make
@@ -585,7 +585,7 @@ public class Scanner {
 	}
 
 	Token NextToken() {
-	  Contract.Ensures(Contract.Result<Token>() != null);
+	  
 		while (ch == ' ' ||
 			ch >= 9 && ch <= 10 || ch == 13
 		) NextCh();
@@ -989,7 +989,7 @@ public class Scanner {
 
 	// get the next token (possibly a token already seen during peeking)
 	public Token Scan () {
-	 Contract.Ensures(Contract.Result<Token>() != null);
+	 
 		if (tokens.next == null) {
 			return NextToken();
 		} else {
@@ -1000,7 +1000,7 @@ public class Scanner {
 
 	// peek for the next token, ignore pragmas
 	public Token Peek () {
-	  Contract.Ensures(Contract.Result<Token>() != null);
+	  
 		do {
 			if (pt.next == null) {
 				pt.next = NextToken();

@@ -82,7 +82,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<VCExpressionGenerator>() != null);
+        
         throw new NotImplementedException();
       }
     }
@@ -91,7 +91,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<Boogie2VCExprTranslator>() != null);
+        
         throw new NotImplementedException();
       }
     }
@@ -100,14 +100,14 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<VCGenerationOptions>() != null);
+        
         throw new NotImplementedException();
       }
     }
 
     public override object Clone()
     {
-      Contract.Ensures(Contract.Result<object>() != null);
+      
       throw new NotImplementedException();
     }
   }
@@ -197,7 +197,7 @@ namespace Microsoft.Boogie
 
     public override object Clone()
     {
-      Contract.Ensures(Contract.Result<object>() != null);
+      
 
       return new DeclFreeProverContext(this);
     }
@@ -243,7 +243,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<VCExpr>() != null);
+        
         VCExpr axioms = gen.NAry(VCExpressionGenerator.AndOp, axiomConjuncts);
         List<VCExpr> /*!>!*/
           distinctVars = new List<VCExpr>();
@@ -268,7 +268,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<VCExpressionGenerator>() != null);
+        
 
         return gen;
       }
@@ -278,7 +278,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<Boogie2VCExprTranslator>() != null);
+        
 
         return translator;
       }
@@ -288,7 +288,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<VCGenerationOptions>() != null);
+        
 
         return genOptions;
       }
@@ -310,14 +310,14 @@ namespace Microsoft.Boogie
   {
     public override object Clone()
     {
-      Contract.Ensures(Contract.Result<object>() != null);
+      
       throw new NotImplementedException();
     }
 
     public override string Lookup(VCExprVar var)
     {
       
-      Contract.Ensures(Contract.Result<string>() != null);
+      
 
       throw new NotImplementedException();
     }
@@ -326,7 +326,7 @@ namespace Microsoft.Boogie
     {
       
 
-      Contract.Ensures(Contract.Result<string>() != null);
+      
 
       throw new NotImplementedException();
     }

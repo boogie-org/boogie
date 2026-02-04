@@ -758,8 +758,8 @@ namespace Microsoft.Boogie.VCExprAST
     public static HashSet<VCExprVar> FreeTermVariables(VCExpr node)
     {
       
-      Contract.Ensures(Contract.Result<Dictionary<VCExprVar, object>>() != null);
-      Contract.Ensures(Contract.ForAll(Contract.Result<Dictionary<VCExprVar, object>>(), ftv => ftv.Key != null));
+      
+      
       FreeVariableCollector collector = new FreeVariableCollector();
       collector.Traverse(node, true);
       return collector.FreeTermVars;
@@ -768,7 +768,7 @@ namespace Microsoft.Boogie.VCExprAST
     public static List<TypeVariable> FreeTypeVariables(VCExpr node)
     {
       
-      Contract.Ensures(Cce.NonNullElements(Contract.Result<List<TypeVariable>>()));
+      
       FreeVariableCollector collector = new FreeVariableCollector();
       collector.Traverse(node, true);
       return collector.FreeTypeVars;
@@ -983,7 +983,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       get
       {
-        Contract.Ensures(Cce.NonNullDictionaryAndValues(Contract.Result<IDictionary<TypeVariable, Type>>()));
+        
         IDictionary<TypeVariable, Type>
           res = new Dictionary<TypeVariable, Type>();
         foreach (IDictionary<TypeVariable, Type> dict in TypeSubsts)
@@ -1005,7 +1005,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       get
       {
-        Contract.Ensures(Cce.NonNullElements(Contract.Result<IEnumerable<VCExprVar>>()));
+        
         HashSet<VCExprVar>
           domain = new HashSet<VCExprVar>();
         foreach (IDictionary<VCExprVar, VCExpr> dict in TermSubsts)
@@ -1030,7 +1030,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       get
       {
-        Contract.Ensures(Cce.NonNullElements(Contract.Result<IEnumerable<TypeVariable>>()));
+        
         HashSet<TypeVariable>
           domain = new HashSet<TypeVariable>();
         foreach (IDictionary<TypeVariable, Type> dict in TypeSubsts)
@@ -1054,7 +1054,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       get
       {
-        Contract.Ensures(Contract.Result<FreeVariableCollector>() != null);
+        
 
         FreeVariableCollector
           coll = new FreeVariableCollector();
@@ -1074,7 +1074,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     public VCExprSubstitution Clone()
     {
-      Contract.Ensures(Contract.Result<VCExprSubstitution>() != null);
+      
       VCExprSubstitution
         res = new VCExprSubstitution();
       foreach (IDictionary<VCExprVar, VCExpr> dict in TermSubsts)
@@ -1106,7 +1106,7 @@ namespace Microsoft.Boogie.VCExprAST
     protected virtual string ChooseNewVariableName(string oldName)
     {
       
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       return oldName;
     }
 
@@ -1114,7 +1114,7 @@ namespace Microsoft.Boogie.VCExprAST
     protected override VCExpr UpdateModifiedNode(VCExprNAry originalNode,
       List<VCExpr> newSubExprs, bool changed, VCExprSubstitution substitution)
     {
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
 
       List<Type>
         typeParams = new List<Type>();
@@ -1146,7 +1146,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
 
       substitution.PushScope();
       try
@@ -1202,7 +1202,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       VCExpr res = substitution[node];
       if (res != null)
       {
@@ -1216,7 +1216,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       // let-expressions do not have type parameters (fortunately ...)
       substitution.PushScope();
       try

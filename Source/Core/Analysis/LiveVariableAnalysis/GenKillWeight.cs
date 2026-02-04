@@ -63,13 +63,13 @@ public class GenKillWeight
 
   public static GenKillWeight one()
   {
-    Contract.Ensures(Contract.Result<GenKillWeight>() != null);
+    
     return oneWeight;
   }
 
   public static GenKillWeight zero()
   {
-    Contract.Ensures(Contract.Result<GenKillWeight>() != null);
+    
     return zeroWeight;
   }
 
@@ -77,7 +77,7 @@ public class GenKillWeight
   {
     
     
-    Contract.Ensures(Contract.Result<GenKillWeight>() != null);
+    
     if (w1.isZero || w2.isZero)
     {
       return zero();
@@ -97,7 +97,7 @@ public class GenKillWeight
   {
     
     
-    Contract.Ensures(Contract.Result<GenKillWeight>() != null);
+    
     if (w1.isZero)
     {
       return w2;
@@ -119,7 +119,7 @@ public class GenKillWeight
   public static GenKillWeight projectLocals(GenKillWeight w)
   {
     
-    Contract.Ensures(Contract.Result<GenKillWeight>() != null);
+    
     HashSet<Variable> gen = new HashSet<Variable>();
     foreach (Variable v in w.gen)
     {
@@ -167,20 +167,20 @@ public class GenKillWeight
   [Pure]
   public override string ToString()
   {
-    Contract.Ensures(Contract.Result<string>() != null);
+    
     return string.Format("({0},{1})", gen.ToString(), kill.ToString());
   }
 
   public HashSet<Variable> getLiveVars()
   {
-    Contract.Ensures(Cce.NonNullElements(Contract.Result<HashSet<Variable>>()));
+    
     return gen;
   }
 
   public HashSet<Variable> getLiveVars(HashSet<Variable> lv)
   {
     
-    Contract.Ensures(Cce.NonNullElements(Contract.Result<HashSet<Variable>>()));
+    
     HashSet<Variable> temp = new HashSet<Variable>(lv);
     temp.ExceptWith(kill);
     temp.UnionWith(gen);

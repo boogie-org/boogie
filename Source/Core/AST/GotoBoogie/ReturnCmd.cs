@@ -24,7 +24,7 @@ public class ReturnCmd : TransferCmd
 
   public override Absy StdDispatch(StandardVisitor visitor)
   {
-    Contract.Ensures(Contract.Result<Absy>() != null);
+    
     return visitor.VisitReturnCmd(this);
   }
 }

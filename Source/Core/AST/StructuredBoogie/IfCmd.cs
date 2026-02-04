@@ -13,7 +13,7 @@ public class IfCmd : StructuredCmd
   {
     get
     {
-      Contract.Ensures(Contract.Result<StmtList>() != null);
+      
       return this.thn;
     }
     set

@@ -25,7 +25,7 @@ namespace Microsoft.Boogie
       //Rename this property and "_tok" if possible
       get
       {
-        Contract.Ensures(Contract.Result<IToken>() != null);
+        
         return this._tok;
       }
       set
@@ -82,7 +82,7 @@ namespace Microsoft.Boogie
     /// <param name="tc"></param>
     public virtual Absy Clone()
     {
-      Contract.Ensures(Contract.Result<Absy>() != null);
+      
       Absy
         result = Cce.NonNull((Absy) this.MemberwiseClone());
       result.UniqueId = System.Threading.Interlocked.Increment(ref CurrentAbsyNodeId); // BUGBUG??
@@ -99,7 +99,7 @@ namespace Microsoft.Boogie
     public virtual Absy StdDispatch(StandardVisitor visitor)
     {
       
-      Contract.Ensures(Contract.Result<Absy>() != null);
+      
       System.Diagnostics.Debug.Fail("Unknown Absy node type: " + this.GetType());
       throw new System.NotImplementedException();
     }
@@ -522,7 +522,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<Expr>() != null);
+        
         return this.expression;
       }
       set
@@ -627,7 +627,7 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      Contract.Ensures(Contract.Result<Absy>() != null);
+      
       return visitor.VisitAxiom(this);
     }
   }
@@ -750,7 +750,7 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      Contract.Ensures(Contract.Result<Absy>() != null);
+      
       return visitor.VisitTypeCtorDecl(this);
     }
   }
@@ -938,7 +938,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<List<TypeVariable>>() != null);
+        
         return this.typeParameters;
       }
       set
@@ -955,7 +955,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<Type>() != null);
+        
         return this.body;
       }
       set
@@ -1172,7 +1172,7 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      Contract.Ensures(Contract.Result<Absy>() != null);
+      
       return visitor.VisitTypeSynonymDecl(this);
     }
   }
@@ -1187,7 +1187,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<TypedIdent>() != null);
+        
         return this.typedIdent;
       }
       set
@@ -1408,7 +1408,7 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      Contract.Ensures(Contract.Result<Absy>() != null);
+      
       return visitor.VisitConstant(this);
     }
   }
@@ -1481,7 +1481,7 @@ namespace Microsoft.Boogie
     public static List<Variable> StripWhereClauses(List<Variable> w)
     {
       
-      Contract.Ensures(Contract.Result<List<Variable>>() != null);
+      
       List<Variable> s = new List<Variable>();
       foreach (Variable v in w)
       {
@@ -1496,7 +1496,7 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      Contract.Ensures(Contract.Result<Absy>() != null);
+      
       return visitor.VisitFormal(this);
     }
   }
@@ -1529,7 +1529,7 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      Contract.Ensures(Contract.Result<Absy>() != null);
+      
       return visitor.VisitLocalVariable(this);
     }
   }
@@ -1581,7 +1581,7 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      Contract.Ensures(Contract.Result<Absy>() != null);
+      
       return visitor.VisitBoundVariable(this);
     }
   }
@@ -1602,7 +1602,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<List<Variable>>() != null);
+        
         return this.inParams;
       }
       set
@@ -1616,7 +1616,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<List<Variable>>() != null);
+        
         return this.outParams;
       }
       set
@@ -2180,7 +2180,7 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      Contract.Ensures(Contract.Result<Absy>() != null);
+      
       return visitor.VisitFunction(this);
     }
 
@@ -2280,7 +2280,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<Expr>() != null);
+        
         return this._condition;
       }
       set
@@ -3334,7 +3334,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<string>() != null);
+        
         return this._name;
       }
       set
@@ -3351,7 +3351,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<Type>() != null);
+        
         return this._type;
       }
       set
@@ -3377,7 +3377,7 @@ namespace Microsoft.Boogie
       
       
       
-      Contract.Ensures(this.WhereExpr == null); //PM: needed to verify BoogiePropFactory.FreshBoundVariable
+       
       //:this(tok, name, type, null); // here for aesthetic reasons
     }
 
@@ -3388,7 +3388,7 @@ namespace Microsoft.Boogie
       
       
       
-      Contract.Ensures(this.WhereExpr == whereExpr);
+      
       this._name = name;
       this._type = type;
       this.WhereExpr = whereExpr;
@@ -3456,7 +3456,7 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      Contract.Ensures(Contract.Result<Absy>() != null);
+      
       return visitor.VisitTypedIdent(this);
     }
   }
@@ -3632,7 +3632,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<Block>() != null);
+        
         return this._b;
       }
       set
@@ -3671,7 +3671,7 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      Contract.Ensures(Contract.Result<Absy>() != null);
+      
       return visitor.VisitAtomicRE(this);
     }
   }
@@ -3698,7 +3698,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<RE>() != null);
+        
         return this._first;
       }
       set
@@ -3715,7 +3715,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<RE>() != null);
+        
         return this._second;
       }
       set
@@ -3750,7 +3750,7 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      Contract.Ensures(Contract.Result<Absy>() != null);
+      
       return visitor.VisitSequential(this);
     }
   }
@@ -3771,7 +3771,7 @@ namespace Microsoft.Boogie
       //Rename this (and _rs) if possible
       get
       {
-        Contract.Ensures(Contract.Result<List<RE>>() != null);
+        
         return this._rs;
       }
       set
@@ -3800,7 +3800,7 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      Contract.Ensures(Contract.Result<Absy>() != null);
+      
       return visitor.VisitChoice(this);
     }
   }
@@ -3810,7 +3810,7 @@ namespace Microsoft.Boogie
     public static RE Transform(Block b)
     {
       
-      Contract.Ensures(Contract.Result<RE>() != null);
+      
       TransferCmd tc = b.TransferCmd;
       if (tc is ReturnCmd)
       {

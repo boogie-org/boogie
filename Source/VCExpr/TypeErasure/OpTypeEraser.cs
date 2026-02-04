@@ -38,7 +38,7 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
 
   protected override VCExpr StandardResult(VCExprNAry node, VariableBindings bindings)
   {
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     System.Diagnostics.Debug.Fail("Don't know how to erase types in this expression: " + node);
     Contract.Assert(false);
     throw new Cce.UnreachableException(); // to please the compiler
@@ -48,7 +48,7 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
   {
     
     
-    Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCExpr>>()));
+    
     int oldPolarity = Eraser.Polarity;
     Eraser.Polarity = newPolarity;
     List<VCExpr>
@@ -62,7 +62,7 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
     
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     return Gen.Function(node.Op,
       AxBuilder.CastSeq(MutateSeq(node, bindings, newPolarity),
         argType));
@@ -75,7 +75,7 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
     
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
 
     List<VCExpr>
       newArgs = MutateSeq(node, bindings, newPolarity);
@@ -98,7 +98,7 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     return CastArguments(node, Type.Bool, bindings, -Eraser.Polarity);
   }
 
@@ -106,7 +106,7 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
@@ -114,7 +114,7 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
@@ -122,7 +122,7 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     // UGLY: the code for tracking polarities should be factored out
     List<VCExpr>
       newArgs = new List<VCExpr>(2);
@@ -137,7 +137,7 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
@@ -145,7 +145,7 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     List<VCExpr>
       newArgs = MutateSeq(node, bindings, 0);
     newArgs[0] = AxBuilder.Cast(newArgs[0], Type.Bool);
@@ -164,7 +164,7 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
 
     List<VCExpr>
       newArgs = MutateSeq(node, bindings, 0);
@@ -175,7 +175,7 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     return CastArguments(node, node.Type, bindings, 0);
   }
 
@@ -183,7 +183,7 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     return CastArguments(node, node.Type, bindings, 0);
   }
 
@@ -191,7 +191,7 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     return CastArguments(node, node.Type, bindings, 0);
   }
 
@@ -199,7 +199,7 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     return CastArguments(node, Type.Int, bindings, 0);
   }
 
@@ -207,7 +207,7 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     return CastArguments(node, Type.Int, bindings, 0);
   }
 
@@ -215,7 +215,7 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     return CastArguments(node, Type.Real, bindings, 0);
   }
 
@@ -223,14 +223,14 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
     {
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       return CastArguments(node, Type.Float, bindings, 0);
     }*/
   public override VCExpr VisitPowOp(VCExprNAry node, VariableBindings bindings)
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     return CastArguments(node, Type.Real, bindings, 0);
   }
 
@@ -238,7 +238,7 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
@@ -246,7 +246,7 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
@@ -254,7 +254,7 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
@@ -262,7 +262,7 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
@@ -270,7 +270,7 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     return CastArguments(node, AxBuilder.U, bindings, 0);
   }
 
@@ -278,7 +278,7 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
@@ -286,7 +286,7 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
@@ -294,7 +294,7 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
@@ -302,7 +302,7 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
@@ -310,7 +310,7 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
@@ -318,7 +318,7 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
@@ -326,7 +326,7 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
@@ -334,7 +334,7 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
@@ -342,7 +342,7 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
@@ -350,7 +350,7 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
@@ -358,7 +358,7 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
@@ -366,7 +366,7 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
@@ -374,7 +374,7 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
@@ -382,7 +382,7 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
@@ -390,7 +390,7 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     List<VCExpr>
       newArgs = MutateSeq(node, bindings, 0);
 

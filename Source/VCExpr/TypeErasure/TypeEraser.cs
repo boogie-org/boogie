@@ -33,7 +33,7 @@ public abstract class TypeEraser : MutatingVCExprVisitor<VariableBindings>
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     this.Polarity = polarity;
     return Mutate(expr, new VariableBindings());
   }
@@ -46,7 +46,7 @@ public abstract class TypeEraser : MutatingVCExprVisitor<VariableBindings>
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     Contract.Assume(node.Type == Type.Bool || node.Type == Type.Int || node.Type == Type.Real ||
                     node.Type == Type.RMode || node.Type == Type.String || node.Type == Type.RegEx ||
                     node.Type.IsFloat);
@@ -65,7 +65,7 @@ public abstract class TypeEraser : MutatingVCExprVisitor<VariableBindings>
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     VCExprOp
       op = node.Op;
     if (op == VCExpressionGenerator.AndOp || op == VCExpressionGenerator.OrOp)
@@ -95,7 +95,7 @@ public abstract class TypeEraser : MutatingVCExprVisitor<VariableBindings>
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     if (!bindings.VCExprVarBindings.TryGetValue(node, out var res))
     {
       return AxBuilder.Typed2Untyped(node);
@@ -120,7 +120,7 @@ public abstract class TypeEraser : MutatingVCExprVisitor<VariableBindings>
   {
     
     
-    Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCExprVar>>()));
+    
 
     List<VCExprVar>
       newBoundVars = new List<VCExprVar>(oldBoundVars.Count);
@@ -155,8 +155,8 @@ public abstract class TypeEraser : MutatingVCExprVisitor<VariableBindings>
     
     
     
-    Contract.Ensures(Contract.ValueAtReturn(out newBindings) != null);
-    Contract.Ensures(Cce.NonNullElements(Contract.ValueAtReturn(out newBoundVars)));
+    
+    
     List<VCExprVar> castVariables =
       VariableCastCollector.FindCastVariables(node, newNode, AxBuilder);
     if (castVariables.Count == 0)
@@ -195,7 +195,7 @@ public abstract class TypeEraser : MutatingVCExprVisitor<VariableBindings>
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     VariableBindings
       newVarBindings = bindings.Clone();
 

@@ -10,7 +10,7 @@ namespace Microsoft.Boogie
     public static string BeautifyBplString(string s)
     {
       
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       // strip "^" if it is the first character, change "$result" to "result"
       if (s.StartsWith("^") || s == "$result")
       {
@@ -39,7 +39,7 @@ namespace Microsoft.Boogie
     public static string PrettyPrintBplExpr(Expr e)
     {
       
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       // anything that is unknown will just be printed via ToString
       // OldExpr and QuantifierExpr, BvExtractExpr, BvConcatExpr are ignored for now
       // LiteralExpr is printed as itself by ToString
@@ -281,7 +281,7 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       var sb = new System.Text.StringBuilder(descriptiveName.Length);
       // quote the name, characters like ^ cause trouble in CMD
       // while $ could cause trouble in SH

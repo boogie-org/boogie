@@ -196,7 +196,7 @@ namespace Microsoft.Boogie
       
       
       
-      Contract.Ensures(Contract.Result<AssignCmd>() != null);
+      
       List<AssignLhs>
         lhss = new List<AssignLhs>();
       List<Expr>
@@ -216,7 +216,7 @@ namespace Microsoft.Boogie
       
       
       
-      Contract.Ensures(Contract.Result<AssignCmd>() != null);
+      
       List<AssignLhs>
         lhss = new List<AssignLhs>();
       List<Expr>
@@ -247,7 +247,7 @@ namespace Microsoft.Boogie
       
        // at least the rhs
       
-      Contract.Ensures(Contract.Result<AssignCmd>() != null);
+      
 
       List<AssignLhs>
         lhss = new List<AssignLhs>();
@@ -291,7 +291,7 @@ namespace Microsoft.Boogie
 
     [Pure]
     public override string ToString() {
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       System.IO.StringWriter buffer = new System.IO.StringWriter();
       using TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, false, false, PrintOptions.Default);
       this.Emit(stream, 0);
@@ -364,8 +364,8 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Cce.NonNullElements(Contract.Result<IList<AssignLhs>>()));
-        Contract.Ensures(Contract.Result<IList<AssignLhs>>().IsReadOnly);
+        
+        
         return this._lhss.AsReadOnly();
       }
       set
@@ -379,7 +379,7 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(this.Lhss[index] == lhs);
+      
       this._lhss[index] = lhs;
     }
 
@@ -389,8 +389,8 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Cce.NonNullElements(Contract.Result<IList<Expr>>()));
-        Contract.Ensures(Contract.Result<IList<Expr>>().IsReadOnly);
+        
+        
         return this._rhss.AsReadOnly();
       }
       set
@@ -404,7 +404,7 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(this.Rhss[index] == rhs);
+      
       this._rhss[index] = rhs;
     }
 
@@ -601,7 +601,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<AssignCmd>() != null);
+        
 
         List<AssignLhs>
           newLhss = new List<AssignLhs>();
@@ -665,7 +665,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<IdentifierExpr>() != null);
+        
         throw new NotImplementedException();
       }
     }
@@ -674,7 +674,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<Expr>() != null);
+        
         throw new NotImplementedException();
       }
     }
@@ -682,8 +682,8 @@ namespace Microsoft.Boogie
     internal override void AsSimpleAssignment(Expr rhs, out IdentifierExpr simpleLhs, out Expr simpleRhs)
     {
       
-      Contract.Ensures(Contract.ValueAtReturn(out simpleLhs) != null);
-      Contract.Ensures(Contract.ValueAtReturn(out simpleRhs) != null);
+      
+      
 
       throw new NotImplementedException();
     }
@@ -707,7 +707,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<IdentifierExpr>() != null);
+        
         return AssignedVariable;
       }
     }
@@ -744,7 +744,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<Expr>() != null);
+        
 
         return AssignedVariable;
       }
@@ -806,7 +806,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<IdentifierExpr>() != null);
+        
 
         return Map.DeepAssignedIdentifier;
       }
@@ -883,7 +883,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<Expr>() != null);
+        
 
         NAryExpr
           res = Expr.Select(Map.AsExpr, Indexes);
@@ -898,8 +898,8 @@ namespace Microsoft.Boogie
       out IdentifierExpr simpleLhs,
       out Expr simpleRhs)
     {
-      Contract.Ensures(Contract.ValueAtReturn(out simpleLhs) != null);
-      Contract.Ensures(Contract.ValueAtReturn(out simpleRhs) != null);
+      
+      
 
       NAryExpr
         newRhs = Expr.Store(Map.AsExpr, Indexes, rhs);
@@ -911,7 +911,7 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      Contract.Ensures(Contract.Result<Absy>() != null);
+      
       return visitor.VisitMapAssignLhs(this);
     }
   }
@@ -1173,7 +1173,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<List<Variable>>() != null);
+        
         return this._locals;
       }
       internal set
@@ -1189,7 +1189,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<List<Cmd>>() != null);
+        
         return this._cmds;
       }
       set
@@ -1275,7 +1275,7 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      Contract.Ensures(Contract.Result<Absy>() != null);
+      
       return visitor.VisitStateCmd(this);
     }
   }
@@ -1293,7 +1293,7 @@ namespace Microsoft.Boogie
 
     public Cmd GetDesugaring(PrintOptions options)
     {
-      Contract.Ensures(Contract.Result<Cmd>() != null);
+      
 
       if (desugaring == null) {
         desugaring = ComputeDesugaring(options);
@@ -1372,7 +1372,7 @@ namespace Microsoft.Boogie
 
     protected override Cmd ComputeDesugaring(PrintOptions options)
     {
-      Contract.Ensures(Contract.Result<Cmd>() != null);
+      
 
       throw new NotImplementedException();
     }
@@ -1419,7 +1419,7 @@ namespace Microsoft.Boogie
       
       
       
-      Contract.Ensures(Contract.Result<Variable>() != null);
+      
       string
         tempNamePrefix;
       switch (kind)
@@ -1594,7 +1594,7 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      Contract.Ensures(Contract.Result<Absy>() != null);
+      
       return visitor.VisitParCallCmd(this);
     }
 
@@ -1729,7 +1729,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<List<MiningStrategy>>() != null);
+        
         return this._msList;
       }
       set
@@ -1761,7 +1761,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<string>() != null);
+        
         return this._reason;
       }
       set
@@ -1778,7 +1778,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Cce.NonNullElements(Contract.Result<IEnumerable<Expr>>()));
+        
         return this.exprList.AsReadOnly();
       }
       set
@@ -1893,7 +1893,7 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(Contract.Result<List<MiningStrategy>>() != null);
+      
 
       // go through the origExpr and identify all bound variables in the AST.
       if (expr is LiteralExpr || expr is IdentifierExpr)
@@ -2001,7 +2001,7 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      Contract.Ensures(Contract.Result<Absy>() != null);
+      
       return visitor.VisitAssertRequiresCmd(this);
     }
   }
@@ -2030,7 +2030,7 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      Contract.Ensures(Contract.Result<Absy>() != null);
+      
       return visitor.VisitAssertEnsuresCmd(this);
     }
   }
@@ -2128,7 +2128,7 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      Contract.Ensures(Contract.Result<Absy>() != null);
+      
       return visitor.VisitReturnExprCmd(this);
     }
   }
@@ -2141,7 +2141,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<List<IdentifierExpr>>() != null);
+        
         return this._vars;
       }
       set
@@ -2201,7 +2201,7 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      Contract.Ensures(Contract.Result<Absy>() != null);
+      
       return visitor.VisitHavocCmd(this);
     }
   }

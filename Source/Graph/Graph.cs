@@ -10,7 +10,7 @@ namespace Microsoft.Boogie.GraphUtil
   {
     private static string ListToString<T>(IEnumerable<T> xs)
     {
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       StringBuilder sb = new StringBuilder();
       sb.Append("[");
       bool first = true;
@@ -32,7 +32,7 @@ namespace Microsoft.Boogie.GraphUtil
 
     public static string MapToString<Node>(Dictionary<Node, List<Node>> d)
     {
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       StringBuilder sb = new StringBuilder();
       sb.Append("{");
       bool first = true;
@@ -204,7 +204,7 @@ namespace Microsoft.Boogie.GraphUtil
 
     public string ListToString<T>(IEnumerable<T> xs)
     {
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       StringBuilder sb = new StringBuilder();
       sb.Append("[");
       bool first = true;
@@ -489,7 +489,7 @@ namespace Microsoft.Boogie.GraphUtil
       [Pure]
       public override string ToString()
       {
-        Contract.Ensures(Contract.Result<string>() != null);
+        
         return "#" + myHeader.ToString();
       }
     }
@@ -1510,7 +1510,7 @@ namespace Microsoft.Boogie.GraphUtil
     [Escapes(true, false)]
     System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
     {
-      Contract.Ensures(Contract.Result<System.Collections.IEnumerator>() != null);
+      
 
       return ((System.Collections.IEnumerable) nodes).GetEnumerator();
     }
@@ -1520,7 +1520,7 @@ namespace Microsoft.Boogie.GraphUtil
     [Escapes(true, false)]
     IEnumerator<Node> IEnumerable<Node>.GetEnumerator()
     {
-      Contract.Ensures(Contract.Result<IEnumerator<Node>>() != null);
+      
 
       return ((IEnumerable<Node>) nodes).GetEnumerator();
     }
@@ -1596,7 +1596,7 @@ namespace Microsoft.Boogie.GraphUtil
       
       
       
-      Contract.Ensures(!Computed);
+      
       IDictionary<Node, object>
         dict = new Dictionary<Node, object>();
       foreach (Node n in graph)
@@ -1615,7 +1615,7 @@ namespace Microsoft.Boogie.GraphUtil
     [Escapes(true, false)]
     System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
     {
-      Contract.Ensures(Contract.Result<System.Collections.IEnumerator>() != null);
+      
 
       return ((System.Collections.IEnumerable) sccs).GetEnumerator();
     }
@@ -1625,7 +1625,7 @@ namespace Microsoft.Boogie.GraphUtil
     [Escapes(true, false)]
     IEnumerator<SCC<Node>> IEnumerable<SCC<Node>>.GetEnumerator()
     {
-      Contract.Ensures(Contract.Result<IEnumerator<SCC<Node>>>() != null);
+      
 
       Contract.Assume(Computed);
       Contract.Assert(Cce.NonNullElements((IEnumerable<SCC<Node>>) sccs)); //REVIEW
@@ -1645,7 +1645,7 @@ namespace Microsoft.Boogie.GraphUtil
     public void Compute()
     {
       
-      Contract.Ensures(Computed);
+      
       // Compute post times on graph with edges reversed
       dfsNext = preds;
       foreach (Node n in Cce.NonNull(graph.Keys))
@@ -1748,7 +1748,7 @@ namespace Microsoft.Boogie.GraphUtil
     [Pure]
     public override string ToString()
     {
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       string outStr = "";
       int i = 0;
 

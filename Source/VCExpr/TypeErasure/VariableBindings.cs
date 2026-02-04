@@ -37,7 +37,7 @@ public class VariableBindings
 
   public VariableBindings Clone()
   {
-    Contract.Ensures(Contract.Result<VariableBindings>() != null);
+    
     IDictionary<VCExprVar, VCExprVar>
       newVCExprVarBindings =
         new Dictionary<VCExprVar, VCExprVar>();

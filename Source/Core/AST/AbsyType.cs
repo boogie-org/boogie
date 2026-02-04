@@ -27,7 +27,7 @@ namespace Microsoft.Boogie
 
     public override Absy Clone()
     {
-      Contract.Ensures(Contract.Result<Absy>() != null);
+      
       return this.Clone(new Dictionary<TypeVariable, TypeVariable>());
     }
 
@@ -52,7 +52,7 @@ namespace Microsoft.Boogie
     [Pure]
     public override string ToString()
     {
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       System.IO.StringWriter buffer = new System.IO.StringWriter();
       using TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, false,  false, PrintOptions.Default);
       this.Emit(stream);
@@ -88,7 +88,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<Type>() != null);
+        
 
         return this;
       }
@@ -242,7 +242,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<TypeVariable>() != null);
+        
 
         {
           Contract.Assert(false);
@@ -260,7 +260,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<CtorType>() != null);
+        
 
         {
           Contract.Assert(false);
@@ -278,7 +278,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<MapType>() != null);
+        
 
         {
           Contract.Assert(false);
@@ -307,7 +307,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<UnresolvedTypeIdentifier>() != null);
+        
 
         {
           Contract.Assert(false);
@@ -382,7 +382,7 @@ namespace Microsoft.Boogie
     static public BvType GetBvType(int sz)
     {
       
-      Contract.Ensures(Contract.Result<BvType>() != null);
+      
 
       if (bvtypeCache == null)
       {
@@ -410,7 +410,7 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(Contract.Result<FloatType>() != null);
+      
 
       return new FloatType(sig, exp);
     }
@@ -436,7 +436,7 @@ namespace Microsoft.Boogie
       
       
       
-      Contract.Ensures(Cce.NonNullDictionaryAndValues(Contract.Result<IDictionary<TypeVariable, Type>>()));
+      
 
       // requires "actualArgs" and "actualOuts" to have been type checked
 
@@ -513,7 +513,7 @@ namespace Microsoft.Boogie
       
       
       
-      Contract.Ensures(Cce.NonNullElements(Contract.ValueAtReturn(out actualTypeParams)));
+      
       actualTypeParams = new List<Type>();
 
       if (formalIns.Count != actualIns.Count)
@@ -589,7 +589,7 @@ namespace Microsoft.Boogie
       
       
       
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
 
       IDictionary<TypeVariable, Type>
         subst =
@@ -620,7 +620,7 @@ namespace Microsoft.Boogie
       
       
       
-      Contract.Ensures(Cce.NonNullDictionaryAndValues(Contract.Result<IDictionary<TypeVariable, Type>>()));
+      
 
 
       List<Type> proxies = new List<Type>();
@@ -672,9 +672,9 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(Contract.Result<List<TypeVariable>>() != null);
+      
 
-      Contract.Ensures(Contract.Result<List<TypeVariable>>().Count == typeParams.Count);
+      
       if (typeParams.Count == 0)
       {
         return typeParams;
@@ -753,7 +753,7 @@ namespace Microsoft.Boogie
     public static List<TypeVariable> FreeVariablesIn(List<Type> arguments)
     {
       
-      Contract.Ensures(Contract.Result<List<TypeVariable>>() != null);
+      
       List<TypeVariable>
         res = new List<TypeVariable>();
       foreach (Type t in arguments)
@@ -777,7 +777,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Cce.NonNullElements(Contract.Result<List<TypeProxy>>()));
+        
         throw new NotImplementedException();
       }
     }
@@ -786,7 +786,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<List<TypeVariable>>() != null);
+        
         throw new NotImplementedException();
       }
     }
@@ -794,14 +794,14 @@ namespace Microsoft.Boogie
     public override Type Clone(IDictionary<TypeVariable, TypeVariable> varMap)
     {
       
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
 
       throw new NotImplementedException();
     }
 
     public override Type CloneUnresolved()
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
 
       throw new NotImplementedException();
     }
@@ -834,7 +834,7 @@ namespace Microsoft.Boogie
     public override Type Substitute(IDictionary<TypeVariable, Type> subst)
     {
       
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
 
       throw new NotImplementedException();
     }
@@ -842,7 +842,7 @@ namespace Microsoft.Boogie
     public override Type ResolveType(ResolutionContext rc)
     {
       
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
 
       throw new NotImplementedException();
     }
@@ -879,14 +879,14 @@ namespace Microsoft.Boogie
 
     public override Type Clone(IDictionary<TypeVariable, TypeVariable> varMap)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       // BasicTypes are immutable anyway, we do not clone
       return this;
     }
 
     public override Type CloneUnresolved()
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       return this;
     }
 
@@ -902,7 +902,7 @@ namespace Microsoft.Boogie
     [Pure]
     public override string ToString()
     {
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       switch (T)
       {
         case SimpleType.Int:
@@ -972,7 +972,7 @@ namespace Microsoft.Boogie
 
     public override Type Substitute(IDictionary<TypeVariable, Type> subst)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       return this;
     }
 
@@ -994,7 +994,7 @@ namespace Microsoft.Boogie
 
     public override Type ResolveType(ResolutionContext rc)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       // nothing to resolve
       return this;
     }
@@ -1004,7 +1004,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<List<TypeVariable>>() != null);
+        
 
         return new List<TypeVariable>(); // basic type are closed
       }
@@ -1014,7 +1014,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Cce.NonNullElements(Contract.Result<List<TypeProxy>>()));
+        
         return new List<TypeProxy>();
       }
     }
@@ -1058,7 +1058,7 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      Contract.Ensures(Contract.Result<Absy>() != null);
+      
       return visitor.VisitBasicType(this);
     }
   }
@@ -1093,14 +1093,14 @@ namespace Microsoft.Boogie
 
     public override Type Clone(IDictionary<TypeVariable, TypeVariable> varMap)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       // FloatTypes are immutable anyway, we do not clone
       return this;
     }
 
     public override Type CloneUnresolved()
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       return this;
     }
 
@@ -1115,7 +1115,7 @@ namespace Microsoft.Boogie
 
     public override string ToString()
     {
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       return "float" + Significand + "e" + Exponent;
     }
 
@@ -1154,7 +1154,7 @@ namespace Microsoft.Boogie
 
     public override Type Substitute(IDictionary<TypeVariable, Type> subst)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       return this;
     }
 
@@ -1170,7 +1170,7 @@ namespace Microsoft.Boogie
 
     public override Type ResolveType(ResolutionContext rc)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       // nothing to resolve
       return this;
     }
@@ -1180,7 +1180,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<List<TypeVariable>>() != null);
+        
 
         return new List<TypeVariable>(); // bitvector-type are closed
       }
@@ -1190,7 +1190,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Cce.NonNullElements(Contract.Result<List<TypeProxy>>()));
+        
         return new List<TypeProxy>();
       }
     }
@@ -1214,7 +1214,7 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      Contract.Ensures(Contract.Result<Absy>() != null);
+      
       return visitor.VisitFloatType(this);
     }
   }
@@ -1245,14 +1245,14 @@ namespace Microsoft.Boogie
 
     public override Type Clone(IDictionary<TypeVariable, TypeVariable> varMap)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       // BvTypes are immutable anyway, we do not clone
       return this;
     }
 
     public override Type CloneUnresolved()
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       return this;
     }
 
@@ -1268,7 +1268,7 @@ namespace Microsoft.Boogie
     [Pure]
     public override string ToString()
     {
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       return "bv" + Bits;
     }
 
@@ -1306,7 +1306,7 @@ namespace Microsoft.Boogie
 
     public override Type Substitute(IDictionary<TypeVariable, Type> subst)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       return this;
     }
 
@@ -1322,7 +1322,7 @@ namespace Microsoft.Boogie
 
     public override Type ResolveType(ResolutionContext rc)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       // nothing to resolve
       return this;
     }
@@ -1332,7 +1332,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<List<TypeVariable>>() != null);
+        
 
         return new List<TypeVariable>(); // bitvector-type are closed
       }
@@ -1342,7 +1342,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Cce.NonNullElements(Contract.Result<List<TypeProxy>>()));
+        
         return new List<TypeProxy>();
       }
     }
@@ -1361,7 +1361,7 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      Contract.Ensures(Contract.Result<Absy>() != null);
+      
       return visitor.VisitBvType(this);
     }
   }
@@ -1411,7 +1411,7 @@ namespace Microsoft.Boogie
 
     public override Type Clone(IDictionary<TypeVariable, TypeVariable> varMap)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       List<Type>
         newArgs = new List<Type>();
       foreach (Type t in Arguments)
@@ -1425,7 +1425,7 @@ namespace Microsoft.Boogie
 
     public override Type CloneUnresolved()
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       List<Type>
         newArgs = new List<Type>();
       foreach (Type t in Arguments)
@@ -1464,7 +1464,7 @@ namespace Microsoft.Boogie
 
     public override Type Substitute(IDictionary<TypeVariable, Type> subst)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       {
         Contract.Assert(false);
         throw new Cce.UnreachableException();
@@ -1486,7 +1486,7 @@ namespace Microsoft.Boogie
 
     public override Type ResolveType(ResolutionContext rc)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       // first case: the type name denotes a bitvector-type, float-type, rmode-type, string-type, or regex-type
 
       if (Name.StartsWith("bv") && Name.Length > 2)
@@ -1642,7 +1642,7 @@ namespace Microsoft.Boogie
     private List<Type> ResolveArguments(ResolutionContext rc)
     {
       
-      Contract.Ensures(Contract.Result<List<Type>>() != null);
+      
       List<Type>
         resolvedArgs = new List<Type>();
       foreach (Type t in Arguments)
@@ -1658,7 +1658,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<List<TypeVariable>>() != null);
+        
 
         return new List<TypeVariable>();
       }
@@ -1668,7 +1668,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Cce.NonNullElements(Contract.Result<List<TypeProxy>>()));
+        
         return new List<TypeProxy>();
       }
     }
@@ -1693,14 +1693,14 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<UnresolvedTypeIdentifier>() != null);
+        
         return this;
       }
     }
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      Contract.Ensures(Contract.Result<Absy>() != null);
+      
       return visitor.VisitUnresolvedTypeIdentifier(this);
     }
   }
@@ -1734,7 +1734,7 @@ namespace Microsoft.Boogie
 
     public override Type Clone(IDictionary<TypeVariable, TypeVariable> varMap)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       // if this variable is mapped to some new variable, we take the new one
       // otherwise, return this
       varMap.TryGetValue(this, out var res);
@@ -1750,7 +1750,7 @@ namespace Microsoft.Boogie
 
     public override Type CloneUnresolved()
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       return this;
     }
 
@@ -1863,7 +1863,7 @@ namespace Microsoft.Boogie
 
     public override Type Substitute(IDictionary<TypeVariable, Type> subst)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       if (subst.TryGetValue(this, out var res))
       {
         Contract.Assert(res != null);
@@ -1910,7 +1910,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<List<TypeVariable>>() != null);
+        
         return new List<TypeVariable> {this};
       }
     }
@@ -1919,7 +1919,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Cce.NonNullElements(Contract.Result<List<TypeProxy>>()));
+        
         return new List<TypeProxy>();
       }
     }
@@ -1935,7 +1935,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<TypeVariable>() != null);
+        
         return this;
       }
     }
@@ -2003,7 +2003,7 @@ namespace Microsoft.Boogie
     public static Type FollowProxy(Type t)
     {
       
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       Contract.Ensures(
         !(Contract.Result<Type>() is TypeProxy) || ((TypeProxy) Contract.Result<Type>()).proxyFor == null);
       if (t is TypeProxy)
@@ -2034,7 +2034,7 @@ namespace Microsoft.Boogie
 
     public override Type Clone(IDictionary<TypeVariable, TypeVariable> varMap)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       Type p = ProxyFor;
       if (p != null)
       {
@@ -2048,7 +2048,7 @@ namespace Microsoft.Boogie
 
     public override Type CloneUnresolved()
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       return new TypeProxy(this.tok, this.Name); // the clone will have a name that ends with $proxy<n>$proxy<m>
     }
 
@@ -2113,7 +2113,7 @@ namespace Microsoft.Boogie
 
     public override Type Substitute(IDictionary<TypeVariable, Type> subst)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       Type p = ProxyFor;
       if (p != null)
       {
@@ -2162,7 +2162,7 @@ namespace Microsoft.Boogie
 
     public override Type ResolveType(ResolutionContext rc)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       Type p = ProxyFor;
       if (p != null)
       {
@@ -2178,7 +2178,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<List<TypeVariable>>() != null);
+        
 
         Type p = ProxyFor;
         if (p != null)
@@ -2196,7 +2196,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Cce.NonNullElements(Contract.Result<List<TypeProxy>>()));
+        
         Type p = ProxyFor;
         if (p != null)
         {
@@ -2327,7 +2327,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<TypeVariable>() != null);
+        
 
         Type p = ProxyFor;
         Contract.Assume(p != null);
@@ -2348,7 +2348,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<CtorType>() != null);
+        
 
         Type p = ProxyFor;
         Contract.Assume(p != null);
@@ -2369,7 +2369,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<MapType>() != null);
+        
 
         Type p = ProxyFor;
         Contract.Assume(p != null);
@@ -2400,7 +2400,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<UnresolvedTypeIdentifier>() != null);
+        
 
         Type p = ProxyFor;
         Contract.Assume(p != null);
@@ -2429,7 +2429,7 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      Contract.Ensures(Contract.Result<Absy>() != null);
+      
       return visitor.VisitTypeProxy(this);
     }
   }
@@ -2547,7 +2547,7 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(0 <= Contract.Result<int>());
+      
 
       if (t is TypeSynonymAnnotation)
       {
@@ -2568,7 +2568,7 @@ namespace Microsoft.Boogie
 
     public override Type Clone(IDictionary<TypeVariable, TypeVariable> varMap)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       Type p = ProxyFor;
       if (p != null)
       {
@@ -2583,7 +2583,7 @@ namespace Microsoft.Boogie
 
     public override Type CloneUnresolved()
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       return new BvTypeProxy(this.tok, this.Name, this.MinBits,
         this.constraints); // the clone will have a name that ends with $bvproxy<n>$bvproxy<m>
     }
@@ -2692,7 +2692,7 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(0 <= Contract.Result<int>() && Contract.Result<int>() <= to);
+      
 
       if (t is TypeSynonymAnnotation)
       {
@@ -2722,7 +2722,7 @@ namespace Microsoft.Boogie
 
     public override Type Substitute(IDictionary<TypeVariable, Type> subst)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       if (this.ProxyFor == null)
       {
         // check that the constraints are clean and do not contain any
@@ -2763,7 +2763,7 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      Contract.Ensures(Contract.Result<Absy>() != null);
+      
       return visitor.VisitBvTypeProxy(this);
     }
   }
@@ -2905,7 +2905,7 @@ namespace Microsoft.Boogie
       
       
       
-      Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
+      
 
 
       Type f = ProxyFor;
@@ -2955,7 +2955,7 @@ namespace Microsoft.Boogie
 
     public override Type Clone(IDictionary<TypeVariable, TypeVariable> varMap)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       Type p = ProxyFor;
       if (p != null)
       {
@@ -3081,7 +3081,7 @@ namespace Microsoft.Boogie
 
     public override Type Substitute(IDictionary<TypeVariable, Type> subst)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       if (this.ProxyFor == null)
       {
         // check that the constraints are clean and do not contain any
@@ -3106,7 +3106,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<MapType>() != null);
+        
 
         Type p = ProxyFor;
         if (p != null)
@@ -3130,7 +3130,7 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      Contract.Ensures(Contract.Result<Absy>() != null);
+      
       return visitor.VisitMapTypeProxy(this);
     }
   }
@@ -3206,7 +3206,7 @@ namespace Microsoft.Boogie
 
     public override Type Clone(IDictionary<TypeVariable, TypeVariable> varMap)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       List<Type>
         newArgs = new List<Type>();
       foreach (Type t in Arguments)
@@ -3223,7 +3223,7 @@ namespace Microsoft.Boogie
 
     public override Type CloneUnresolved()
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       List<Type>
         newArgs = new List<Type>();
       foreach (Type t in Arguments)
@@ -3250,7 +3250,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<Type>() != null);
+        
 
         return ExpandedType.Expanded;
       }
@@ -3269,7 +3269,7 @@ namespace Microsoft.Boogie
 
     public override Type Substitute(IDictionary<TypeVariable, Type> subst)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       if (subst.Count == 0)
       {
         return this;
@@ -3308,7 +3308,7 @@ namespace Microsoft.Boogie
 
     public override Type ResolveType(ResolutionContext rc)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       List<Type> resolvedArgs = new List<Type>();
       foreach (Type t in Arguments)
       {
@@ -3323,7 +3323,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<List<TypeVariable>>() != null);
+        
 
         return ExpandedType.FreeVariables;
       }
@@ -3333,7 +3333,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Cce.NonNullElements(Contract.Result<List<TypeProxy>>()));
+        
         return ExpandedType.FreeProxies;
       }
     }
@@ -3399,7 +3399,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<TypeVariable>() != null);
+        
         return ExpandedType.AsVariable;
       }
     }
@@ -3413,7 +3413,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<CtorType>() != null);
+        
         return ExpandedType.AsCtor;
       }
     }
@@ -3427,7 +3427,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<MapType>() != null);
+        
         return ExpandedType.AsMap;
       }
     }
@@ -3441,7 +3441,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<UnresolvedTypeIdentifier>() != null);
+        
 
         return ExpandedType.AsUnresolved;
       }
@@ -3459,7 +3459,7 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      Contract.Ensures(Contract.Result<Absy>() != null);
+      
       return visitor.VisitTypeSynonymAnnotation(this);
     }
   }
@@ -3518,7 +3518,7 @@ namespace Microsoft.Boogie
 
     public override Type Clone(IDictionary<TypeVariable, TypeVariable> varMap)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       List<Type>
         newArgs = new List<Type>();
       foreach (Type t in Arguments)
@@ -3532,7 +3532,7 @@ namespace Microsoft.Boogie
 
     public override Type CloneUnresolved()
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       List<Type>
         newArgs = new List<Type>();
       foreach (Type t in Arguments)
@@ -3629,7 +3629,7 @@ namespace Microsoft.Boogie
 
     public override Type Substitute(IDictionary<TypeVariable, Type> subst)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       if (subst.Count == 0)
       {
         return this;
@@ -3710,7 +3710,7 @@ namespace Microsoft.Boogie
 
     public override Type ResolveType(ResolutionContext rc)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       List<Type> resolvedArgs = new List<Type>();
       foreach (Type t in Arguments)
       {
@@ -3767,7 +3767,7 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      Contract.Ensures(Contract.Result<Absy>() != null);
+      
       return visitor.VisitCtorType(this);
     }
   }
@@ -3817,7 +3817,7 @@ namespace Microsoft.Boogie
 
     public override Type Clone(IDictionary<TypeVariable, TypeVariable> varMap)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       IDictionary<TypeVariable, TypeVariable>
         newVarMap =
           new Dictionary<TypeVariable, TypeVariable>();
@@ -3859,7 +3859,7 @@ namespace Microsoft.Boogie
 
     public override Type CloneUnresolved()
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       List<TypeVariable>
         newTypeParams = new List<TypeVariable>();
       foreach (TypeVariable var in TypeParameters)
@@ -4034,7 +4034,7 @@ namespace Microsoft.Boogie
 
     public override Type Substitute(IDictionary<TypeVariable, Type> subst)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       if (subst.Count == 0)
       {
         return this;
@@ -4128,7 +4128,7 @@ namespace Microsoft.Boogie
 
     public override Type ResolveType(ResolutionContext rc)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       int previousState = rc.TypeBinderState;
       try
       {
@@ -4232,7 +4232,7 @@ namespace Microsoft.Boogie
 
       
       
-      Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
+      
       List<Type> actualResult =
         Type.CheckArgumentTypes(TypeParameters, out var actualTypeParams, Arguments, actualArgs,
           new List<Type> {Result}, null, typeCheckingSubject, opName, tc);
@@ -4251,7 +4251,7 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      Contract.Ensures(Contract.Result<Absy>() != null);
+      
       return visitor.VisitMapType(this);
     }
   }
@@ -4295,7 +4295,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Cce.NonNullElements(Contract.Result<List<TypeVariable>>()));
+        
         throw new NotImplementedException();
       }
     }
@@ -4305,7 +4305,7 @@ namespace Microsoft.Boogie
       get
       {
         
-        Contract.Ensures(Contract.Result<Type>() != null);
+        
 
         throw new NotImplementedException();
       }
@@ -4350,7 +4350,7 @@ namespace Microsoft.Boogie
       
       
       
-      Contract.Ensures(Contract.Result<TypeParamInstantiation>() != null);
+      
 
       if (typeParams.Count == 0)
       {
@@ -4379,7 +4379,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Cce.NonNullElements(Contract.Result<List<TypeVariable>>()));
+        
         return TypeParams;
       }
     }

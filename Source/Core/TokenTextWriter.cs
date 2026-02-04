@@ -30,7 +30,7 @@ namespace Microsoft.Boogie
 
     protected string Indent(int level)
     {
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       most_recent_indent_level = level;
       return new string(' ', (indent_size * level));
     }
@@ -208,7 +208,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<IToken>() != null);
+        
 
         Token token = new Token();
         token.filename = filename;
@@ -269,7 +269,7 @@ namespace Microsoft.Boogie
     public static string SanitizeIdentifier(string name)
     {
       
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       int index = Array.BinarySearch(TokenTextWriter.BplKeywords, name);
       if (index >= 0)
       {

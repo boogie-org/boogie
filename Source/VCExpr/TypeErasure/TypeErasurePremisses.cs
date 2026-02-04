@@ -94,7 +94,7 @@ namespace Microsoft.Boogie.TypeErasure
 
     public override Object Clone()
     {
-      Contract.Ensures(Contract.Result<Object>() != null);
+      
       return new TypeAxiomBuilderPremisses(this);
     }
 
@@ -110,7 +110,7 @@ namespace Microsoft.Boogie.TypeErasure
     //                                          type(x)=int ==> Int2U(U2Int(x))==x"
     protected override VCExpr GenReverseCastAxiom(Function castToU, Function castFromU)
     {
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       VCExpr
         eq = GenReverseCastEq(castToU, castFromU, out var var, out var triggers);
       Contract.Assert(Cce.NonNullElements(triggers));
@@ -129,7 +129,7 @@ namespace Microsoft.Boogie.TypeErasure
 
     protected override VCExpr GenCastTypeAxioms(Function castToU, Function castFromU)
     {
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       Type
         fromType = Cce.NonNull(castToU.InParams[0]).TypedIdent.Type;
       return GenFunctionAxiom(castToU, new List<TypeVariable>(), new List<TypeVariable>(),
@@ -142,7 +142,7 @@ namespace Microsoft.Boogie.TypeErasure
     {
       get
       {
-        Contract.Ensures(Contract.Result<MapTypeAbstractionBuilder>() != null);
+        
 
         if (MapTypeAbstracterAttr == null)
         {
@@ -157,7 +157,7 @@ namespace Microsoft.Boogie.TypeErasure
     {
       get
       {
-        Contract.Ensures(Contract.Result<MapTypeAbstractionBuilderPremisses>() != null);
+        
 
         return (MapTypeAbstractionBuilderPremisses) MapTypeAbstracter;
       }
@@ -180,7 +180,7 @@ namespace Microsoft.Boogie.TypeErasure
     public VCExpr TypeOf(VCExpr expr)
     {
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       return Gen.Function(TypeFunction, expr);
     }
 
@@ -200,7 +200,7 @@ namespace Microsoft.Boogie.TypeErasure
       
       
 
-      Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCExprLetBinding>>()));
+      
 
       // type variables are replaced with ordinary variables that are bound using a
       // let-expression
@@ -243,7 +243,7 @@ namespace Microsoft.Boogie.TypeErasure
       
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
 
       VCExpr
         bodyWithPremisses;
@@ -274,7 +274,7 @@ namespace Microsoft.Boogie.TypeErasure
       
       
       
-      Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCExprLetBinding>>()));
+      
 
       List<VCExprLetBinding>
         typeParamBindings = new List<VCExprLetBinding>();
@@ -328,7 +328,7 @@ namespace Microsoft.Boogie.TypeErasure
       
       
       
-      Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCExpr>>()));
+      
       List<VCExpr>
         res = new List<VCExpr>();
       for (int i = 0; i < types.Count; ++i)
@@ -407,8 +407,8 @@ namespace Microsoft.Boogie.TypeErasure
     {
       
       
-      Contract.Ensures(Cce.NonNullElements(Contract.ValueAtReturn(out implicitParams)));
-      Contract.Ensures(Cce.NonNullElements(Contract.ValueAtReturn(out explicitParams)));
+      
+      
       List<TypeVariable>
         varsInInParamTypes = new List<TypeVariable>();
       foreach (Type t in valueArgumentTypes)
@@ -500,7 +500,7 @@ namespace Microsoft.Boogie.TypeErasure
     private VCExpr GenFunctionAxiom(UntypedFunction fun, Function originalFun)
     {
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       List<Type>
         originalInTypes = new List<Type>(originalFun.InParams.Count);
       foreach (Formal f in originalFun.InParams)
@@ -525,7 +525,7 @@ namespace Microsoft.Boogie.TypeErasure
       
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
 
       List<VCExprVar>
         typedInputVars = new List<VCExprVar>(originalInTypes.Count);
@@ -617,7 +617,7 @@ namespace Microsoft.Boogie.TypeErasure
       
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
 
       if (!var.Type.Equals(originalType))
       {
@@ -675,7 +675,7 @@ namespace Microsoft.Boogie.TypeErasure
     public List<int> ExplicitSelectTypeParams(MapType type)
     {
       
-      Contract.Ensures(Contract.Result<List<int>>() != null);
+      
 
       if (!explicitSelectTypeParamsCache.TryGetValue(type, out var res))
       {
@@ -712,8 +712,8 @@ namespace Microsoft.Boogie.TypeErasure
     protected override void GenSelectStoreFunctions(MapType abstractedType, TypeCtorDecl synonym,
       out Function select, out Function store)
     {
-      Contract.Ensures(Contract.ValueAtReturn(out select) != null);
-      Contract.Ensures(Contract.ValueAtReturn(out store) != null);
+      
+      
       GenTypeAxiomParams(abstractedType, synonym, out var mapTypeSynonym,
         out var typeParams, out var originalInTypes);
 
@@ -744,9 +744,9 @@ namespace Microsoft.Boogie.TypeErasure
     {
       
       
-      Contract.Ensures(Contract.ValueAtReturn(out mapTypeSynonym) != null);
-      Contract.Ensures(Cce.NonNullElements(Contract.ValueAtReturn(out typeParams)));
-      Contract.Ensures(Cce.NonNullElements(Contract.ValueAtReturn(out originalIndexTypes)));
+      
+      
+      
       typeParams = new List<TypeVariable>();
       typeParams.AddRange(abstractedType.TypeParameters);
       typeParams.AddRange(abstractedType.FreeVariables);
@@ -777,9 +777,9 @@ namespace Microsoft.Boogie.TypeErasure
       
       
       
-      Contract.Ensures(Contract.Result<Function>() != null);
-      Contract.Ensures(Cce.NonNullElements(Contract.ValueAtReturn(out implicitTypeParams)));
-      Contract.Ensures(Cce.NonNullElements(Contract.ValueAtReturn(out explicitTypeParams)));
+      
+      
+      
 
       // select and store are basically handled like normal functions: the type
       // parameters are split into the implicit parameters, and into the parameters
@@ -837,7 +837,7 @@ namespace Microsoft.Boogie.TypeErasure
       
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
 
       List<VCExpr>
         selectArgs = new List<VCExpr>(typeParams.Count + indexes.Count + 1);
@@ -853,7 +853,7 @@ namespace Microsoft.Boogie.TypeErasure
       
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       List<VCExpr>
         storeArgs = new List<VCExpr>(indexes.Count + 2);
       storeArgs.Add(map);
@@ -879,7 +879,7 @@ namespace Microsoft.Boogie.TypeErasure
       
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       int arity = store.InParams.Count - 2;
       List<VCExprVar> inParams = new List<VCExprVar>();
       List<VCExprVar> quantifiedVars = new List<VCExprVar>(store.InParams.Count);
@@ -986,7 +986,7 @@ namespace Microsoft.Boogie.TypeErasure
       
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       int arity = store.InParams.Count - 2;
 
       List<Type> indexTypes = new List<Type>();

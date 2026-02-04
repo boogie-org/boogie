@@ -91,7 +91,7 @@ class BigBlocksResolutionContext
   {
     get
     {
-      Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Block>>()));
+      
       if (blocks == null)
       {
         blocks = new List<Block>();
@@ -159,7 +159,7 @@ class BigBlocksResolutionContext
     
     
     //modifies stmtList.*;
-    Contract.Ensures(stmtList.ParentContext == parentContext);
+    
     stmtList.ParentContext = parentContext;
     stmtList.ParentBigBlock = parentBigBlock;
 
@@ -595,7 +595,7 @@ class BigBlocksResolutionContext
   {
     
     
-    Contract.Ensures(Contract.Result<TransferCmd>() != null);
+    
     if (b.SuccessorBigBlock != null)
     {
       return new GotoCmd(new ImplicitJump(tok), new List<string> {b.SuccessorBigBlock.LabelName});

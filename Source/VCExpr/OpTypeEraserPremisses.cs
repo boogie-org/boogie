@@ -33,7 +33,7 @@ public class OpTypeEraserPremisses : OpTypeEraser
     
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     // UGLY: the code for tracking polarities should be factored out
     int oldPolarity = Eraser.Polarity;
     Eraser.Polarity = 0;
@@ -66,7 +66,7 @@ public class OpTypeEraserPremisses : OpTypeEraser
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
 
     MapType
       mapType = node[0].Type.AsMap;
@@ -96,7 +96,7 @@ public class OpTypeEraserPremisses : OpTypeEraser
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     Function
       store =
         AxBuilder.MapTypeAbstracter.Store(node[0].Type.AsMap, out var instantiations);
@@ -112,7 +112,7 @@ public class OpTypeEraserPremisses : OpTypeEraser
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     Function
       oriFun = ((VCExprBoogieFunctionOp) node.Op).Func;
     Contract.Assert(oriFun != null);
@@ -133,7 +133,7 @@ public class OpTypeEraserPremisses : OpTypeEraser
     
     
     
-    Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Type>>()));
+    
     List<Type>
       res = new List<Type>(explicitTypeParams.Count);
     foreach (TypeVariable var in explicitTypeParams)

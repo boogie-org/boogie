@@ -221,7 +221,7 @@ public class NAryExpr : Expr
   {
     get
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
 
       return Fun.ShallowType(Args);
     }
@@ -229,7 +229,7 @@ public class NAryExpr : Expr
 
   public override Absy StdDispatch(StandardVisitor visitor)
   {
-    Contract.Ensures(Contract.Result<Absy>() != null);
+    
     return visitor.VisitNAryExpr(this);
   }
 }

@@ -15,8 +15,8 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<SExpr[]>() != null);
-        Contract.Ensures(Contract.ForAll(Contract.Result<SExpr[]>(), expr => expr != null));
+        
+        
 
         return this.arguments;
       }

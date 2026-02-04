@@ -54,14 +54,14 @@ namespace Microsoft.Boogie
 
     public override Expr VisitNAryExpr(NAryExpr node)
     {
-      Contract.Ensures(Contract.Result<Expr>() != null);
+      
       CheckTypeParams(node, Cce.NonNull(node.TypeParameters));
       return base.VisitNAryExpr(node);
     }
 
     public override AssignLhs VisitMapAssignLhs(MapAssignLhs node)
     {
-      Contract.Ensures(Contract.Result<AssignLhs>() != null);
+      
       CheckTypeParams(node, Cce.NonNull(node.TypeParameters));
       return base.VisitMapAssignLhs(node);
     }
@@ -76,7 +76,7 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(Contract.Result<Type>() == node);
+      
       FoundAmbiguity = true;
       bool success = node.Unify(inst);
       Contract.Assert(success);
@@ -85,7 +85,7 @@ namespace Microsoft.Boogie
 
     public override Type VisitTypeProxy(TypeProxy node)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       if (node.ProxyFor != null)
       {
         return base.VisitTypeProxy(node);
@@ -96,7 +96,7 @@ namespace Microsoft.Boogie
 
     public override Type VisitMapTypeProxy(MapTypeProxy node)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       if (node.ProxyFor != null)
       {
         return base.VisitMapTypeProxy(node);
@@ -129,7 +129,7 @@ namespace Microsoft.Boogie
 
     public override Type VisitBvTypeProxy(BvTypeProxy node)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       if (node.ProxyFor != null)
       {
         return base.VisitBvTypeProxy(node);

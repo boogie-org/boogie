@@ -188,7 +188,7 @@ namespace Microsoft.Boogie.SMTLib
     public async Task<SolverOutcome> CheckSat(CancellationToken cancellationToken,
       int errorLimit)
     {
-      Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
+      
 
       var result = SolverOutcome.Undetermined;
 

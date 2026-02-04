@@ -19,7 +19,7 @@ public class UnusedVarEliminator : VariableCollector
 
   public override Implementation VisitImplementation(Implementation node)
   {
-    Contract.Ensures(Contract.Result<Implementation>() != null);
+    
     //Console.WriteLine("Procedure {0}", node.Name);
     Implementation
       impl = base.VisitImplementation(node);

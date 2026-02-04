@@ -23,7 +23,7 @@ namespace Microsoft.Boogie.VCExprAST
     private List<VCExprVar> FreeVarsIn(VCExpr expr)
     {
       
-      Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCExprVar>>()));
+      
       FreeVarCollector.Collect(expr);
       List<VCExprVar>
         freeVars = new List<VCExprVar>(FreeVarCollector.FreeTermVars);
@@ -39,7 +39,7 @@ namespace Microsoft.Boogie.VCExprAST
     public override VCExpr Visit(VCExprLet node, bool arg)
     {
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       IDictionary<VCExprVar, Binding> boundVars =
         new Dictionary<VCExprVar, Binding>();
 

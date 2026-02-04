@@ -50,7 +50,7 @@ namespace Microsoft.Boogie.SMTLib
     {
       
       
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       return "Store_" + TypeToString(node[0].Type);
     }
 
@@ -58,7 +58,7 @@ namespace Microsoft.Boogie.SMTLib
     {
       
       
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       return "Select_" + TypeToString(node[0].Type);
     }
     
@@ -67,7 +67,7 @@ namespace Microsoft.Boogie.SMTLib
     {
       
       
-      Contract.Ensures(Contract.Result<string>() != null);
+      
 
       StringWriter sw = new StringWriter();
       SMTLibExprLineariser lin = new SMTLibExprLineariser(sw, namer, libOptions, opts, namedAssumes, optReqs);
@@ -93,7 +93,7 @@ namespace Microsoft.Boogie.SMTLib
     {
       get
       {
-        Contract.Ensures(Contract.Result<IVCExprOpVisitor<bool, LineariserOptions>>() != null);
+        
 
         if (OpLinObject == null)
         {
@@ -177,7 +177,7 @@ namespace Microsoft.Boogie.SMTLib
     public string TypeToString(Type t)
     {
       
-      Contract.Ensures(Contract.Result<string>() != null);
+      
 
       if (t.IsBool)
       {

@@ -103,7 +103,7 @@ namespace Microsoft.Boogie.Clustering
     [Pure]
     public override string ToString()
     {
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       string
         res = "";
       foreach (KeyValuePair<VCExprOp, TermClustersSameHead> pair
@@ -414,7 +414,7 @@ namespace Microsoft.Boogie.Clustering
     [Pure]
     public override string ToString()
     {
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       string
         res = "";
       foreach (Cluster c in Clusters)
@@ -543,7 +543,7 @@ namespace Microsoft.Boogie.Clustering
       
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       return Traverse(s, t);
     }
 
@@ -554,7 +554,7 @@ namespace Microsoft.Boogie.Clustering
       
       
       
-      Contract.Ensures(Contract.Result<VCExprVar>() != null);
+      
 
       ExprPair pair = new ExprPair(s, t);
       if (!Representation.TryGetValue(pair, out var repr))
@@ -572,7 +572,7 @@ namespace Microsoft.Boogie.Clustering
     {
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       if (node.Equals(that))
       {
         return node;
@@ -585,7 +585,7 @@ namespace Microsoft.Boogie.Clustering
     {
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       VCExprNAry thatNAry = that as VCExprNAry;
       if (thatNAry != null && node.Op.Equals(thatNAry.Op))
       {
@@ -610,7 +610,7 @@ namespace Microsoft.Boogie.Clustering
     {
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       if (node.Equals(that))
       {
         return node;
@@ -621,7 +621,7 @@ namespace Microsoft.Boogie.Clustering
 
     protected override VCExpr StandardResult(VCExpr node, VCExpr that)
     {
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException(); // not handled here      
     }

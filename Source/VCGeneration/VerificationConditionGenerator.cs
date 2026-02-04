@@ -48,7 +48,7 @@ namespace VC
     public static AssumeCmd AssertTurnedIntoAssume(VCGenOptions options, AssertCmd assrt)
     {
       
-      Contract.Ensures(Contract.Result<AssumeCmd>() != null);
+      
 
       Expr expr = assrt.Expr;
       Contract.Assert(expr != null);
@@ -152,8 +152,8 @@ namespace VC
     {
       
       
-      Contract.Ensures(Contract.ValueAtReturn(out absyIds) != null);
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
+      
 
       return GenerateVCAux(impl, controlFlowVariableExpr, absyIds, proverContext);
     }
@@ -163,7 +163,7 @@ namespace VC
     {
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
 
       TypecheckingContext tc = new TypecheckingContext(null, Options);
       impl.Typecheck(tc);
@@ -369,7 +369,7 @@ namespace VC
     public override async Task<VcOutcome> VerifyImplementation(ImplementationRun run, VerifierCallback callback,
       CancellationToken cancellationToken)
     {
-      Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
+      
 
       var impl = run.Implementation;
 
@@ -590,7 +590,7 @@ namespace VC
 
       public override Absy Label2Absy(string label)
       {
-        Contract.Ensures(Contract.Result<Absy>() != null);
+        
 
         int id = int.Parse(label);
         return Cce.NonNull(absyIds.GetValue(id));
@@ -650,7 +650,7 @@ namespace VC
     {
       
       
-      Contract.Ensures(Contract.Result<Dictionary<TransferCmd, ReturnCmd>>() != null);
+      
 
       var impl = run.Implementation;
       var exitBlock = DesugarReturns.GenerateUnifiedExit(impl);
@@ -1319,7 +1319,7 @@ namespace VC
       
       
       
-      Contract.Ensures(Contract.Result<Counterexample>() != null);
+      
 
       // See if it is a special assert inserted in translation
       if (cmd is AssertRequiresCmd)
@@ -1357,7 +1357,7 @@ namespace VC
       
       
       
-      Contract.Ensures(Contract.Result<Counterexample>() != null);
+      
 
       Counterexample cc;
       if (assert is AssertRequiresCmd assertRequiresCmd)
@@ -1487,7 +1487,7 @@ namespace VC
     {
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
 
       assertionCount = 0;
 
@@ -1566,7 +1566,7 @@ namespace VC
       
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
 
       assertionCount = 0;
       VCExpressionGenerator gen = proverCtxt.ExprGen;

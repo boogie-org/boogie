@@ -38,7 +38,7 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       StreamReader
         reader = new StreamReader(stream);
       return Fill(reader, defines);
@@ -48,7 +48,7 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       StringBuilder sb = new StringBuilder();
       List<ReadState>
         readState = new List<ReadState>(); // readState.Count is the current nesting level of #if's

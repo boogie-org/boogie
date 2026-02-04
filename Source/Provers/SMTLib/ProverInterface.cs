@@ -162,7 +162,7 @@ public abstract class ProverInterface
     public virtual Absy Label2Absy(string label)
     {
       
-      Contract.Ensures(Contract.Result<Absy>() != null);
+      
 
       throw new System.NotImplementedException();
     }
@@ -197,13 +197,13 @@ public abstract class ProverInterface
   public virtual string VCExpressionToString(VCExpr vc)
   {
     
-    Contract.Ensures(Contract.Result<string>() != null);
+    
     throw new NotImplementedException();
   }
 
   public virtual void Pop()
   {
-    Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
+    
     throw new NotImplementedException();
   }
 
@@ -214,7 +214,7 @@ public abstract class ProverInterface
 
   public virtual int FlushAxiomsToTheoremProver()
   {
-    Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
+    
     throw new NotImplementedException();
   }
 

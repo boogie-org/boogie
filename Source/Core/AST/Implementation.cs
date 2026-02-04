@@ -812,7 +812,7 @@ public class Implementation : DeclWithFormals
 
   public Dictionary<Variable, Expr> GetImplFormalMap(CoreOptions options)
   {
-    Contract.Ensures(Contract.Result<Dictionary<Variable, Expr>>() != null);
+    
 
     if (this.formalMap != null)
     {
@@ -875,7 +875,7 @@ public class Implementation : DeclWithFormals
   public ICollection<Block> GetConnectedComponents(Block startingBlock)
   {
     
-    Contract.Ensures(Cce.NonNullElements(Contract.Result<ICollection<Block>>(), true));
+    
     Contract.Assert(this.Blocks.Contains(startingBlock));
 
     if (!this.BlockPredecessorsComputed)
@@ -949,7 +949,7 @@ public class Implementation : DeclWithFormals
   private IEnumerable /*<Block!>*/ Successors(Block node)
   {
     
-    Contract.Ensures(Contract.Result<IEnumerable>() != null);
+    
 
     GotoCmd gotoCmd = node.TransferCmd as GotoCmd;
 
@@ -976,7 +976,7 @@ public class Implementation : DeclWithFormals
   private IEnumerable /*<Block!>*/ Predecessors(Block node)
   {
     
-    Contract.Ensures(Contract.Result<IEnumerable>() != null);
+    
 
     Contract.Assert(this.BlockPredecessorsComputed);
 
@@ -1068,7 +1068,7 @@ public class Implementation : DeclWithFormals
 
   public override Absy StdDispatch(StandardVisitor visitor)
   {
-    Contract.Ensures(Contract.Result<Absy>() != null);
+    
     return visitor.VisitImplementation(this);
   }
 

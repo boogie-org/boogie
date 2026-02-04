@@ -76,7 +76,7 @@ namespace Microsoft.Boogie
     private string Format(string msg, params object[] args)
     {
       
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       return string.Format(msg, args);
     }
 
@@ -638,7 +638,7 @@ namespace Microsoft.Boogie
     /// </summary>
     public void PushProcedureContext()
     {
-      Contract.Ensures(HasProcedureContext);
+      
       procedureContext = new ProcedureContext(procedureContext);
     }
 

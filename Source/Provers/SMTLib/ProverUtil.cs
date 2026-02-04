@@ -51,7 +51,7 @@ namespace Microsoft.Boogie
     [Pure]
     public override string ToString()
     {
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       return stringRepr;
     }
 
@@ -128,13 +128,13 @@ The generic options may or may not be used by the prover plugin.
 
     static string CodebaseString()
     {
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       return Path.GetDirectoryName(Cce.NonNull(System.Reflection.Assembly.GetExecutingAssembly().Location));
     }
 
     public string ExecutablePath()
     {
-      Contract.Ensures(confirmedProverPath != null);
+      
 
       if (confirmedProverPath != null)
       {
@@ -158,7 +158,7 @@ The generic options may or may not be used by the prover plugin.
     private string ConfirmProverPath(string proverPath)
     {
       
-      Contract.Ensures(confirmedProverPath != null);
+      
       confirmedProverPath = proverPath;
       if (LibOptions.Trace)
       {
@@ -299,7 +299,7 @@ The generic options may or may not be used by the prover plugin.
 
     public virtual ProverOptions BlankProverOptions(SMTLibOptions libOptions)
     {
-      Contract.Ensures(Contract.Result<ProverOptions>() != null);
+      
       return new ProverOptions(libOptions);
     }
 
@@ -316,8 +316,8 @@ The generic options may or may not be used by the prover plugin.
     public static ProverFactory Load(string proverName)
     {
       
-      Contract.Ensures(Contract.Result<ProverFactory>() != null);
-      Contract.Ensures(Cce.IsNew(Contract.Result<ProverFactory>()) && Cce.Owner.New(Contract.Result<ProverFactory>()));
+      
+      
       string
         path;
       if (proverName.IndexOf("/") >= 0 || proverName.IndexOf("\\") >= 0)
@@ -345,7 +345,7 @@ The generic options may or may not be used by the prover plugin.
     public override ProverContext NewProverContext(ProverOptions options)
     {
       
-      Contract.Ensures(Contract.Result<object>() != null);
+      
 
       throw new NotImplementedException();
     }

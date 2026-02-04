@@ -69,7 +69,7 @@ namespace Microsoft.BaseTypes
     [Pure]
     public override string ToString()
     {
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       return val;
     }
 

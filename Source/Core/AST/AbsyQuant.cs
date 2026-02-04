@@ -308,7 +308,7 @@ namespace Microsoft.Boogie
 
     protected List<TypeVariable> GetUnmentionedTypeParameters()
     {
-      Contract.Ensures(Contract.Result<List<TypeVariable>>() != null);
+      
       List<TypeVariable>
         dummyParameters = Type.FreeVariablesIn(Dummies.Select(Item => Item.TypedIdent.Type).ToList());
       Contract.Assert(dummyParameters != null);
@@ -336,9 +336,9 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<IList<Expr>>() != null);
-        Contract.Ensures(Contract.Result<IList<Expr>>().Count >= 1);
-        Contract.Ensures(this.Pos || Contract.Result<IList<Expr>>().Count == 1);
+        
+        
+        
         return this.tr.AsReadOnly();
       }
       set
@@ -446,7 +446,7 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      Contract.Ensures(Contract.Result<Absy>() != null);
+      
       return visitor.VisitTrigger(this);
     }
 
@@ -522,7 +522,7 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      Contract.Ensures(Contract.Result<Absy>() != null);
+      
       return visitor.VisitForallExpr(this);
     }
 
@@ -565,7 +565,7 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      Contract.Ensures(Contract.Result<Absy>() != null);
+      
       return visitor.VisitExistsExpr(this);
     }
 
@@ -679,7 +679,7 @@ namespace Microsoft.Boogie
 
       public override Expr VisitNAryExpr(NAryExpr node)
       {
-        Contract.Ensures(Contract.Result<Expr>() != null);
+        
         FunctionCall fn = node.Fun as FunctionCall;
         if (fn != null && Cce.NonNull(fn.Func).NeverTrigger)
         {
@@ -834,7 +834,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<Type>() != null);
+        
 
         return Type.Bool;
       }
@@ -924,7 +924,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<Type>() != null);
+        
 
         if (mapType == null)
         {
@@ -945,7 +945,7 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      Contract.Ensures(Contract.Result<Absy>() != null);
+      
       return visitor.VisitLambdaExpr(this);
     }
   }
@@ -1025,7 +1025,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<Type>() != null);
+        
         return Body.ShallowType;
       }
     }

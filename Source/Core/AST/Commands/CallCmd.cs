@@ -645,7 +645,7 @@ public class CallCmd : CallCommonality
 
   private IDictionary<TypeVariable, Type> TypeParamSubstitution()
   {
-    Contract.Ensures(Cce.NonNullDictionaryAndValues(Contract.Result<IDictionary<TypeVariable, Type>>()));
+    
     Contract.Assume(TypeParameters != null);
     IDictionary<TypeVariable, Type>
       res = new Dictionary<TypeVariable, Type>();
@@ -660,7 +660,7 @@ public class CallCmd : CallCommonality
 
   protected override Cmd ComputeDesugaring(PrintOptions options)
   {
-    Contract.Ensures(Contract.Result<Cmd>() != null);
+    
 
     int uniqueId = 0;
     List<Cmd> newBlockBody = new List<Cmd>();
@@ -1093,7 +1093,7 @@ public class CallCmd : CallCommonality
 
   public override Absy StdDispatch(StandardVisitor visitor)
   {
-    Contract.Ensures(Contract.Result<Absy>() != null);
+    
     return visitor.VisitCallCmd(this);
   }
 }

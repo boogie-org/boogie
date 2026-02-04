@@ -25,7 +25,7 @@ public class StmtListBuilder
   void Dump(IToken token, StructuredCmd scmd, TransferCmd tcmd)
   {
     
-    Contract.Ensures(label == null && simpleCmds == null);
+    
     if (label == null && simpleCmds == null && scmd == null && tcmd == null)
     {
       // nothing to do
@@ -50,7 +50,7 @@ public class StmtListBuilder
   public StmtList Collect(IToken endCurlyBrace)
   {
     
-    Contract.Ensures(Contract.Result<StmtList>() != null);
+    
     Dump(endCurlyBrace, null, null);
     if (bigBlocks.Count == 0)
     {

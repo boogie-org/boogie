@@ -113,7 +113,7 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Block>>()));
+      
 
       Contract.Assert(rootBlock == null);
       rootBlock = block;

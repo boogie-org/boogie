@@ -1031,7 +1031,7 @@ namespace Microsoft.BaseTypes
 
     public override string ToString()
     {
-      Contract.Ensures(Contract.Result<string>() != null);
+      
 
       // Handle special values
       if (exponent == maxExponent) {

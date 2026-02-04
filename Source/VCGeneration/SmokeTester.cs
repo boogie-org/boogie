@@ -53,7 +53,7 @@ public class SmokeTester
 
   internal Task Test(TextWriter traceWriter)
   {
-    Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
+    
 
     return DepthFirstSearch(traceWriter, initial);
   }
@@ -79,7 +79,7 @@ public class SmokeTester
   Block CloneBlock(Block b)
   {
     
-    Contract.Ensures(Contract.Result<Block>() != null);
+    
 
     if (copies.TryGetValue(b, out var fake_res))
     {
@@ -110,7 +110,7 @@ public class SmokeTester
   Block CopyBlock(Block b)
   {
     
-    Contract.Ensures(Contract.Result<Block>() != null);
+    
 
     if (copies.TryGetValue(b, out var fake_res))
     {
@@ -147,7 +147,7 @@ public class SmokeTester
 
   List<Block> GetCopiedBlocks()
   {
-    Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Block>>()));
+    
 
     // the order of nodes in res is random (except for the first one, being the entry)
     List<Block> res = new List<Block>();
@@ -238,7 +238,7 @@ public class SmokeTester
   {
     
     
-    Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
+    
     foreach (Cmd cmd in seq)
     {
       AssertCmd assrt = cmd as AssertCmd;
@@ -358,7 +358,7 @@ public class SmokeTester
   async Task DepthFirstSearch(TextWriter traceWriter, Block cur)
   {
     
-    Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
+    
     if (visited.Contains(cur))
     {
       return;
@@ -483,7 +483,7 @@ public class SmokeTester
 
     public override Absy Label2Absy(string label)
     {
-      Contract.Ensures(Contract.Result<Absy>() != null);
+      
 
       int id = int.Parse(label);
       return Cce.NonNull((Absy) absyIds.GetValue(id));

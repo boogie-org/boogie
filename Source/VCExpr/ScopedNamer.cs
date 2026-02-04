@@ -103,7 +103,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       
       
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       string candidate;
 
       if (CurrentCounters.TryGetValue(baseName, out var counter))
@@ -153,7 +153,7 @@ namespace Microsoft.Boogie.VCExprAST
     public string Lookup(Object thingie)
     {
       
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       if (GlobalPlusLocalNames.TryGetValue(thingie, out var name))
       {
         return name;
@@ -166,7 +166,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       
       
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       string result = this[thing];
       if (result != null)
       {
@@ -201,7 +201,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       
       
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       if (!boogieDeterminedNames.Contains(inherentName)) {
         inherentName = GetModifiedName(inherentName);
       }

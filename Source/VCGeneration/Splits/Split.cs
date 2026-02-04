@@ -221,7 +221,7 @@ namespace VC
       BlockStats GetBlockStats(Block b)
       {
         
-        Contract.Ensures(Contract.Result<BlockStats>() != null);
+        
 
         if (!stats.TryGetValue(b, out var s))
         {
@@ -290,7 +290,7 @@ namespace VC
       HashSet<Block> ComputeReachableNodes(Block b)
       {
         
-        Contract.Ensures(Cce.NonNull(Contract.Result<HashSet<Block>>()));
+        
         BlockStats s = GetBlockStats(b);
         if (s.reachableBlocks != null)
         {
@@ -585,7 +585,7 @@ namespace VC
       List<Cmd> SliceCmds(Block b)
       {
         
-        Contract.Ensures(Contract.Result<List<Cmd>>() != null);
+        
 
         List<Cmd> seq = b.Cmds;
         Contract.Assert(seq != null);
@@ -635,7 +635,7 @@ namespace VC
       Block CloneBlock(Block b)
       {
         
-        Contract.Ensures(Contract.Result<Block>() != null);
+        
 
         if (copies.TryGetValue(b, out var res))
         {
@@ -671,7 +671,7 @@ namespace VC
 
       private Split DoSplit()
       {
-        Contract.Ensures(Contract.Result<Split>() != null);
+        
 
         copies.Clear();
         CloneBlock(Blocks[0]);
@@ -701,7 +701,7 @@ namespace VC
 
       private Split SplitAt(int idx)
       {
-        Contract.Ensures(Contract.Result<Split>() != null);
+        
 
         assertToAssume = idx == 0;
         doingSlice = false;
@@ -712,7 +712,7 @@ namespace VC
 
       private Split SliceAsserts(double limit, bool pos)
       {
-        Contract.Ensures(Contract.Result<Split>() != null);
+        
 
         slicePos = pos;
         sliceLimit = limit;
@@ -738,7 +738,7 @@ namespace VC
       public Counterexample ToCounterexample(ProverContext context)
       {
         
-        Contract.Ensures(Contract.Result<Counterexample>() != null);
+        
 
         List<Block> trace = new List<Block>();
         foreach (Block block in Blocks)
@@ -769,7 +769,7 @@ namespace VC
       public static List<Split> DoSplit(Split initial, double splitThreshold, int maxSplits)
       {
         
-        Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Split>>()));
+        
 
         var run = initial.Run;
         var result = new List<Split> { initial };
@@ -887,7 +887,7 @@ namespace VC
 
       public VerificationRunResult ReadOutcome(int iteration, Checker checker, VerifierCallback callback)
       {
-        Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
+        
         SolverOutcome outcome = Cce.NonNull(checker).ReadOutcome();
 
         if (Options.Trace && SplitIndex >= 0)

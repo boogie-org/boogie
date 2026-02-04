@@ -12,7 +12,7 @@ public abstract class StructuredCmd
   {
     get
     {
-      Contract.Ensures(Contract.Result<IToken>() != null);
+      
       return this._tok;
     }
     set

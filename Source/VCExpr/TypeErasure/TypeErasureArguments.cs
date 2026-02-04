@@ -41,7 +41,7 @@ namespace Microsoft.Boogie.TypeErasure
 
     public override Object Clone()
     {
-      Contract.Ensures(Contract.Result<Object>() != null);
+      
       return new TypeAxiomBuilderArguments(this);
     }
 
@@ -53,7 +53,7 @@ namespace Microsoft.Boogie.TypeErasure
     // are of type int)
     protected override VCExpr GenReverseCastAxiom(Function castToU, Function castFromU)
     {
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       VCExpr
         eq = GenReverseCastEq(castToU, castFromU, out var var, out var triggers);
       return Gen.Forall(HelperFuns.ToList(var), triggers, "cast:" + castFromU.Name, 1, eq);
@@ -61,7 +61,7 @@ namespace Microsoft.Boogie.TypeErasure
 
     protected override VCExpr GenCastTypeAxioms(Function castToU, Function castFromU)
     {
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       // nothing
       return VCExpressionGenerator.True;
     }
@@ -72,7 +72,7 @@ namespace Microsoft.Boogie.TypeErasure
     {
       get
       {
-        Contract.Ensures(Contract.Result<MapTypeAbstractionBuilder>() != null);
+        
 
         if (MapTypeAbstracterAttr == null)
         {
@@ -104,7 +104,7 @@ namespace Microsoft.Boogie.TypeErasure
     public Function Typed2Untyped(Function fun)
     {
       
-      Contract.Ensures(Contract.Result<Function>() != null);
+      
       if (!Typed2UntypedFunctions.TryGetValue(fun, out var res))
       {
         Contract.Assert(fun.OutParams.Count == 1);
@@ -192,8 +192,8 @@ namespace Microsoft.Boogie.TypeErasure
     protected override void GenSelectStoreFunctions(MapType abstractedType, TypeCtorDecl synonym,
       out Function select, out Function store)
     {
-      Contract.Ensures(Contract.ValueAtReturn(out select) != null);
-      Contract.Ensures(Contract.ValueAtReturn(out store) != null);
+      
+      
       Contract.Assert(synonym.Name != null);
       string
         baseName = synonym.Name;
@@ -256,7 +256,7 @@ namespace Microsoft.Boogie.TypeErasure
       
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       List<VCExpr>
         selectArgs = new List<VCExpr>();
       selectArgs.AddRange(HelperFuns.ToVCExprList(types));
@@ -273,7 +273,7 @@ namespace Microsoft.Boogie.TypeErasure
       
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       List<VCExpr>
         storeArgs = new List<VCExpr>();
       storeArgs.AddRange(HelperFuns.ToVCExprList(types));
@@ -292,7 +292,7 @@ namespace Microsoft.Boogie.TypeErasure
     {
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
 
       int arity = select.InParams.Count - 1 - mapTypeParamNum - mapAbstractionVarNum;
       List<VCExprVar>
@@ -348,7 +348,7 @@ namespace Microsoft.Boogie.TypeErasure
     {
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
 
       int arity = select.InParams.Count - 1 - mapTypeParamNum - mapAbstractionVarNum;
 
@@ -473,7 +473,7 @@ namespace Microsoft.Boogie.TypeErasure
     {
       get
       {
-        Contract.Ensures(Contract.Result<OpTypeEraser>() != null);
+        
 
         if (OpEraserAttr == null)
         {
@@ -498,7 +498,7 @@ namespace Microsoft.Boogie.TypeErasure
     {
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       VariableBindings
         bindings = oldBindings.Clone();
 
@@ -552,7 +552,7 @@ namespace Microsoft.Boogie.TypeErasure
       
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       List<VCTrigger>
         newTriggers = MutateTriggers(node.Triggers, bindings);
       Contract.Assert(Cce.NonNullElements(newTriggers));
@@ -601,7 +601,7 @@ namespace Microsoft.Boogie.TypeErasure
     {
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       // UGLY: the code for tracking polarities should be factored out
       int oldPolarity = Eraser.Polarity;
       Eraser.Polarity = 0;
@@ -654,7 +654,7 @@ namespace Microsoft.Boogie.TypeErasure
       
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       if (t0.Equals(t1))
       {
         return VCExpressionGenerator.True;
@@ -675,7 +675,7 @@ namespace Microsoft.Boogie.TypeErasure
     {
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       // we also have to state that the types are equal, because the
       // translation does not contain any information about the
       // relationship between values and types
@@ -687,7 +687,7 @@ namespace Microsoft.Boogie.TypeErasure
     {
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       // we also have to state that the types are (un)equal, because the
       // translation does not contain any information about the
       // relationship between values and types
@@ -699,7 +699,7 @@ namespace Microsoft.Boogie.TypeErasure
     {
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       OpTypesPair originalOpTypes = OriginalOpTypes(node);
 
       if (!NewOpCache.TryGetValue(originalOpTypes, out var newOpTypes))
@@ -722,7 +722,7 @@ namespace Microsoft.Boogie.TypeErasure
     {
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       OpTypesPair originalOpTypes = OriginalOpTypes(node);
 
       if (!NewOpCache.TryGetValue(originalOpTypes, out var newOpTypes))
@@ -773,7 +773,7 @@ namespace Microsoft.Boogie.TypeErasure
     {
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       OpTypesPair originalOpTypes = OriginalOpTypes(node);
 
       if (!NewOpCache.TryGetValue(originalOpTypes, out var newOpTypes))

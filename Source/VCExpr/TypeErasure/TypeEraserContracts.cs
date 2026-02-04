@@ -15,7 +15,7 @@ public abstract class TypeEraserContracts : TypeEraser
   {
     get
     {
-      Contract.Ensures(Contract.Result<OpTypeEraser>() != null);
+      
       throw new NotImplementedException();
     }
   }

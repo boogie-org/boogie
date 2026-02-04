@@ -27,7 +27,7 @@ public class CommandLineOptionEngine
   {
     get
     {
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       return this._environment;
     }
     set
@@ -43,8 +43,8 @@ public class CommandLineOptionEngine
   {
     get
     {
-      Contract.Ensures(Cce.NonNullElements(Contract.Result<IList<string>>()));
-      Contract.Ensures(Contract.Result<IList<string>>().IsReadOnly);
+      
+      
       return this._files.AsReadOnly();
     }
   }
@@ -66,7 +66,7 @@ public class CommandLineOptionEngine
   {
     get
     {
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       return Cce.NonNull(Cce
         .NonNull(System.Diagnostics.FileVersionInfo.GetVersionInfo(System.Reflection.Assembly.GetExecutingAssembly()
           .Location)).FileVersion);
@@ -77,7 +77,7 @@ public class CommandLineOptionEngine
   {
     get
     {
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       return " version " + VersionNumber + ", Copyright (c) 2003-2014, Microsoft.";
     }
   }
@@ -86,7 +86,7 @@ public class CommandLineOptionEngine
   {
     get
     {
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       return DescriptiveToolName + VersionSuffix;
     }
   }
@@ -98,7 +98,7 @@ public class CommandLineOptionEngine
   {
     get
     {
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       return this._fileTimestamp;
     }
     set

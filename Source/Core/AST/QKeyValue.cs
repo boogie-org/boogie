@@ -33,8 +33,8 @@ public class QKeyValue : Absy
   {
     get
     {
-      Contract.Ensures(Cce.NonNullElements(Contract.Result<IList<object>>()));
-      Contract.Ensures(Contract.Result<IList<object>>().IsReadOnly);
+      
+      
       return this._params.AsReadOnly();
     }
   }

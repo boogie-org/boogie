@@ -19,7 +19,7 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
 
       if (ControlFlowFunction == null)
       {
@@ -43,35 +43,35 @@ namespace Microsoft.Boogie
 
     public VCExpr Integer(BigNum x)
     {
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
 
       return new VCExprIntLit(x);
     }
 
     public VCExpr Real(BigDec x)
     {
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
 
       return new VCExprRealLit(x);
     }
 
     public VCExpr Float(BigFloat x)
     {
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
 
       return new VCExprFloatLit(x);
     }
 
     public VCExpr RMode(RoundingMode x)
     {
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
 
       return new VCExprRModeLit(x);
     }
 
     public VCExpr String(String x)
     {
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
 
       return new VCExprStringLit(x);
     }
@@ -105,7 +105,7 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
 
       return Function(op, arguments, VCExprNAry.EMPTY_TYPE_LIST);
     }
@@ -125,7 +125,7 @@ namespace Microsoft.Boogie
       
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
 
 
       return Function(op,
@@ -137,7 +137,7 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
 
       return Function(BoogieFunctionOp(op), arguments, VCExprNAry.EMPTY_TYPE_LIST);
     }
@@ -146,7 +146,7 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
 
       return Function(BoogieFunctionOp(op), arguments);
     }
@@ -158,7 +158,7 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
 
       return NAry(op, args.ToArray());
     }
@@ -168,7 +168,7 @@ namespace Microsoft.Boogie
       
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
 
       bool and = (op == AndOp);
 
@@ -193,7 +193,7 @@ namespace Microsoft.Boogie
 
     public VCExprDistinctOp DistinctOp(int arity)
     {
-      Contract.Ensures(Contract.Result<VCExprDistinctOp>() != null);
+      
 
       return new VCExprDistinctOp(arity);
     }
@@ -209,7 +209,7 @@ namespace Microsoft.Boogie
     public VCExpr Not(VCExpr e0)
     {
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
 
       return Function(NotOp, e0);
     }
@@ -223,7 +223,7 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
 
       return Function(NeqOp, e0, e1);
     }
@@ -232,7 +232,7 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       return Function(AndOp, e0, e1);
     }
 
@@ -240,7 +240,7 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
 
       return Function(GtOp, e0, e1);
     }
@@ -249,7 +249,7 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
 
       VCExprOp op = Cce.NonNull(Cce.NonNull(e0).Type).IsInt ? AddIOp : AddROp;
       return Function(op, e0, e1);
@@ -259,7 +259,7 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       return Function(OrOp, e0, e1);
     }
 
@@ -267,14 +267,14 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       return Function(ImpliesOp, e0, e1);
     }
 
     public VCExpr Distinct(List<VCExpr> args)
     {
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
 
       if (args.Count <= 1)
       {
@@ -292,7 +292,7 @@ namespace Microsoft.Boogie
     public VCExpr NotSimp(VCExpr e0)
     {
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       if (e0.Equals(True))
       {
         return False;
@@ -310,7 +310,7 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       if (e0.Equals(True))
       {
         return e1;
@@ -333,7 +333,7 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       if (e0.Equals(False))
       {
         return e1;
@@ -356,7 +356,7 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       if (e0.Equals(True))
       {
         return e1;
@@ -452,7 +452,7 @@ namespace Microsoft.Boogie
     public VCExprOp BoogieFunctionOp(Function func)
     {
       
-      Contract.Ensures(Contract.Result<VCExprOp>() != null);
+      
       return new VCExprBoogieFunctionOp(func);
     }
 
@@ -463,7 +463,7 @@ namespace Microsoft.Boogie
       
       
       
-      Contract.Ensures(Contract.Result<VCExprOp>() != null);
+      
       return new VCExprBinaryFloatOp(sig, exp, op);
     }
 
@@ -472,14 +472,14 @@ namespace Microsoft.Boogie
     public VCExpr Bitvector(BvConst bv)
     {
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       return Function(new VCExprBvOp(bv.Bits), Integer(bv.Value));
     }
 
     public VCExpr BvExtract(VCExpr bv, int bits, int start, int end)
     {
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       return Function(new VCExprBvExtractOp(start, end, bits), bv);
     }
 
@@ -487,7 +487,7 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       return Function(new VCExprBvConcatOp(bv1.Type.BvBits, bv2.Type.BvBits), bv1, bv2);
     }
 
@@ -570,7 +570,7 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(Contract.Result<VCExprLetBinding>() != null);
+      
       return new VCExprLetBinding(v, e);
     }
 
@@ -583,7 +583,7 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       if (bindings.Count == 0)
       {
         // no empty let-bindings
@@ -597,7 +597,7 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       return Let(HelperFuns.ToNonNullList(bindings), body);
     }
 
@@ -617,7 +617,7 @@ namespace Microsoft.Boogie
     public VCExpr AsImplications(List<VCExprLetBinding> bindings)
     {
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       VCExpr
         antecedents = True;
       foreach (VCExprLetBinding b in bindings)
@@ -633,7 +633,7 @@ namespace Microsoft.Boogie
     public VCExpr AsEquations(List<VCExprLetBinding> bindings)
     {
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       VCExpr
         antecedents = True;
       foreach (VCExprLetBinding b in bindings)
@@ -688,7 +688,7 @@ namespace Microsoft.Boogie
       
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       return new VCExprQuantifier(quan, typeParams, vars, triggers, info, body);
     }
 
@@ -700,7 +700,7 @@ namespace Microsoft.Boogie
       
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       return Quantify(Quantifier.ALL, typeParams, vars, triggers, info, body);
     }
 
@@ -711,7 +711,7 @@ namespace Microsoft.Boogie
       
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       return Quantify(Quantifier.ALL, new List<TypeVariable>(), vars,
         triggers, new VCQuantifierInfo(qid, -1, weight), body);
     }
@@ -721,7 +721,7 @@ namespace Microsoft.Boogie
       
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       return Quantify(Quantifier.ALL, new List<TypeVariable>(), vars,
         triggers, new VCQuantifierInfo(null, -1), body);
     }
@@ -731,7 +731,7 @@ namespace Microsoft.Boogie
       
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       return Forall(HelperFuns.ToNonNullList(var), HelperFuns.ToNonNullList(trigger), body);
     }
 
@@ -743,7 +743,7 @@ namespace Microsoft.Boogie
       
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       return Quantify(Quantifier.EX, typeParams, vars, triggers, info, body);
     }
 
@@ -752,7 +752,7 @@ namespace Microsoft.Boogie
       
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       return Quantify(Quantifier.EX, new List<TypeVariable>(), vars,
         triggers, new VCQuantifierInfo(null, -1), body);
     }
@@ -762,14 +762,14 @@ namespace Microsoft.Boogie
       
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       return Exists(HelperFuns.ToNonNullList(var), HelperFuns.ToNonNullList(trigger), body);
     }
 
     public VCTrigger Trigger(bool pos, List<VCExpr> exprs)
     {
       
-      Contract.Ensures(Contract.Result<VCTrigger>() != null);
+      
       return new VCTrigger(pos, exprs);
     }
 
@@ -777,7 +777,7 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(Contract.Result<VCTrigger>() != null);
+      
       return Trigger(pos, HelperFuns.ToNonNullList(exprs));
     }
 
@@ -787,7 +787,7 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(Contract.Result<VCExprVar>() != null);
+      
       return new VCExprVar(name, type, kind);
     }
   }

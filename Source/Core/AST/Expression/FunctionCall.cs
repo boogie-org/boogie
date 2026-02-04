@@ -34,7 +34,7 @@ public class FunctionCall : IAppliable
   {
     get
     {
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       return this.name.Name;
     }
   }
@@ -53,7 +53,7 @@ public class FunctionCall : IAppliable
   [Pure]
   public override string ToString()
   {
-    Contract.Ensures(Contract.Result<string>() != null);
+    
     return name.Name;
   }
 
@@ -132,8 +132,8 @@ public class FunctionCall : IAppliable
   public virtual Type Typecheck(IList<Expr> actuals, out TypeParamInstantiation tpInstantiation,
     TypecheckingContext tc)
   {
-    Contract.Ensures(Contract.ValueAtReturn(out actuals) != null);
-    Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
+    
+    
     Contract.Assume(this.Func != null);
     Contract.Assume(actuals.Count == Func.InParams.Count);
     Contract.Assume(Func.OutParams.Count == 1);
@@ -167,7 +167,7 @@ public class FunctionCall : IAppliable
 
   public Type ShallowType(IList<Expr> args)
   {
-    Contract.Ensures(Contract.Result<Type>() != null);
+    
     Contract.Assume(name.Type != null);
     return name.Type;
   }

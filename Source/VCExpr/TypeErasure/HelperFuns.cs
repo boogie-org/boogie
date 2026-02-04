@@ -13,7 +13,7 @@ public class HelperFuns
     
     
     
-    Contract.Ensures(Contract.Result<Function>() != null);
+    
 
     List<Variable> args = new List<Variable>();
     for (int i = 0; i < types.Length - 1; ++i)
@@ -34,7 +34,7 @@ public class HelperFuns
   {
     
     
-    Contract.Ensures(Contract.Result<Function>() != null);
+    
     return BoogieFunction(name, new List<TypeVariable>(), types);
   }
 
@@ -43,7 +43,7 @@ public class HelperFuns
   {
     
     
-    Contract.Ensures(Contract.Result<Function>() != null);
+    
     Type[]
       types = new Type[arity + 1];
     for (int i = 0; i < arity + 1; ++i)
@@ -58,7 +58,7 @@ public class HelperFuns
   {
     
     
-    Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCExprVar>>()));
+    
     List<VCExprVar>
       arguments = new List<VCExprVar>(fun.InParams.Count);
     foreach (Formal f in fun.InParams)
@@ -75,14 +75,14 @@ public class HelperFuns
   public static List<T> ToList<T>(params T[] args) where T : class
   {
     
-    Contract.Ensures(Cce.NonNullElements(Contract.Result<List<T>>()));
+    
     return new List<T>(args);
   }
 
   public static List<VCExpr> ToVCExprList(List<VCExprVar> list)
   {
     
-    Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCExpr>>()));
+    
     return new List<VCExpr>(list);
   }
 
@@ -91,7 +91,7 @@ public class HelperFuns
     
     
     
-    Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCExprVar>>()));
+    
     List<VCExprVar>
       res = new List<VCExprVar>(num);
     for (int i = 0; i < num; ++i)
@@ -108,7 +108,7 @@ public class HelperFuns
     
     
     
-    Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCExprVar>>()));
+    
     List<VCExprVar>
       res = new List<VCExprVar>(types.Count);
     for (int i = 0; i < types.Count; ++i)

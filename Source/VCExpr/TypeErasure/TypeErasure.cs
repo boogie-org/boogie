@@ -64,7 +64,7 @@ namespace Microsoft.Boogie.TypeErasure
     {
       get
       {
-        Contract.Ensures(Contract.Result<MapTypeAbstractionBuilder>() != null);
+        
         throw new NotImplementedException();
       }
     }
@@ -72,7 +72,7 @@ namespace Microsoft.Boogie.TypeErasure
     public override Type TypeAfterErasure(Type type)
     {
       
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
 
       throw new NotImplementedException();
     }
@@ -92,7 +92,7 @@ namespace Microsoft.Boogie.TypeErasure
 
     public override object Clone()
     {
-      Contract.Ensures(Contract.Result<object>() != null);
+      
 
       throw new NotImplementedException();
     }
@@ -146,9 +146,9 @@ namespace Microsoft.Boogie.TypeErasure
     {
       
       
-      Contract.Ensures((Cce.NonNullElements(Contract.ValueAtReturn(out triggers))));
-      Contract.Ensures(Contract.ValueAtReturn(out var) != null);
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
+      
+      
       var = Gen.Variable("x", U);
 
       VCExpr inner = Gen.Function(castFromU, var);
@@ -199,7 +199,7 @@ namespace Microsoft.Boogie.TypeErasure
     {
       
       
-      Contract.Ensures(Contract.Result<Function>() != null);
+      
       return GetTypeCasts(type).CastFromU;
     }
 
@@ -207,7 +207,7 @@ namespace Microsoft.Boogie.TypeErasure
     {
       
       
-      Contract.Ensures(Contract.Result<Function>() != null);
+      
       return GetTypeCasts(type).CastToU;
     }
 
@@ -282,7 +282,7 @@ namespace Microsoft.Boogie.TypeErasure
 
     public override Type TypeAfterErasure(Type type)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       if (UnchangedType(type))
       {
         // these types are kept
@@ -308,7 +308,7 @@ namespace Microsoft.Boogie.TypeErasure
       
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       if (expr.Type.Equals(toType))
       {
         return expr;
@@ -329,7 +329,7 @@ namespace Microsoft.Boogie.TypeErasure
     {
       
       
-      Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCExpr>>()));
+      
       List<VCExpr>
         res = new List<VCExpr>(exprs.Count);
       foreach (VCExpr expr in exprs)
@@ -354,7 +354,7 @@ namespace Microsoft.Boogie.TypeErasure
     {
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
 
       throw new NotImplementedException();
     }
@@ -363,7 +363,7 @@ namespace Microsoft.Boogie.TypeErasure
     {
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
 
       throw new NotImplementedException();
     }
@@ -408,8 +408,8 @@ namespace Microsoft.Boogie.TypeErasure
     {
       
       
-      Contract.Ensures(Contract.ValueAtReturn(out select) != null);
-      Contract.Ensures(Contract.ValueAtReturn(out store) != null);
+      
+      
 
       throw new NotImplementedException();
     }

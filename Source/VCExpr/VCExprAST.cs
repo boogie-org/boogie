@@ -57,7 +57,7 @@ namespace Microsoft.Boogie.VCExprAST
     public static List<T> ToList<T>(IEnumerable<T> l)
     {
       
-      Contract.Ensures(Contract.Result<List<T>>() != null);
+      
       List<T>
         res = new List<T>();
       foreach (T x in l)
@@ -72,7 +72,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       
       
-      Contract.Ensures(Contract.Result<List<Type>>() != null);
+      
       List<Type>
         res = new List<Type>();
       for (int i = startIndex; i < exprs.Length; ++i)
@@ -99,7 +99,7 @@ namespace Microsoft.Boogie.VCExprAST
     public static IDictionary<A, B> Clone<A, B>(IDictionary<A, B> dict)
     {
       
-      Contract.Ensures(Contract.Result<IDictionary<A, B>>() != null);
+      
       IDictionary<A, B> res = new Dictionary<A, B>(dict.Count);
       foreach (KeyValuePair<A, B> pair in dict)
       {
@@ -117,7 +117,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       get
       {
-        Contract.Ensures(Contract.Result<Type>() != null);
+        
         throw new NotImplementedException();
       }
     }
@@ -139,7 +139,7 @@ namespace Microsoft.Boogie.VCExprAST
     [Pure]
     public override string ToString()
     {
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       StringWriter sw = new StringWriter();
       VCExprPrinter printer = new VCExprPrinter(PrintOptions.Default);
       printer.Print(this, sw);
@@ -361,7 +361,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       get
       {
-        Contract.Ensures(Contract.Result<VCExpr>() != null);
+        
         throw new NotImplementedException();
       }
     }
@@ -541,7 +541,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       get
       {
-        Contract.Ensures(Contract.Result<Type>() != null);
+        
         return ExprType;
       }
     }
@@ -550,7 +550,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       get
       {
-        Contract.Ensures(Contract.Result<VCExpr>() != null);
+        
 
         Contract.Assert(false);
         throw new Cce.UnreachableException(); // no arguments
@@ -562,7 +562,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       get
       {
-        Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Type>>()));
+        
         return EMPTY_TYPE_LIST;
       }
     }
@@ -595,7 +595,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       get
       {
-        Contract.Ensures(Contract.Result<Type>() != null);
+        
         return ExprType;
       }
     }
@@ -604,7 +604,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       get
       {
-        Contract.Ensures(Contract.Result<VCExpr>() != null);
+        
 
         Contract.Assume(index == 0);
         return Argument;
@@ -616,7 +616,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       get
       {
-        Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Type>>()));
+        
         return EMPTY_TYPE_LIST;
       }
     }
@@ -666,7 +666,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       get
       {
-        Contract.Ensures(Contract.Result<Type>() != null);
+        
         return ExprType;
       }
     }
@@ -675,7 +675,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       get
       {
-        Contract.Ensures(Contract.Result<VCExpr>() != null);
+        
 
         switch (index)
         {
@@ -697,7 +697,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       get
       {
-        Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Type>>()));
+        
         return EMPTY_TYPE_LIST;
       }
     }
@@ -754,7 +754,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       get
       {
-        Contract.Ensures(Contract.Result<Type>() != null);
+        
         return ExprType;
       }
     }
@@ -763,7 +763,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       get
       {
-        Contract.Ensures(Contract.Result<VCExpr>() != null);
+        
 
         Contract.Assume(index >= 0 && index < Arity);
         return Cce.NonNull(arguments)[index];
@@ -775,7 +775,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       get
       {
-        Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Type>>()));
+        
         return TypeArgumentsAttr;
       }
     }
@@ -890,7 +890,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       
       
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
 
       throw new NotImplementedException();
     }
@@ -919,7 +919,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override Type InferType(List<VCExpr> args, List<Type> typeArgs)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       return OpType;
     }
 
@@ -1091,7 +1091,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override Type InferType(List<VCExpr> args, List<Type> typeArgs)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       MapType
         mapType = args[0].Type.AsMap;
       Contract.Assert(TypeParamArity == mapType.TypeParameters.Count);
@@ -1164,7 +1164,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override Type InferType(List<VCExpr> args, List<Type> typeArgs)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       return args[0].Type;
     }
 
@@ -1221,7 +1221,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override Type InferType(List<VCExpr> args, List<Type> typeArgs)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       return args[1].Type;
     }
 
@@ -1337,7 +1337,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override Type InferType(List<VCExpr> args, List<Type> typeArgs)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       return Type;
     }
 
@@ -1371,7 +1371,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override Type InferType(List<VCExpr> args, List<Type> typeArgs)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       switch (op)
       {
         case ("+"):
@@ -1476,7 +1476,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override Type InferType(List<VCExpr> args, List<Type> typeArgs)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       return Type.GetBvType(Bits);
     }
 
@@ -1535,7 +1535,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override Type InferType(List<VCExpr> args, List<Type> typeArgs)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       return Type.GetBvType(End - Start);
     }
 
@@ -1598,7 +1598,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override Type InferType(List<VCExpr> args, List<Type> typeArgs)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       return Type.GetBvType(args[0].Type.BvBits + args[1].Type.BvBits);
     }
 
@@ -1668,7 +1668,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override Type InferType(List<VCExpr> args, List<Type> typeArgs)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       Contract.Assert(TypeParamArity == Func.TypeParameters.Count);
       if (TypeParamArity == 0)
       {
@@ -1766,7 +1766,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       get
       {
-        Contract.Ensures(Contract.Result<Type>() != null);
+        
         return VarType;
       }
     }
@@ -1837,7 +1837,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       get
       {
-        Contract.Ensures(Contract.Result<Type>() != null);
+        
 
         return Body.Type;
       }
@@ -2098,7 +2098,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       get
       {
-        Contract.Ensures(Contract.Result<VCExprLetBinding>() != null);
+        
         return Bindings[index];
       }
     }
@@ -2134,7 +2134,7 @@ namespace Microsoft.Boogie.VCExprAST
     [Escapes(true, false)]
     public IEnumerator<VCExprLetBinding> GetEnumerator()
     {
-      Contract.Ensures(Cce.NonNullElements(Contract.Result<IEnumerator<VCExprLetBinding>>()));
+      
       return Bindings.GetEnumerator();
     }
 
@@ -2143,14 +2143,14 @@ namespace Microsoft.Boogie.VCExprAST
     [Escapes(true, false)]
     IEnumerator System.Collections.IEnumerable.GetEnumerator()
     {
-      Contract.Ensures(Contract.Result<IEnumerator>() != null);
+      
       return Bindings.GetEnumerator();
     }
 
     private static List<VCExprVar> toSeq(List<VCExprLetBinding> bindings)
     {
       
-      Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCExprVar>>()));
+      
       List<VCExprVar> res = new List<VCExprVar>();
       foreach (VCExprLetBinding b in bindings)
       {

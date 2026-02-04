@@ -123,7 +123,7 @@ public class GotoCmd : TransferCmd, ICarriesAttributes
 
   public override void Resolve(ResolutionContext rc)
   {
-    Contract.Ensures(LabelTargets != null);
+    
     if (LabelTargets != null)
     {
       // already resolved
@@ -151,7 +151,7 @@ public class GotoCmd : TransferCmd, ICarriesAttributes
 
   public override Absy StdDispatch(StandardVisitor visitor)
   {
-    Contract.Ensures(Contract.Result<Absy>() != null);
+    
     return visitor.VisitGotoCmd(this);
   }
 }

@@ -63,7 +63,7 @@ internal abstract class MapTypeAbstractionBuilder
   private TypeVariable AbstractionVariable(int num)
   {
     
-    Contract.Ensures(Contract.Result<TypeVariable>() != null);
+    
     while (AbstractionVariables.Count <= num)
     {
       AbstractionVariables.Add(new TypeVariable(Token.NoToken,
@@ -148,16 +148,16 @@ internal abstract class MapTypeAbstractionBuilder
   public Function Select(MapType rawType, out List<Type> instantiations)
   {
     
-    Contract.Ensures(Contract.ValueAtReturn(out instantiations) != null);
-    Contract.Ensures(Contract.Result<Function>() != null);
+    
+    
     return AbstractAndGetRepresentation(rawType, out instantiations).Select;
   }
 
   public Function Store(MapType rawType, out List<Type> instantiations)
   {
     
-    Contract.Ensures(Contract.ValueAtReturn(out instantiations) != null);
-    Contract.Ensures(Contract.Result<Function>() != null);
+    
+    
     return AbstractAndGetRepresentation(rawType, out instantiations).Store;
   }
 
@@ -165,7 +165,7 @@ internal abstract class MapTypeAbstractionBuilder
     AbstractAndGetRepresentation(MapType rawType, out List<Type> instantiations)
   {
     
-    Contract.Ensures(Contract.ValueAtReturn(out instantiations) != null);
+    
     instantiations = new List<Type>();
     MapType
       abstraction = ThinOutMapType(rawType, instantiations);
@@ -175,7 +175,7 @@ internal abstract class MapTypeAbstractionBuilder
   public CtorType AbstractMapType(MapType rawType)
   {
     
-    Contract.Ensures(Contract.Result<CtorType>() != null);
+    
     List<Type>
       instantiations = new List<Type>();
     MapType
@@ -191,7 +191,7 @@ internal abstract class MapTypeAbstractionBuilder
   {
     
     
-    Contract.Ensures(Contract.Result<MapType>() != null);
+    
     List<Type>
       newArguments = new List<Type>();
     foreach (Type subtype in rawType.Arguments.ToList())
@@ -213,7 +213,7 @@ internal abstract class MapTypeAbstractionBuilder
     
     
     
-    Contract.Ensures(Contract.Result<Type>() != null);
+    
 
     if (rawType.FreeVariables.All(var => !boundTypeParams.Contains(var)))
     {

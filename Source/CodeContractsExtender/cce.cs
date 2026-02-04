@@ -16,7 +16,7 @@ public static class Cce
   public static T NonNull<T>(T t) where T : class
   {
     
-    Contract.Ensures(Contract.Result<T>() != null);
+    
     return t;
   }
 

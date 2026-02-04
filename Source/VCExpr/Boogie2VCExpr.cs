@@ -65,14 +65,14 @@ namespace Microsoft.Boogie.VCExprAST
 
     private VCExpr Pop()
     {
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       return SubExpressions.Pop();
     }
 
     public VCExpr Translate(Expr expr)
     {
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       this.Visit(expr);
       return Pop();
     }
@@ -80,7 +80,7 @@ namespace Microsoft.Boogie.VCExprAST
     public List<VCExpr> Translate(IList<Expr> exprs)
     {
       
-      Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCExpr>>()));
+      
       List<VCExpr>
         res = new List<VCExpr>();
       foreach (Expr e in exprs)
@@ -121,7 +121,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     public object Clone()
     {
-      Contract.Ensures(Contract.Result<object>() != null);
+      
       return new Boogie2VCExprTranslator(this);
     }
 
@@ -131,7 +131,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       get
       {
-        Contract.Ensures(Contract.Result<IAppliableTranslator>() != null);
+        
 
         if (IAppTranslatorAttr == null)
         {
@@ -183,7 +183,7 @@ namespace Microsoft.Boogie.VCExprAST
 
       public object Clone()
       {
-        Contract.Ensures(Contract.Result<object>() != null);
+        
         return new VariableMapping<VarKind>(this);
       }
 
@@ -209,7 +209,7 @@ namespace Microsoft.Boogie.VCExprAST
       public VCExprVar Lookup(VarKind boogieVar)
       {
         
-        Contract.Ensures(Contract.Result<VCExprVar>() != null);
+        
         VCExprVar res = LookupHelp(boogieVar);
         Contract.Assume(res != null);
         return res;
@@ -291,7 +291,7 @@ namespace Microsoft.Boogie.VCExprAST
     public VCExprVar BindVariable(Variable boogieVar)
     {
       
-      Contract.Ensures(Contract.Result<VCExprVar>() != null);
+      
       if (boogieVar is BoundVariable)
       {
         VCExprVar
@@ -317,7 +317,7 @@ namespace Microsoft.Boogie.VCExprAST
     public VCExprVar LookupVariable(Variable boogieVar)
     {
       
-      Contract.Ensures(Contract.Result<VCExprVar>() != null);
+      
 
       BoundVariable bv = boogieVar as BoundVariable;
       if (bv != null)
@@ -390,7 +390,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override Expr VisitLiteralExpr(LiteralExpr node)
     {
-      Contract.Ensures(Contract.Result<Expr>() != null);
+      
       Push(TranslateLiteralExpr(node));
       return node;
     }
@@ -398,7 +398,7 @@ namespace Microsoft.Boogie.VCExprAST
     private VCExpr TranslateLiteralExpr(LiteralExpr node)
     {
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       if (node.Val is bool)
       {
         bool b = (bool) node.Val;
@@ -447,7 +447,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override Expr VisitIdentifierExpr(IdentifierExpr node)
     {
-      Contract.Ensures(Contract.Result<Expr>() != null);
+      
       Contract.Assume(node.Decl != null); // the expression has to be resolved
       Push(LookupVariable(node.Decl));
       return node;
@@ -461,7 +461,7 @@ namespace Microsoft.Boogie.VCExprAST
     // before transforming it into a VCExpr.
     public override Expr VisitOldExpr(OldExpr node)
     {
-      Contract.Ensures(Contract.Result<Expr>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
@@ -470,7 +470,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override Expr VisitNAryExpr(NAryExpr node)
     {
-      Contract.Ensures(Contract.Result<Expr>() != null);
+      
       Push(TranslateNAryExpr(node));
       return node;
     }
@@ -480,7 +480,7 @@ namespace Microsoft.Boogie.VCExprAST
     private VCExpr TranslateNAryExpr(NAryExpr node)
     {
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
 
       if (node.Fun is FieldUpdate fieldUpdate)
       {
@@ -548,7 +548,7 @@ namespace Microsoft.Boogie.VCExprAST
     private List<Type> ToList(TypeParamInstantiation insts)
     {
       
-      Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Type>>()));
+      
       if (insts.FormalTypeParams.Count == 0)
       {
         return EMPTY_TYPE_LIST;
@@ -569,21 +569,21 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override QuantifierExpr VisitQuantifierExpr(QuantifierExpr node)
     {
-      Contract.Ensures(Contract.Result<QuantifierExpr>() != null);
+      
       Push(TranslateQuantifierExpr(node));
       return node;
     }
 
     public override Expr VisitExistsExpr(ExistsExpr node)
     {
-      Contract.Ensures(Contract.Result<Expr>() != null);
+      
       node = (ExistsExpr) this.VisitQuantifierExpr(node);
       return node;
     }
 
     public override Expr VisitForallExpr(ForallExpr node)
     {
-      Contract.Ensures(Contract.Result<Expr>() != null);
+      
       node = (ForallExpr) this.VisitQuantifierExpr(node);
       return node;
     }
@@ -591,7 +591,7 @@ namespace Microsoft.Boogie.VCExprAST
     private VCExpr TranslateQuantifierExpr(QuantifierExpr node)
     {
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       List<TypeVariable>
         typeParams = new List<TypeVariable>();
       foreach (TypeVariable v in node.TypeParameters)
@@ -643,7 +643,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     private List<VCTrigger> TranslateTriggers(Trigger node)
     {
-      Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCTrigger>>()));
+      
       List<VCTrigger>
         res = new List<VCTrigger>();
       Trigger curTrigger = node;
@@ -659,7 +659,7 @@ namespace Microsoft.Boogie.VCExprAST
     private VCQuantifierInfo GenerateQuantifierInfo(QuantifierExpr node, List<VCExprVar> boundVars)
     {
       
-      Contract.Ensures(Contract.Result<VCQuantifierInfo>() != null);
+      
       return new VCQuantifierInfo(
         GetQid(node),
         node.SkolemId,
@@ -710,7 +710,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override Expr VisitLetExpr(LetExpr node)
     {
-      Contract.Ensures(Contract.Result<Expr>() != null);
+      
 
       var rhss = new List<VCExpr>();
       foreach (var e in node.Rhss)
@@ -745,7 +745,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override Expr VisitBvExtractExpr(BvExtractExpr node)
     {
-      Contract.Ensures(Contract.Result<Expr>() != null);
+      
       Push(TranslateBvExtractExpr(node));
       return node;
     }
@@ -754,7 +754,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       VCExpr
         bv = Translate(node.Bitvector);
       return Gen.BvExtract(bv, Cce.NonNull(node.Bitvector.Type).BvBits, node.Start, node.End);
@@ -764,7 +764,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override Expr VisitBvConcatExpr(BvConcatExpr node)
     {
-      Contract.Ensures(Contract.Result<Expr>() != null);
+      
       Push(TranslateBvConcatExpr(node));
       return node;
     }
@@ -772,7 +772,7 @@ namespace Microsoft.Boogie.VCExprAST
     private VCExpr TranslateBvConcatExpr(BvConcatExpr node)
     {
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       VCExpr
         bv0 = Translate(node.E0);
       VCExpr
@@ -785,63 +785,63 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override Cmd VisitAssertCmd(AssertCmd node)
     {
-      Contract.Ensures(Contract.Result<Cmd>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override Cmd VisitAssignCmd(AssignCmd node)
     {
-      Contract.Ensures(Contract.Result<Cmd>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override Cmd VisitUnpackCmd(UnpackCmd node)
     {
-      Contract.Ensures(Contract.Result<Cmd>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
     
     public override Cmd VisitAssumeCmd(AssumeCmd node)
     {
-      Contract.Ensures(Contract.Result<Cmd>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override AtomicRE VisitAtomicRE(AtomicRE node)
     {
-      Contract.Ensures(Contract.Result<AtomicRE>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override Axiom VisitAxiom(Axiom node)
     {
-      Contract.Ensures(Contract.Result<Axiom>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override Type VisitBasicType(BasicType node)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override Type VisitBvType(BvType node)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override Block VisitBlock(Block node)
     {
-      Contract.Ensures(Contract.Result<Block>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
@@ -855,7 +855,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override Expr VisitCodeExpr(CodeExpr codeExpr)
     {
-      Contract.Ensures(Contract.Result<Expr>() != null);
+      
       Contract.Assume(codeExprConverter != null);
       
       List<VCExprLetBinding> bindings = new List<VCExprLetBinding>();
@@ -866,315 +866,315 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override List<Block> VisitBlockSeq(List<Block> blockSeq)
     {
-      Contract.Ensures(Contract.Result<List<Block>>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override IList<Block> VisitBlockList(IList<Block> blocks)
     {
-      Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Block>>()));
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override BoundVariable VisitBoundVariable(BoundVariable node)
     {
-      Contract.Ensures(Contract.Result<BoundVariable>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override Cmd VisitCallCmd(CallCmd node)
     {
-      Contract.Ensures(Contract.Result<Cmd>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override Cmd VisitParCallCmd(ParCallCmd node)
     {
-      Contract.Ensures(Contract.Result<Cmd>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override List<Cmd> VisitCmdSeq(List<Cmd> cmdSeq)
     {
-      Contract.Ensures(Contract.Result<List<Cmd>>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override Choice VisitChoice(Choice node)
     {
-      Contract.Ensures(Contract.Result<Choice>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override Cmd VisitCommentCmd(CommentCmd node)
     {
-      Contract.Ensures(Contract.Result<Cmd>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override Constant VisitConstant(Constant node)
     {
-      Contract.Ensures(Contract.Result<Constant>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override CtorType VisitCtorType(CtorType node)
     {
-      Contract.Ensures(Contract.Result<CtorType>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override Declaration VisitDeclaration(Declaration node)
     {
-      Contract.Ensures(Contract.Result<Declaration>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override List<Declaration> VisitDeclarationList(List<Declaration> declarationList)
     {
-      Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Declaration>>()));
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override DeclWithFormals VisitDeclWithFormals(DeclWithFormals node)
     {
-      Contract.Ensures(Contract.Result<DeclWithFormals>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override Requires VisitRequires(Requires @requires)
     {
-      Contract.Ensures(Contract.Result<Requires>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override List<Requires> VisitRequiresSeq(List<Requires> requiresSeq)
     {
-      Contract.Ensures(Contract.Result<List<Requires>>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override Ensures VisitEnsures(Ensures @ensures)
     {
-      Contract.Ensures(Contract.Result<Ensures>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override List<Ensures> VisitEnsuresSeq(List<Ensures> ensuresSeq)
     {
-      Contract.Ensures(Contract.Result<List<Ensures>>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override Formal VisitFormal(Formal node)
     {
-      Contract.Ensures(Contract.Result<Formal>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override Function VisitFunction(Function node)
     {
-      Contract.Ensures(Contract.Result<Function>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override GlobalVariable VisitGlobalVariable(GlobalVariable node)
     {
-      Contract.Ensures(Contract.Result<GlobalVariable>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override GotoCmd VisitGotoCmd(GotoCmd node)
     {
-      Contract.Ensures(Contract.Result<GotoCmd>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override Cmd VisitHavocCmd(HavocCmd node)
     {
-      Contract.Ensures(Contract.Result<Cmd>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override Implementation VisitImplementation(Implementation node)
     {
-      Contract.Ensures(Contract.Result<Implementation>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override LocalVariable VisitLocalVariable(LocalVariable node)
     {
-      Contract.Ensures(Contract.Result<LocalVariable>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override AssignLhs VisitMapAssignLhs(MapAssignLhs node)
     {
-      Contract.Ensures(Contract.Result<AssignLhs>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override Type VisitMapType(MapType node)
     {
-      Contract.Ensures(Contract.Result<MapType>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override Procedure VisitProcedure(Procedure node)
     {
-      Contract.Ensures(Contract.Result<Procedure>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override Program VisitProgram(Program node)
     {
-      Contract.Ensures(Contract.Result<Program>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override Cmd VisitRE(RE node)
     {
-      Contract.Ensures(Contract.Result<Cmd>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override List<RE> VisitRESeq(List<RE> reSeq)
     {
-      Contract.Ensures(Contract.Result<List<RE>>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override ReturnCmd VisitReturnCmd(ReturnCmd node)
     {
-      Contract.Ensures(Contract.Result<ReturnCmd>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override ReturnExprCmd VisitReturnExprCmd(ReturnExprCmd node)
     {
-      Contract.Ensures(Contract.Result<ReturnExprCmd>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override Sequential VisitSequential(Sequential node)
     {
-      Contract.Ensures(Contract.Result<Sequential>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override AssignLhs VisitSimpleAssignLhs(SimpleAssignLhs node)
     {
-      Contract.Ensures(Contract.Result<AssignLhs>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override Cmd VisitStateCmd(StateCmd node)
     {
-      Contract.Ensures(Contract.Result<Cmd>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override TransferCmd VisitTransferCmd(TransferCmd node)
     {
-      Contract.Ensures(Contract.Result<TransferCmd>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override Trigger VisitTrigger(Trigger node)
     {
-      Contract.Ensures(Contract.Result<Trigger>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override Type VisitType(Type node)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override TypedIdent VisitTypedIdent(TypedIdent node)
     {
-      Contract.Ensures(Contract.Result<TypedIdent>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override Type VisitTypeSynonymAnnotation(TypeSynonymAnnotation node)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override Type VisitTypeVariable(TypeVariable node)
     {
-      Contract.Ensures(Contract.Result<Type>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override Variable VisitVariable(Variable node)
     {
-      Contract.Ensures(Contract.Result<Variable>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override List<Variable> VisitVariableSeq(List<Variable> variableSeq)
     {
-      Contract.Ensures(Contract.Result<List<Variable>>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override Cmd VisitAssertEnsuresCmd(AssertEnsuresCmd node)
     {
-      Contract.Ensures(Contract.Result<Cmd>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
 
     public override Cmd VisitAssertRequiresCmd(AssertRequiresCmd node)
     {
-      Contract.Ensures(Contract.Result<Cmd>() != null);
+      
       Contract.Assert(false);
       throw new Cce.UnreachableException();
     }
@@ -1199,7 +1199,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       get
       {
-        Contract.Ensures(Contract.Result<VCExpressionGenerator>() != null);
+        
 
         return BaseTranslator.Gen;
       }
@@ -1209,7 +1209,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       get
       {
-        Contract.Ensures(Contract.Result<VCGenerationOptions>() != null);
+        
 
         return BaseTranslator.GenerationOptions;
       }
@@ -1243,7 +1243,7 @@ namespace Microsoft.Boogie.VCExprAST
       
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
 
       List<VCExpr>
         oldArgs = this.args;
@@ -1263,7 +1263,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     public VCExpr Visit(UnaryOperator unaryOperator)
     {
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       Contract.Assert(unaryOperator.Op == UnaryOperator.Opcode.Neg || unaryOperator.Op == UnaryOperator.Opcode.Not);
       Contract.Assert(this.args.Count == 1);
       if (unaryOperator.Op == UnaryOperator.Opcode.Neg)
@@ -1291,13 +1291,13 @@ namespace Microsoft.Boogie.VCExprAST
 
     public VCExpr Visit(BinaryOperator binaryOperator)
     {
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       return TranslateBinaryOperator(binaryOperator, this.args);
     }
 
     public VCExpr Visit(FunctionCall functionCall)
     {
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       return TranslateFunctionCall(functionCall, this.args, this.typeArgs);
     }
 
@@ -1321,14 +1321,14 @@ namespace Microsoft.Boogie.VCExprAST
 
     public VCExpr Visit(TypeCoercion typeCoercion)
     {
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       Contract.Assert(this.args.Count == 1);
       return this.args[0];
     }
 
     public VCExpr Visit(ArithmeticCoercion arithCoercion)
     {
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       Contract.Assert(this.args.Count == 1);
       switch (arithCoercion.Coercion)
       {
@@ -1344,7 +1344,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     public VCExpr Visit(IfThenElse ite)
     {
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       return Gen.Function(VCExpressionGenerator.IfThenElseOp, this.args);
     }
     
@@ -1383,7 +1383,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
       Contract.Assert(args.Count == 2);
       Type t = Cce.NonNull(Cce.NonNull(args[0]).Type);
 
@@ -1521,7 +1521,7 @@ namespace Microsoft.Boogie.VCExprAST
       
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null); // resolution must have happened
+       // resolution must have happened
 
       VCExpr res = ApplyExpansion(app, args, typeArgs);
       if (res != null)

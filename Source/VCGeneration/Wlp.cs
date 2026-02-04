@@ -53,7 +53,7 @@ namespace VC
       
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
 
       VCExpressionGenerator gen = ctxt.Ctxt.ExprGen;
       Contract.Assert(gen != null);
@@ -86,7 +86,7 @@ namespace VC
       
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
 
       VCExpressionGenerator gen = ctxt.Ctxt.ExprGen;
       Contract.Assert(gen != null);
@@ -271,7 +271,7 @@ namespace VC
       
       
       
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+      
 
       if (r is AtomicRE)
       {

@@ -78,7 +78,7 @@ namespace Microsoft.BaseTypes
     /// </summary>
     public Rational Abs()
     {
-      Contract.Ensures(Contract.Result<Rational>().IsNonNegative);
+      
       if (IsNonNegative)
       {
         return this;
@@ -96,7 +96,7 @@ namespace Microsoft.BaseTypes
     /// </summary>
     public static Rational Gcd(Rational r, Rational s)
     {
-      Contract.Ensures(Contract.Result<Rational>().IsPositive);
+      
       if (r.IsZero)
       {
         if (s.IsZero)
@@ -131,7 +131,7 @@ namespace Microsoft.BaseTypes
 
     public override string ToString()
     {
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       return String.Format("{0}/{1}", Numerator, Denominator);
     }
 

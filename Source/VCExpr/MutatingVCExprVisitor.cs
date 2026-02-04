@@ -25,14 +25,14 @@ public abstract class MutatingVCExprVisitor<Arg>
   public VCExpr Mutate(VCExpr expr, Arg arg)
   {
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     return expr.Accept(this, arg);
   }
 
   public List<VCExpr> MutateSeq(IEnumerable<VCExpr> exprs, Arg arg)
   {
     
-    Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCExpr>>()));
+    
     List<VCExpr>
       res = new List<VCExpr>();
     foreach (VCExpr expr in exprs)
@@ -47,7 +47,7 @@ public abstract class MutatingVCExprVisitor<Arg>
   private List<VCExpr> MutateList(List<VCExpr> exprs, Arg arg)
   {
     
-    Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCExpr>>()));
+    
     bool changed = false;
     List<VCExpr>
       res = new List<VCExpr>();
@@ -74,7 +74,7 @@ public abstract class MutatingVCExprVisitor<Arg>
 
   public virtual VCExpr Visit(VCExprLiteral node, Arg arg)
   {
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     return node;
   }
 
@@ -126,7 +126,7 @@ public abstract class MutatingVCExprVisitor<Arg>
 
   public virtual VCExpr Visit(VCExprNAry node, Arg arg)
   {
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     int initialStackSize = NAryExprTodoStack.Count;
     int initialResultStackSize = NAryExprResultStack.Count;
 
@@ -197,7 +197,7 @@ public abstract class MutatingVCExprVisitor<Arg>
     Arg arg)
   {
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
 
     if (changed)
     {
@@ -214,14 +214,14 @@ public abstract class MutatingVCExprVisitor<Arg>
 
   public virtual VCExpr Visit(VCExprVar node, Arg arg)
   {
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     return node;
   }
 
   protected List<VCTrigger> MutateTriggers(List<VCTrigger> triggers, Arg arg)
   {
     
-    Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCTrigger>>()));
+    
     List<VCTrigger>
       newTriggers = new List<VCTrigger>();
     bool changed = false;
@@ -254,7 +254,7 @@ public abstract class MutatingVCExprVisitor<Arg>
 
   public virtual VCExpr Visit(VCExprQuantifier node, Arg arg)
   {
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     bool changed = false;
 
     VCExpr
@@ -291,7 +291,7 @@ public abstract class MutatingVCExprVisitor<Arg>
 
   public virtual VCExpr Visit(VCExprLet node, Arg arg)
   {
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     bool changed = false;
 
     VCExpr

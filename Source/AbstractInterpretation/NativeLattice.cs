@@ -323,7 +323,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
       
       
       
-      Contract.Ensures(Contract.Result<NativeLattice.Element>() != null);
+      
 
       if (cmd is AssignCmd)
       {

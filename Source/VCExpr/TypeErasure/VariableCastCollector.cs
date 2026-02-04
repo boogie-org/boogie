@@ -23,7 +23,7 @@ internal class VariableCastCollector : TraversingVCExprVisitor<bool, bool>
     
     
     
-    Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCExprVar>>()));
+    
     VariableCastCollector
       collector = new VariableCastCollector(axBuilder);
     Contract.Assert(collector != null);

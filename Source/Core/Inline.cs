@@ -116,7 +116,7 @@ namespace Microsoft.Boogie
     protected string GetInlinedProcLabel(string procName)
     {
       
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       return prefix + procName + "$" + inlinedProcLblMap[procName];
     }
 
@@ -124,7 +124,7 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(Contract.Result<string>() != null);
+      
       return GetInlinedProcLabel(procName) + "$" + formalName;
     }
 
@@ -268,7 +268,7 @@ namespace Microsoft.Boogie
     protected void ResolveImpl(Implementation impl)
     {
       
-      Contract.Ensures(impl.Proc != null);
+      
       ResolutionContext rc = new ResolutionContext(new DummyErrorSink(), options);
       foreach (var decl in program.TopLevelDeclarations)
       {
@@ -407,7 +407,7 @@ namespace Microsoft.Boogie
     public  virtual List<Block> DoInlineBlocks(IList<Block> blocks, ref bool inlinedSomething)
     {
       
-      Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Block>>()));
+      
       List<Block>
         newBlocks = new List<Block>();
 
@@ -677,7 +677,7 @@ namespace Microsoft.Boogie
       
       
 
-      Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Block>>()));
+      
       var implBlocks = Cce.NonNull(impl.OriginalBlocks);
       Contract.Assert(implBlocks.Count > 0);
 
@@ -873,7 +873,7 @@ namespace Microsoft.Boogie
       public List<Cmd> CopyCmdSeq(List<Cmd> cmds)
       {
         
-        Contract.Ensures(Contract.Result<List<Cmd>>() != null);
+        
         List<Cmd> newCmds = new List<Cmd>();
         foreach (Cmd cmd in cmds)
         {
@@ -887,7 +887,7 @@ namespace Microsoft.Boogie
       public TransferCmd CopyTransferCmd(TransferCmd cmd)
       {
         
-        Contract.Ensures(Contract.Result<TransferCmd>() != null);
+        
         if (cmd is GotoCmd gotoCmd)
         {
           Contract.Assert(gotoCmd.LabelNames != null);

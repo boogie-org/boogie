@@ -12,7 +12,7 @@ namespace Microsoft.Boogie
       
 
       
-      Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Block>>()));
+      
       Dictionary<Block, GraphNode> gd = new Dictionary<Block, GraphNode>();
       HashSet<Block> beingVisited = new HashSet<Block>();
       GraphNode gStart = GraphNode.ComputeGraphInfo(null, start, gd, beingVisited);
@@ -58,7 +58,7 @@ namespace Microsoft.Boogie
     private static System.Collections.IEnumerable Succs(GraphNode n)
     {
       
-      Contract.Ensures(Contract.Result<System.Collections.IEnumerable>() != null);
+      
 
       List<GraphNode>
         AllEdges = new List<GraphNode>();
@@ -70,7 +70,7 @@ namespace Microsoft.Boogie
     private static System.Collections.IEnumerable Preds(GraphNode n)
     {
       
-      Contract.Ensures(Contract.Result<System.Collections.IEnumerable>() != null);
+      
 
       return n.Predecessors;
     }
@@ -116,7 +116,7 @@ namespace Microsoft.Boogie
       static List<Cmd> GetOptimizedBody(List<Cmd> cmds)
       {
         
-        Contract.Ensures(Contract.Result<List<Cmd>>() != null);
+        
         int n = 0;
         foreach (Cmd c in cmds)
         {
@@ -144,7 +144,7 @@ namespace Microsoft.Boogie
         
         
         
-        Contract.Ensures(Contract.Result<GraphNode>() != null);
+        
         if (gd.TryGetValue(b, out var g))
         {
           Contract.Assume(from != null);
@@ -265,7 +265,7 @@ namespace Microsoft.Boogie
     Block Visit(GraphNode node)
     {
       
-      Contract.Ensures(Contract.Result<Block>() != null);
+      
       Block orig = node.Block;
       if (newBlocks.TryGetValue(orig, out var nw))
       {

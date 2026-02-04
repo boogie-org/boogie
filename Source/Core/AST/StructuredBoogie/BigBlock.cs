@@ -26,7 +26,7 @@ public class BigBlock
   {
     get
     {
-      Contract.Ensures(Anonymous || Contract.Result<string>() != null);
+      
       return this.labelName;
     }
     set
@@ -45,7 +45,7 @@ public class BigBlock
   {
     get
     {
-      Contract.Ensures(Contract.Result<List<Cmd>>() != null);
+      
       return this._simpleCmds;
     }
     set

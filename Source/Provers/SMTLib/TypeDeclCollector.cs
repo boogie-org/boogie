@@ -126,7 +126,7 @@ namespace Microsoft.Boogie.SMTLib
     {
       get
       {
-        Contract.Ensures(Cce.NonNullElements(Contract.Result<List<string>>()));
+        
 
         List<string> /*!>!*/
           res = new List<string>();
@@ -137,7 +137,7 @@ namespace Microsoft.Boogie.SMTLib
 
     public List<string /*!>!*/> GetNewDeclarations()
     {
-      Contract.Ensures(Cce.NonNullElements(Contract.Result<List<string>>()));
+      
       List<string> /*!>!*/
         res = new List<string>();
       res.AddRange(IncDecls);
@@ -163,7 +163,7 @@ namespace Microsoft.Boogie.SMTLib
     private string TypeToString(Type t)
     {
       
-      Contract.Ensures(Contract.Result<string>() != null);
+      
 
       return new SMTLibExprLineariser(options).TypeToString(t);
     }

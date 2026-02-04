@@ -22,7 +22,7 @@ public abstract class TransferCmd : Absy
 
   public override string ToString()
   {
-    Contract.Ensures(Contract.Result<string>() != null);
+    
     System.IO.StringWriter buffer = new System.IO.StringWriter();
     using TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, false, false, PrintOptions.Default);
     this.Emit(stream, 0);

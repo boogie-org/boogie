@@ -342,7 +342,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<string>() != null);
+        
         return this._logPrefix;
       }
       set
@@ -472,7 +472,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(-1 <= Contract.Result<int>() && Contract.Result<int>() <= 1);
+        
         return this.bracketIdsInVC;
       }
       set
@@ -1403,7 +1403,7 @@ namespace Microsoft.Boogie
 
     public override void ApplyDefaultOptions()
     {
-      Contract.Ensures(TheProverFactory != null);
+      
 
       base.ApplyDefaultOptions();
 
@@ -1500,7 +1500,7 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.Ensures(Contract.Result<int>() < argList.Length);
+      
       int commaIndex = argList.IndexOf(",", startIndex);
       int semicolonIndex = argList.IndexOf(";", startIndex);
       if (commaIndex == -1)

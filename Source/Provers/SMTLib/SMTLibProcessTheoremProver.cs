@@ -124,7 +124,7 @@ namespace Microsoft.Boogie.SMTLib
     {
       get
       {
-        Contract.Ensures(Contract.Result<ProverContext>() != null);
+        
         return ctx;
       }
     }
@@ -510,7 +510,7 @@ namespace Microsoft.Boogie.SMTLib
     protected TextWriter OpenOutputFile(string descriptiveName)
     {
       
-      Contract.Ensures(Contract.Result<TextWriter>() != null);
+      
 
       string filenameTemplate = options.LogFilename;
       var (filename, reused) = Helpers.GetLogFilename(descriptiveName, filenameTemplate, false);
@@ -973,7 +973,7 @@ namespace Microsoft.Boogie.SMTLib
     protected string VCExpr2String(VCExpr expr, int polarity)
     {
       
-      Contract.Ensures(Contract.Result<string>() != null);
+      
 
       lock (gen)
       {
@@ -1069,7 +1069,7 @@ namespace Microsoft.Boogie.SMTLib
 
     private void InitializeGlobalInformation()
     {
-      Contract.Ensures(backgroundPredicates != null);
+      
       //throws ProverException, System.IO.FileNotFoundException;
       if (backgroundPredicates == null)
       {
@@ -1627,7 +1627,7 @@ namespace Microsoft.Boogie.SMTLib
   {
     public override ProverInterface SpawnProver(SMTLibOptions libOptions, ProverOptions options, object ctxt)
     {
-      Contract.Ensures(Contract.Result<object>() != null);
+      
 
       return this.SpawnProver(libOptions, options,
         Cce.NonNull((SMTLibProverContext) ctxt).ExprGen,
@@ -1636,7 +1636,7 @@ namespace Microsoft.Boogie.SMTLib
 
     public override ProverContext NewProverContext(ProverOptions options)
     {
-      Contract.Ensures(Contract.Result<object>() != null);
+      
 
       VCExpressionGenerator gen = new VCExpressionGenerator();
       List<string> /*!>!*/
@@ -1668,7 +1668,7 @@ namespace Microsoft.Boogie.SMTLib
       
       
       
-      Contract.Ensures(Contract.Result<SMTLibProcessTheoremProver>() != null);
+      
       if (options.BatchMode) {
         return new SMTLibBatchTheoremProver(libOptions, (SMTLibSolverOptions)options, gen, ctx);
       } else {

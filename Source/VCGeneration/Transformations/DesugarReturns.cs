@@ -11,9 +11,9 @@ public static class DesugarReturns {
   public static Block GenerateUnifiedExit(Implementation impl)
   {
     
-    Contract.Ensures(Contract.Result<Block>() != null);
+    
 
-    Contract.Ensures(Contract.Result<Block>().TransferCmd is ReturnCmd);
+    
     Block exitBlock = null;
 
     int returnBlocks = 0;

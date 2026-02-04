@@ -20,7 +20,7 @@ namespace Microsoft.Boogie.VCExprAST
     
     public override UniqueNamer Clone()
     {
-      Contract.Ensures(Contract.Result<Object>() != null);
+      
       return new KeepOriginalNamer(this);
     }
 

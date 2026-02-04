@@ -86,7 +86,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<VCExpressionGenerator>() != null);
+        
         return this.gen;
       }
     }
@@ -95,7 +95,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<ProverInterface>() != null);
+        
         return this.thmProver;
       }
     }
@@ -343,7 +343,7 @@ namespace Microsoft.Boogie
     {
       
       
-      Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
+      
 
       hasOutput = false;
 
@@ -366,7 +366,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<ProverContext>() != null);
+        
 
         throw new NotImplementedException();
       }
@@ -376,7 +376,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(Contract.Result<VCExpressionGenerator>() != null);
+        
 
         throw new NotImplementedException();
       }

@@ -30,7 +30,7 @@ public class CommandLineParseState
     
     
     
-    Contract.Ensures(this.args == args);
+    
     this.ToolName = toolName;
     this.s = null; // set later by client
     this.hasColonArgument = false; // set later by client

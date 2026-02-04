@@ -56,7 +56,7 @@ public abstract class TypeAxiomBuilder : ICloneable
   // was called
   public VCExpr GetNewAxioms()
   {
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     VCExpr
       res = Gen.NAry(VCExpressionGenerator.AndOp, IncTypeAxioms);
     IncTypeAxioms.Clear();
@@ -72,7 +72,7 @@ public abstract class TypeAxiomBuilder : ICloneable
   private VCExpr GenCtorAssignment(VCExpr typeRepr)
   {
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
 
     VCExpr res = Gen.Eq(Gen.Function(Ctor, typeRepr),
       Gen.Integer(CurrentCtorNum));
@@ -83,7 +83,7 @@ public abstract class TypeAxiomBuilder : ICloneable
   private VCExpr GenCtorAssignment(Function typeRepr)
   {
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
 
     List<VCExprVar>
       quantifiedVars = HelperFuns.GenVarsForInParams(typeRepr, Gen);
@@ -106,7 +106,7 @@ public abstract class TypeAxiomBuilder : ICloneable
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     List<VCExprVar>
       quantifiedVars = HelperFuns.GenVarsForInParams(fun, Gen);
     Contract.Assert(Cce.NonNullElements(quantifiedVars));
@@ -172,7 +172,7 @@ public abstract class TypeAxiomBuilder : ICloneable
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     if (!BasicTypeReprs.TryGetValue(type, out var res))
     {
       res = Gen.Function(HelperFuns.BoogieFunction(type.ToString() + "Type", T));
@@ -222,14 +222,14 @@ public abstract class TypeAxiomBuilder : ICloneable
   public Function GetTypeCtorRepr(TypeCtorDecl decl)
   {
     
-    Contract.Ensures(Contract.Result<Function>() != null);
+    
     return GetTypeCtorReprStruct(decl).Ctor;
   }
 
   public Function GetTypeDtor(TypeCtorDecl decl, int num)
   {
     
-    Contract.Ensures(Contract.Result<Function>() != null);
+    
     return GetTypeCtorReprStruct(decl).Dtors[num];
   }
 
@@ -246,7 +246,7 @@ public abstract class TypeAxiomBuilder : ICloneable
   public VCExprVar Typed2Untyped(TypeVariable var)
   {
     
-    Contract.Ensures(Contract.Result<VCExprVar>() != null);
+    
     if (!TypeVariableMapping.TryGetValue(var, out var res))
     {
       res = new VCExprVar(var.Name, T);
@@ -274,7 +274,7 @@ public abstract class TypeAxiomBuilder : ICloneable
   public VCExprVar Typed2Untyped(VCExprVar var)
   {
     
-    Contract.Ensures(Contract.Result<VCExprVar>() != null);
+    
     VCExprVar res = TryTyped2Untyped(var);
     if (res == null)
     {
@@ -315,7 +315,7 @@ public abstract class TypeAxiomBuilder : ICloneable
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     //
     if (type.IsBasic || type.IsBv || type.IsFloat)
     {

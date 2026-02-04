@@ -53,7 +53,7 @@ public sealed class Block : Absy
   {
     get
     {
-      Contract.Ensures(Cce.NonNullElements(Contract.Result<IEnumerable<Variable>>(), true));
+      
       if (this.liveVarsBefore == null)
       {
         return null;
@@ -187,13 +187,13 @@ public sealed class Block : Absy
   [Pure]
   public override string ToString()
   {
-    Contract.Ensures(Contract.Result<string>() != null);
+    
     return this.Label + (this.WidenBlock ? "[w]" : "");
   }
 
   public override Absy StdDispatch(StandardVisitor visitor)
   {
-    Contract.Ensures(Contract.Result<Absy>() != null);
+    
     return visitor.VisitBlock(this);
   }
 

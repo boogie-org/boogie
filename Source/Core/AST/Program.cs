@@ -224,7 +224,7 @@ public class Program : Absy
   {
     get
     {
-      Contract.Ensures(Cce.NonNullElements(Contract.Result<IEnumerable<Declaration>>()));
+      
       return topLevelDeclarations.AsReadOnly();
     }
 
@@ -436,7 +436,7 @@ public class Program : Absy
   {
     get
     {
-      Contract.Ensures(Cce.NonNullElements(Contract.Result<List<GlobalVariable>>()));
+      
 
       if (globalVariablesCache == null)
       {
@@ -582,8 +582,8 @@ public class Program : Absy
   public static Graph<Block> GraphFromImpl(Implementation impl, bool forward = true)
   {
     
-    Contract.Ensures(Cce.NonNullElements(Contract.Result<Graph<Block>>().Nodes));
-    Contract.Ensures(Contract.Result<Graph<Block>>() != null);
+    
+    
 
     return GraphFromBlocks(impl.Blocks, forward);
   }
@@ -608,7 +608,7 @@ public class Program : Absy
 
   public override Absy StdDispatch(StandardVisitor visitor)
   {
-    Contract.Ensures(Contract.Result<Absy>() != null);
+    
     return visitor.VisitProgram(this);
   }
 

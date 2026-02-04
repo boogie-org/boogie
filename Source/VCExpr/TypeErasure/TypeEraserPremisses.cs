@@ -22,7 +22,7 @@ public class TypeEraserPremisses : TypeEraser
   {
     get
     {
-      Contract.Ensures(Contract.Result<OpTypeEraser>() != null);
+      
 
       if (OpEraserAttr == null)
       {
@@ -48,7 +48,7 @@ public class TypeEraserPremisses : TypeEraser
   {
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     VariableBindings bindings = oldBindings.Clone();
 
     // determine the bound vars that actually occur in the body or
@@ -118,8 +118,8 @@ public class TypeEraserPremisses : TypeEraser
     
     
     
-    Contract.Ensures(Cce.NonNullElements(Contract.ValueAtReturn(out triggers)));
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
+    
 
     // build a substitution of the type variables that it can be checked
     // whether type premisses are trivial
@@ -202,7 +202,7 @@ public class TypeEraserPremisses : TypeEraser
     
     
     
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    
     List<VCExprLetBinding>
       typeVarBindings =
         AxBuilderPremisses.GenTypeParamBindings(node.TypeParameters, occurringVars, bindings, true);
@@ -293,7 +293,7 @@ public class TypeEraserPremisses : TypeEraser
   {
     
     
-    Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCTrigger>>()));
+    
     List<VCTrigger>
       triggersWithLets = new List<VCTrigger>(triggers.Count);
 

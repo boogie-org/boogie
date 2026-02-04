@@ -16,7 +16,7 @@ public class BlockCoalescer : ReadOnlyVisitor
 
   private static HashSet<Block> ComputeMultiPredecessorBlocks(Block rootBlock)
   {
-    Contract.Ensures(Cce.NonNullElements(Contract.Result<HashSet<Block>>()));
+    
     var visitedBlocks = new HashSet<Block>();
     var result = new HashSet<Block>();
     var dfsStack = new Stack<Block>();

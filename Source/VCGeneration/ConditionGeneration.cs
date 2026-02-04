@@ -29,7 +29,7 @@ namespace VC
     {
       
       
-      Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
+      
       throw new NotImplementedException();
     }
 
@@ -110,7 +110,7 @@ namespace VC
     {
       
 
-      Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
+      
       Helpers.ExtraTraceInformation(Options, "Starting implementation verification");
 
       var collector = new VerificationResultCollector(Options);
@@ -267,7 +267,7 @@ namespace VC
       var impl = run.Implementation;
       
       
-      Contract.Ensures(Contract.Result<List<Cmd>>() != null);
+      
 
 
       TokenTextWriter debugWriter = null;
@@ -313,7 +313,7 @@ namespace VC
       var impl = run.Implementation;
       
       
-      Contract.Ensures(Contract.Result<List<Cmd>>() != null);
+      
       if (options.PrintWithUniqueASTIds)
       {
         options.OutputWriter.WriteLine("Effective postcondition:");
@@ -361,7 +361,7 @@ namespace VC
       var impl = run.Implementation;
       
       
-      Contract.Ensures(Contract.Result<List<Cmd>>() != null);
+      
       TokenTextWriter debugWriter = null;
       if (options.PrintWithUniqueASTIds)
       {
@@ -477,7 +477,7 @@ namespace VC
       
 
       
-      Contract.Ensures(Contract.Result<Variable>() != null);
+      
 
       int currentIncarnationNumber =
         Variable2SequenceNumber.ContainsKey(x)
@@ -510,7 +510,7 @@ namespace VC
     {
       
       
-      Contract.Ensures(Contract.Result<Dictionary<Variable, Expr>>() != null);
+      
 
       if (b.Predecessors.Count == 0)
       {
@@ -1378,7 +1378,7 @@ namespace VC
 
 
       
-      Contract.Ensures(Contract.Result<Block>() != null);
+      
 
       Block pred = Cce.NonNull(succ.Predecessors[predIndex]);
 
