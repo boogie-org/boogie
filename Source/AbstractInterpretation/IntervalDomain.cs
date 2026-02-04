@@ -1596,7 +1596,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
       {
         Visit(p.Condition);
       }
-//Should we add something here for decreases?
+      
       foreach (var b in Impl.Blocks)
       {
         foreach (Cmd c in b.Cmds)
