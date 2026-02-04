@@ -52,7 +52,6 @@ namespace Microsoft.Boogie
         var requires = VisitRequiresSeq(node.Requires);
         var preserves = VisitRequiresSeq(node.Preserves);
         var ensures = VisitEnsuresSeq(node.Ensures);
-        var decreases = VisitDecreasesSeq(node.Decreases);
         if (node.MoverType.HasValue && layerNum == node.Layer && !doRefinementCheck)
         {
           requires = requires.Select(req => new Requires(req.tok, true, req.Condition, req.Comment, req.Attributes)).ToList();
@@ -71,7 +70,6 @@ namespace Microsoft.Boogie
           requires,
           [],
           ensures,
-          decreases,
           (node.MoverType.HasValue && node.Layer == layerNum
             ? node.ModifiedVars.Select(Expr.Ident)
             : civlTypeChecker.GlobalVariables.Select(v => Expr.Ident(v))).ToList()
@@ -539,7 +537,7 @@ namespace Microsoft.Boogie
         checker = DeclHelper.Procedure(
           civlTypeChecker.AddNamePrefix($"AsyncCall_{newCall.Proc.Name}_{layerNum}"),
           newCall.Proc.InParams, newCall.Proc.OutParams,
-          procToDuplicate[newCall.Proc].Requires, [], [], [], []);
+          procToDuplicate[newCall.Proc].Requires, [], [], []);
         asyncCallPreconditionCheckers[newCall.Proc.Name] = checker;
       }
       newCall.IsAsync = false;
@@ -557,7 +555,7 @@ namespace Microsoft.Boogie
           checker = DeclHelper.Procedure(
             civlTypeChecker.AddNamePrefix($"NoRequires_{newCall.Proc.Name}_{layerNum}"),
             newCall.Proc.InParams, newCall.Proc.OutParams,
-            [], [], new List<Ensures>(newCall.Proc.Ensures), new List<Decreases>(newCall.Proc.Decreases), []);
+            [], [], new List<Ensures>(newCall.Proc.Ensures), []);
           noRequiresPureProcedures[newCall.Proc.Name] = checker;
         }
         newCall.IsAsync = false;

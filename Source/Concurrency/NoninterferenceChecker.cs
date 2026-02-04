@@ -96,7 +96,7 @@ namespace Microsoft.Boogie
       noninterferenceCheckerName =
         civlTypeChecker.AddNamePrefix($"NoninterferenceChecker_{noninterferenceCheckerName}");
       var noninterferenceCheckerProc = DeclHelper.Procedure(noninterferenceCheckerName,
-        inputs, new List<Variable>(), new List<Requires>(), new List<Requires>(), new List<Ensures>(), new List<Decreases>(),  new List<IdentifierExpr>());
+        inputs, new List<Variable>(), new List<Requires>(), new List<Requires>(), new List<Ensures>(), new List<IdentifierExpr>());
       CivlUtil.AddInlineAttribute(noninterferenceCheckerProc);
 
       // Create the yield checker implementation
