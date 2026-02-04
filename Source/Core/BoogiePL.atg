@@ -33,8 +33,8 @@ readonly StructuredCmd dummyStructuredCmd;
 ///the parsed program.
 ///</summary>
 public static int Parse(string filename, List<string> defines, out /*maybe null*/ Program program, bool useBaseName=false) /* throws System.IO.IOException */ {
-  Contract.Requires(filename != null);
-  Contract.Requires(Cce.NonNullElements(defines,true));
+  
+  
 
   if (filename == "stdin.bpl") {
     return Parse(Console.In, filename, defines, out program, useBaseName);
@@ -52,8 +52,8 @@ public static int Parse(TextReader stream, string filename, List<string> defines
 }
 
 public static int Parse(string s, string filename, out /*maybe null*/ Program program, bool useBaseName=false) /* throws System.IO.IOException */ {
-  Contract.Requires(s != null);
-  Contract.Requires(filename != null);
+  
+  
 
   byte[] buffer = Cce.NonNull(UTF8Encoding.Default.GetBytes(s));
   MemoryStream ms = new MemoryStream(buffer,false);
@@ -95,7 +95,7 @@ private class BvBounds : Expr {
   public BigNum Upper;
   public BvBounds(IToken tok, BigNum lower, BigNum upper)
     : base(tok, /*immutable=*/ false) {
-    Contract.Requires(tok != null);
+    
     this.Lower = lower;
     this.Upper = upper;
   }

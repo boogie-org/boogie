@@ -47,9 +47,9 @@ namespace Microsoft.Boogie.TypeErasure
       List<TypeVariable> implicitTypeParams,
       List<TypeVariable> explicitTypeParams)
     {
-      Contract.Requires(fun != null);
-      Contract.Requires(Cce.NonNullElements(implicitTypeParams));
-      Contract.Requires(Cce.NonNullElements(explicitTypeParams));
+      
+      
+      
       Fun = fun;
       ImplicitTypeParams = implicitTypeParams;
       ExplicitTypeParams = explicitTypeParams;
@@ -67,7 +67,7 @@ namespace Microsoft.Boogie.TypeErasure
     public TypeAxiomBuilderPremisses(VCExpressionGenerator gen, CoreOptions options)
       : base(gen)
     {
-      Contract.Requires(gen != null);
+      
       this.Options = options;
 
       TypeFunction = HelperFuns.BoogieFunction("dummy", Type.Int);
@@ -80,7 +80,7 @@ namespace Microsoft.Boogie.TypeErasure
     internal TypeAxiomBuilderPremisses(TypeAxiomBuilderPremisses builder)
       : base(builder)
     {
-      Contract.Requires(builder != null);
+      
       this.Options = builder.Options;
       TypeFunction = builder.TypeFunction;
       Typed2UntypedFunctions =
@@ -179,7 +179,7 @@ namespace Microsoft.Boogie.TypeErasure
 
     public VCExpr TypeOf(VCExpr expr)
     {
-      Contract.Requires(expr != null);
+      
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       return Gen.Function(TypeFunction, expr);
     }
@@ -196,9 +196,9 @@ namespace Microsoft.Boogie.TypeErasure
         VariableBindings bindings,
         bool addTypeVarsToBindings)
     {
-      Contract.Requires(typeParams != null);
-      Contract.Requires(Cce.NonNullElements(oldBoundVars));
-      Contract.Requires(bindings != null);
+      
+      
+      
 
       Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCExprLetBinding>>()));
 
@@ -240,9 +240,9 @@ namespace Microsoft.Boogie.TypeErasure
       VCExpr typePremisses, bool universal,
       VCExpr body)
     {
-      Contract.Requires(Cce.NonNullElements(typeVarBindings));
-      Contract.Requires(typePremisses != null);
-      Contract.Requires(body != null);
+      
+      
+      
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       VCExpr
@@ -270,10 +270,10 @@ namespace Microsoft.Boogie.TypeErasure
         List<VCExprVar> concreteTypeSources,
         VariableBindings bindings)
     {
-      Contract.Requires(Cce.NonNullElements(vars));
-      Contract.Requires(Cce.NonNullElements(types));
-      Contract.Requires(Cce.NonNullElements(concreteTypeSources));
-      Contract.Requires(bindings != null);
+      
+      
+      
+      
       Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCExprLetBinding>>()));
 
       List<VCExprLetBinding>
@@ -296,9 +296,9 @@ namespace Microsoft.Boogie.TypeErasure
     private VCExpr BestTypeVarExtractor(TypeVariable var, List<Type> types,
       List<VCExprVar> concreteTypeSources)
     {
-      Contract.Requires(var != null);
-      Contract.Requires(Cce.NonNullElements(types));
-      Contract.Requires(Cce.NonNullElements(concreteTypeSources));
+      
+      
+      
       List<VCExpr> allExtractors = TypeVarExtractors(var, types, concreteTypeSources);
       Contract.Assert(Cce.NonNullElements(allExtractors));
       if (allExtractors.Count == 0)
@@ -324,10 +324,10 @@ namespace Microsoft.Boogie.TypeErasure
     private List<VCExpr> TypeVarExtractors(TypeVariable var, List<Type> types,
       List<VCExprVar> concreteTypeSources)
     {
-      Contract.Requires(var != null);
-      Contract.Requires(Cce.NonNullElements(types));
-      Contract.Requires(Cce.NonNullElements(concreteTypeSources));
-      Contract.Requires((types.Count == concreteTypeSources.Count));
+      
+      
+      
+      
       Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCExpr>>()));
       List<VCExpr>
         res = new List<VCExpr>();
@@ -342,10 +342,10 @@ namespace Microsoft.Boogie.TypeErasure
     private void TypeVarExtractors(TypeVariable var, Type completeType, VCExpr innerTerm,
       List<VCExpr> extractors)
     {
-      Contract.Requires(innerTerm != null);
-      Contract.Requires(completeType != null);
-      Contract.Requires(var != null);
-      Contract.Requires(Cce.NonNullElements(extractors));
+      
+      
+      
+      
       if (completeType.IsVariable)
       {
         if (var.Equals(completeType))
@@ -405,8 +405,8 @@ namespace Microsoft.Boogie.TypeErasure
       out List<TypeVariable> implicitParams,
       out List<TypeVariable> explicitParams)
     {
-      Contract.Requires(Cce.NonNullElements(valueArgumentTypes));
-      Contract.Requires(allTypeParams != null);
+      
+      
       Contract.Ensures(Cce.NonNullElements(Contract.ValueAtReturn(out implicitParams)));
       Contract.Ensures(Cce.NonNullElements(Contract.ValueAtReturn(out explicitParams)));
       List<TypeVariable>
@@ -439,7 +439,7 @@ namespace Microsoft.Boogie.TypeErasure
 
     internal UntypedFunction Typed2Untyped(Function fun)
     {
-      Contract.Requires(fun != null);
+      
       if (!Typed2UntypedFunctions.TryGetValue(fun, out var res))
       {
         Contract.Assert(fun.OutParams.Count == 1);
@@ -499,7 +499,7 @@ namespace Microsoft.Boogie.TypeErasure
 
     private VCExpr GenFunctionAxiom(UntypedFunction fun, Function originalFun)
     {
-      Contract.Requires(originalFun != null);
+      
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       List<Type>
         originalInTypes = new List<Type>(originalFun.InParams.Count);
@@ -519,12 +519,12 @@ namespace Microsoft.Boogie.TypeErasure
       List<Type> originalInTypes,
       Type originalResultType)
     {
-      Contract.Requires(Cce.NonNullElements(implicitTypeParams));
-      Contract.Requires(fun != null);
-      Contract.Requires(Cce.NonNullElements(explicitTypeParams));
-      Contract.Requires(Cce.NonNullElements(originalInTypes));
-      Contract.Requires(originalResultType != null);
-      Contract.Requires(originalInTypes.Count + explicitTypeParams.Count == fun.InParams.Count);
+      
+      
+      
+      
+      
+      
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       List<VCExprVar>
@@ -614,9 +614,9 @@ namespace Microsoft.Boogie.TypeErasure
     public VCExpr GenVarTypeAxiom(VCExprVar var, Type originalType,
       IDictionary<TypeVariable, VCExpr> varMapping)
     {
-      Contract.Requires(var != null);
-      Contract.Requires(originalType != null);
-      Contract.Requires(Cce.NonNullDictionaryAndValues(varMapping));
+      
+      
+      
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       if (!var.Type.Equals(originalType))
@@ -646,8 +646,8 @@ namespace Microsoft.Boogie.TypeErasure
     internal MapTypeAbstractionBuilderPremisses(TypeAxiomBuilderPremisses axBuilder, VCExpressionGenerator gen)
       : base(axBuilder, gen)
     {
-      Contract.Requires(gen != null);
-      Contract.Requires(axBuilder != null);
+      
+      
 
       this.AxBuilderPremisses = axBuilder;
     }
@@ -657,9 +657,9 @@ namespace Microsoft.Boogie.TypeErasure
       MapTypeAbstractionBuilderPremisses builder)
       : base(axBuilder, gen, builder)
     {
-      Contract.Requires(builder != null);
-      Contract.Requires(gen != null);
-      Contract.Requires(axBuilder != null);
+      
+      
+      
 
       this.AxBuilderPremisses = axBuilder;
     }
@@ -674,7 +674,7 @@ namespace Microsoft.Boogie.TypeErasure
     // in a type    <a0, a1, ..., an>[...]...
     public List<int> ExplicitSelectTypeParams(MapType type)
     {
-      Contract.Requires(type != null);
+      
       Contract.Ensures(Contract.Result<List<int>>() != null);
 
       if (!explicitSelectTypeParamsCache.TryGetValue(type, out var res))
@@ -742,8 +742,8 @@ namespace Microsoft.Boogie.TypeErasure
       out List<TypeVariable> typeParams,
       out List<Type> originalIndexTypes)
     {
-      Contract.Requires(abstractedType != null);
-      Contract.Requires(synonymDecl != null);
+      
+      
       Contract.Ensures(Contract.ValueAtReturn(out mapTypeSynonym) != null);
       Contract.Ensures(Cce.NonNullElements(Contract.ValueAtReturn(out typeParams)));
       Contract.Ensures(Cce.NonNullElements(Contract.ValueAtReturn(out originalIndexTypes)));
@@ -773,10 +773,10 @@ namespace Microsoft.Boogie.TypeErasure
       string name,
       out List<TypeVariable> implicitTypeParams, out List<TypeVariable> explicitTypeParams)
     {
-      Contract.Requires(Cce.NonNullElements(originalTypeParams));
-      Contract.Requires(Cce.NonNullElements(originalInTypes));
-      Contract.Requires(originalResult != null);
-      Contract.Requires(name != null);
+      
+      
+      
+      
       Contract.Ensures(Contract.Result<Function>() != null);
       Contract.Ensures(Cce.NonNullElements(Contract.ValueAtReturn(out implicitTypeParams)));
       Contract.Ensures(Cce.NonNullElements(Contract.ValueAtReturn(out explicitTypeParams)));
@@ -833,10 +833,10 @@ namespace Microsoft.Boogie.TypeErasure
       VCExpr map,
       List<VCExprVar> indexes)
     {
-      Contract.Requires(select != null);
-      Contract.Requires(Cce.NonNullElements(typeParams));
-      Contract.Requires(map != null);
-      Contract.Requires(Cce.NonNullElements(indexes));
+      
+      
+      
+      
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       List<VCExpr>
@@ -849,10 +849,10 @@ namespace Microsoft.Boogie.TypeErasure
 
     private VCExpr Store(Function store, VCExpr map, List<VCExprVar> indexes, VCExpr val)
     {
-      Contract.Requires(val != null);
-      Contract.Requires(map != null);
-      Contract.Requires(store != null);
-      Contract.Requires(Cce.NonNullElements(indexes));
+      
+      
+      
+      
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       List<VCExpr>
         storeArgs = new List<VCExpr>(indexes.Count + 2);
@@ -873,12 +873,12 @@ namespace Microsoft.Boogie.TypeErasure
       List<TypeVariable> implicitTypeParamsSelect, List<TypeVariable> explicitTypeParamsSelect,
       List<Type> originalInTypes)
     {
-      Contract.Requires(mapResult != null);
-      Contract.Requires(store != null);
-      Contract.Requires(select != null);
-      Contract.Requires(Cce.NonNullElements(implicitTypeParamsSelect));
-      Contract.Requires(Cce.NonNullElements(originalInTypes));
-      Contract.Requires(Cce.NonNullElements(explicitTypeParamsSelect));
+      
+      
+      
+      
+      
+      
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       int arity = store.InParams.Count - 2;
       List<VCExprVar> inParams = new List<VCExprVar>();
@@ -982,10 +982,10 @@ namespace Microsoft.Boogie.TypeErasure
     private VCExpr GenMapAxiom1(Function select, Function store, Type mapResult,
       List<TypeVariable> explicitSelectParams)
     {
-      Contract.Requires(mapResult != null);
-      Contract.Requires(store != null);
-      Contract.Requires(select != null);
-      Contract.Requires(Cce.NonNullElements(explicitSelectParams));
+      
+      
+      
+      
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       int arity = store.InParams.Count - 2;
 

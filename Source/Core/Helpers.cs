@@ -9,7 +9,7 @@ namespace Microsoft.Boogie
   {
     public static string BeautifyBplString(string s)
     {
-      Contract.Requires(s != null);
+      
       Contract.Ensures(Contract.Result<string>() != null);
       // strip "^" if it is the first character, change "$result" to "result"
       if (s.StartsWith("^") || s == "$result")
@@ -38,7 +38,7 @@ namespace Microsoft.Boogie
 
     public static string PrettyPrintBplExpr(Expr e)
     {
-      Contract.Requires(e != null);
+      
       Contract.Ensures(Contract.Result<string>() != null);
       // anything that is unknown will just be printed via ToString
       // OldExpr and QuantifierExpr, BvExtractExpr, BvConcatExpr are ignored for now
@@ -253,7 +253,7 @@ namespace Microsoft.Boogie
 
     public static void ExtraTraceInformation(CoreOptions options, string point)
     {
-      Contract.Requires(point != null);
+      
       if (options.TraceTimes)
       {
         DateTime now = DateTime.UtcNow;
@@ -279,8 +279,8 @@ namespace Microsoft.Boogie
 
     private static string SubstituteAtPROC(string descriptiveName, string filename)
     {
-      Contract.Requires(filename != null);
-      Contract.Requires(descriptiveName != null);
+      
+      
       Contract.Ensures(Contract.Result<string>() != null);
       var sb = new System.Text.StringBuilder(descriptiveName.Length);
       // quote the name, characters like ^ cause trouble in CMD

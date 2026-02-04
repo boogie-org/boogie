@@ -22,7 +22,7 @@ namespace Microsoft.Boogie.SMTLib
 
     public Inspector(SMTLibSolverOptions opts)
     {
-      Contract.Requires(opts != null);
+      
       ProcessStartInfo psi = new ProcessStartInfo(opts.Inspector);
       Contract.Assert(psi != null);
       psi.CreateNoWindow = true;
@@ -46,13 +46,13 @@ namespace Microsoft.Boogie.SMTLib
 
     public void NewProblem(string descriptiveName)
     {
-      Contract.Requires(descriptiveName != null);
+      
       toInspector.WriteLine("PROBLEM " + descriptiveName);
     }
 
     public void StatsLine(string line)
     {
-      Contract.Requires(line != null);
+      
       toInspector.WriteLine(line);
       toInspector.Flush();
     }

@@ -65,8 +65,8 @@ namespace Microsoft.Boogie
     [NotDelayed]
     public InterProcGenKill(Implementation impl, Program program, CoreOptions options)
     {
-      Contract.Requires(program != null);
-      Contract.Requires(impl != null);
+      
+      
       this.program = program;
       this.options = options;
       procICFG = new Dictionary<string, ImplementationControlFlowGraph>();
@@ -177,8 +177,8 @@ namespace Microsoft.Boogie
 
     public static HashSet<Variable> GetVarsLiveAtExit(Implementation impl, Program prog)
     {
-      Contract.Requires(prog != null);
-      Contract.Requires(impl != null);
+      
+      
       Contract.Ensures(Cce.NonNullElements(Contract.Result<HashSet<Variable>>()));
       if (varsLiveAtExit.ContainsKey(impl.Name))
       {
@@ -205,8 +205,8 @@ namespace Microsoft.Boogie
 
     public static HashSet<Variable> GetVarsLiveAtEntry(Implementation impl, Program prog)
     {
-      Contract.Requires(prog != null);
-      Contract.Requires(impl != null);
+      
+      
       Contract.Ensures(Cce.NonNullElements(Contract.Result<HashSet<Variable>>()));
       if (varsLiveAtEntry.ContainsKey(impl.Name))
       {
@@ -233,15 +233,15 @@ namespace Microsoft.Boogie
 
     public static bool HasSummary(string name)
     {
-      Contract.Requires(name != null);
+      
       return varsLiveSummary.ContainsKey(name);
     }
 
     public static HashSet<Variable>
       PropagateLiveVarsAcrossCall(CoreOptions options, CallCmd cmd, HashSet<Variable> lvAfter)
     {
-      Contract.Requires(cmd != null);
-      Contract.Requires(Cce.NonNullElements(lvAfter));
+      
+      
       Contract.Ensures(Cce.NonNullElements(Contract.Result<HashSet<Variable>>()));
       Procedure
         proc = Cce.NonNull(cmd.Proc);
@@ -287,8 +287,8 @@ namespace Microsoft.Boogie
 
       public WorkItem(ImplementationControlFlowGraph cfg, Block block)
       {
-        Contract.Requires(block != null);
-        Contract.Requires(cfg != null);
+        
+        
         this.cfg = cfg;
         this.block = block;
       }
@@ -301,7 +301,7 @@ namespace Microsoft.Boogie
 
       public bool setWeightBefore(GenKillWeight w)
       {
-        Contract.Requires(w != null);
+        
         GenKillWeight
           prev = cfg.weightBefore[block];
         Contract.Assert(prev != null);
@@ -341,7 +341,7 @@ namespace Microsoft.Boogie
 
     private void AddToWorkList(WorkItem wi)
     {
-      Contract.Requires(wi != null);
+      
       int i = procPriority[wi.cfg.impl.Name];
       int j = wi.cfg.getPriority(wi.block);
       int priority = (i * maxBlocksInProc) + j;
@@ -351,7 +351,7 @@ namespace Microsoft.Boogie
 
     private void AddToWorkListReverse(WorkItem wi)
     {
-      Contract.Requires(wi != null);
+      
       int i = procPriority[wi.cfg.impl.Name];
       int j = wi.cfg.getPriority(wi.block);
       int priority = (procPriority.Count - i) * maxBlocksInProc + j;
@@ -388,7 +388,7 @@ namespace Microsoft.Boogie
 
       public void Add(WorkItem wi, int priority)
       {
-        Contract.Requires(wi != null);
+        
         string
           lab = wi.getLabel();
         Contract.Assert(lab != null);
@@ -443,7 +443,7 @@ namespace Microsoft.Boogie
 
     private GenKillWeight getSummary(CallCmd cmd)
     {
-      Contract.Requires(cmd != null);
+      
       Contract.Ensures(Contract.Result<GenKillWeight>() != null);
       Contract.Assert(cmd.Proc != null);
       string
@@ -465,8 +465,8 @@ namespace Microsoft.Boogie
 
     public void ComputeLiveVars(Implementation impl, Program prog)
     {
-      Contract.Requires(prog != null);
-      Contract.Requires(impl != null);
+      
+      
       InterProcGenKill
         ipgk = new InterProcGenKill(impl, prog, options);
       Contract.Assert(ipgk != null);
@@ -558,7 +558,7 @@ namespace Microsoft.Boogie
     // Called when summaries have already been computed
     private void ProcessLv(WorkItem wi)
     {
-      Contract.Requires(wi != null);
+      
       ImplementationControlFlowGraph
         cfg = wi.cfg;
       Contract.Assert(cfg != null);
@@ -652,7 +652,7 @@ namespace Microsoft.Boogie
 
     private void process(WorkItem wi)
     {
-      Contract.Requires(wi != null);
+      
       GenKillWeight
         w = wi.getWeightAfter();
       Contract.Assert(w != null);
@@ -722,14 +722,14 @@ namespace Microsoft.Boogie
 
     private GenKillWeight GetWeight(Cmd cmd)
     {
-      Contract.Requires(cmd != null);
+      
       Contract.Ensures(Contract.Result<GenKillWeight>() != null);
       return GetWeight(cmd, null, null);
     }
 
     private GenKillWeight GetWeightCall(CallCmd cmd)
     {
-      Contract.Requires(cmd != null);
+      
       Contract.Ensures(Contract.Result<GenKillWeight>() != null);
       GenKillWeight
         w1 = getWeightBeforeCall(cmd);
@@ -745,7 +745,7 @@ namespace Microsoft.Boogie
 
     private GenKillWeight GetWeight(Cmd cmd, Implementation impl, Program prog)
     {
-      Contract.Requires(cmd != null);
+      
       Contract.Ensures(Contract.Result<GenKillWeight>() != null);
 
       if (weightCache.ContainsKey(cmd))
@@ -924,7 +924,7 @@ namespace Microsoft.Boogie
 
     private static GenKillWeight getWeightAfterCall(Cmd cmd)
     {
-      Contract.Requires(cmd != null);
+      
       Contract.Ensures(Contract.Result<GenKillWeight>() != null);
 
       if (weightCacheAfterCall.ContainsKey(cmd))
@@ -976,7 +976,7 @@ namespace Microsoft.Boogie
 
     private static GenKillWeight getWeightBeforeCall(Cmd cmd)
     {
-      Contract.Requires(cmd != null);
+      
       Contract.Ensures(Contract.Result<GenKillWeight>() != null);
       Contract.Assert((cmd is CallCmd));
       if (weightCacheBeforeCall.ContainsKey(cmd))

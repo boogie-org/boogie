@@ -26,14 +26,14 @@ namespace Microsoft.Boogie
 
     public TypeAmbiguitySeeker(TypecheckingContext tc)
     {
-      Contract.Requires(tc != null);
+      
       TC = tc;
     }
 
     private void CheckTypeParams(Absy node, TypeParamInstantiation insts)
     {
-      Contract.Requires(insts != null);
-      Contract.Requires(node != null);
+      
+      
       foreach (TypeVariable var in insts.FormalTypeParams)
       {
         Contract.Assert(var != null);
@@ -74,8 +74,8 @@ namespace Microsoft.Boogie
     // called when an uninstantiated proxy was found
     private Type Instantiate(Type node, Type inst)
     {
-      Contract.Requires(inst != null);
-      Contract.Requires(node != null);
+      
+      
       Contract.Ensures(Contract.Result<Type>() == node);
       FoundAmbiguity = true;
       bool success = node.Unify(inst);

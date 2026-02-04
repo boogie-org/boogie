@@ -63,8 +63,8 @@ readonly StructuredCmd dummyStructuredCmd;
 ///the parsed program.
 ///</summary>
 public static int Parse(string filename, List<string> defines, out /*maybe null*/ Program program, bool useBaseName=false) /* throws System.IO.IOException */ {
-  Contract.Requires(filename != null);
-  Contract.Requires(Cce.NonNullElements(defines,true));
+  
+  
 
   if (filename == "stdin.bpl") {
     return Parse(Console.In, filename, defines, out program, useBaseName);
@@ -82,8 +82,8 @@ public static int Parse(TextReader stream, string filename, List<string> defines
 }
 
 public static int Parse(string s, string filename, out /*maybe null*/ Program program, bool useBaseName=false) /* throws System.IO.IOException */ {
-  Contract.Requires(s != null);
-  Contract.Requires(filename != null);
+  
+  
 
   byte[] buffer = Cce.NonNull(UTF8Encoding.Default.GetBytes(s));
   MemoryStream ms = new MemoryStream(buffer,false);
@@ -125,7 +125,7 @@ private class BvBounds : Expr {
   public BigNum Upper;
   public BvBounds(IToken tok, BigNum lower, BigNum upper)
     : base(tok, /*immutable=*/ false) {
-    Contract.Requires(tok != null);
+    
     this.Lower = lower;
     this.Upper = upper;
   }
@@ -165,14 +165,14 @@ private class BvBounds : Expr {
 	}
 
 	public void SemErr (string msg) {
-		Contract.Requires(msg != null);
+		
 		if (errDist >= minErrDist) errors.SemErr(t, msg);
 		errDist = 0;
 	}
 
 	public void SemErr(IToken tok, string msg) {
-	  Contract.Requires(tok != null);
-	  Contract.Requires(msg != null);
+	  
+	  
 	  errors.SemErr(tok, msg);
 	}
 
@@ -2759,7 +2759,7 @@ public class Errors {
 	}
 
 	public virtual void SynErr(string filename, int line, int col, string msg) {
-		Contract.Requires(msg != null);
+		
 		errorStream.WriteLine(errMsgFormat, filename, line, col, msg);
 		count++;
 	}
@@ -2951,25 +2951,25 @@ public class Errors {
 	}
 
 	public void SemErr(IToken tok, string msg) {  // semantic errors
-		Contract.Requires(tok != null);
-		Contract.Requires(msg != null);
+		
+		
 		SemErr(tok.filename, tok.line, tok.col, msg);
 	}
 
 	public virtual void SemErr(string filename, int line, int col, string msg) {
-		Contract.Requires(msg != null);
+		
 		errorStream.WriteLine(errMsgFormat, filename, line, col, msg);
 		count++;
 	}
 
 	public void Warning(IToken tok, string msg) {  // warnings
-		Contract.Requires(tok != null);
-		Contract.Requires(msg != null);
+		
+		
 		Warning(tok.filename, tok.line, tok.col, msg);
 	}
 
 	public virtual void Warning(string filename, int line, int col, string msg) {
-		Contract.Requires(msg != null);
+		
 		errorStream.WriteLine(warningMsgFormat, filename, line, col, msg);
 	}
 } // Errors

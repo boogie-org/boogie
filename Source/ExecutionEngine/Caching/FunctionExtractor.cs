@@ -28,7 +28,7 @@ sealed class FunctionExtractor : StandardVisitor
 
   public static Expr Extract(Expr expr, Program program, List<Axiom> axioms)
   {
-    Contract.Requires(expr != null && program != null && !program.TopLevelDeclarationsAreFrozen && axioms != null);
+    
 
     if (expr is LiteralExpr)
     {

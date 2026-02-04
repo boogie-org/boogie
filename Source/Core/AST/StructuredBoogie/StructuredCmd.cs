@@ -17,7 +17,7 @@ public abstract class StructuredCmd
     }
     set
     {
-      Contract.Requires(value != null);
+      
       this._tok = value;
     }
   }
@@ -30,7 +30,7 @@ public abstract class StructuredCmd
 
   public StructuredCmd(IToken tok)
   {
-    Contract.Requires(tok != null);
+    
     this._tok = tok;
   }
 

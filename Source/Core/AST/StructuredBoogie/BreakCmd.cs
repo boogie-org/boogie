@@ -10,7 +10,7 @@ public class BreakCmd : StructuredCmd
   public BreakCmd(IToken tok, string label)
     : base(tok)
   {
-    Contract.Requires(tok != null);
+    
     this.Label = label;
   }
 

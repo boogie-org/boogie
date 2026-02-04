@@ -23,11 +23,11 @@ public class CallCounterexample : Counterexample
   {
     var failingRequires = failingAssertRequires.Requires;
     var failingCall = failingAssertRequires.Call;
-    Contract.Requires(!failingRequires.Free);
-    Contract.Requires(trace != null);
-    Contract.Requires(context != null);
-    Contract.Requires(failingCall != null);
-    Contract.Requires(failingRequires != null);
+    
+    
+    
+    
+    
     this.FailingCall = failingCall;
     this.FailingRequires = failingRequires;
     this.checksum = checksum;

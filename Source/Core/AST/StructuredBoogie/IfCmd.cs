@@ -18,7 +18,7 @@ public class IfCmd : StructuredCmd
     }
     set
     {
-      Contract.Requires(value != null);
+      
       this.thn = value;
     }
   }
@@ -30,7 +30,7 @@ public class IfCmd : StructuredCmd
     get { return this.elseIf; }
     set
     {
-      Contract.Requires(value == null || this.ElseBlock == null);
+      
       this.elseIf = value;
     }
   }
@@ -42,7 +42,7 @@ public class IfCmd : StructuredCmd
     get { return this.elseBlock; }
     set
     {
-      Contract.Requires(value == null || this.ElseIf == null);
+      
       this.elseBlock = value;
     }
   }
@@ -58,9 +58,9 @@ public class IfCmd : StructuredCmd
     QKeyValue attributes = null)
     : base(tok)
   {
-    Contract.Requires(tok != null);
-    Contract.Requires(thn != null);
-    Contract.Requires(elseIf == null || elseBlock == null);
+    
+    
+    
     this.Guard = guard;
     this.thn = thn;
     this.elseIf = elseIf;

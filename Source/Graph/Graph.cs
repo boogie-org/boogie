@@ -345,7 +345,7 @@ namespace Microsoft.Boogie.GraphUtil
 
     private void PostOrderVisit(Node n, HashSet<Node> visited, ref int currentNumber)
     {
-      Contract.Requires(n != null);
+      
       if (!visited.Add(n))
       {
         return;
@@ -368,7 +368,7 @@ namespace Microsoft.Boogie.GraphUtil
     // Iterative version: mimics the above recursive procedure
     private void PostOrderVisitIterative(Node n)
     {
-      Contract.Requires(n != null);
+      
       var visited = new HashSet<Node>();
       var grey = new HashSet<Node>();
       var stack = new Stack<Node>();
@@ -482,7 +482,7 @@ namespace Microsoft.Boogie.GraphUtil
 
       internal PreHeader(Node h)
       {
-        Contract.Requires(h != null);
+        
         myHeader = h;
       }
 
@@ -496,7 +496,7 @@ namespace Microsoft.Boogie.GraphUtil
 
     public Graph(HashSet<Tuple<Node, Node>> edges)
     {
-      Contract.Requires(Cce.NonNullElements(edges) && Contract.ForAll(edges, p => p.Item1 != null && p.Item2 != null));
+      
       this.edges = edges;
 
       // original A#
@@ -533,7 +533,7 @@ namespace Microsoft.Boogie.GraphUtil
 
     public void AddSource(Node x)
     {
-      Contract.Requires(x != null);
+      
       // BUGBUG: This generates bad code in the compiler
       //ns += new Set<Node>{x};
       nodes.Add(x);
@@ -542,8 +542,8 @@ namespace Microsoft.Boogie.GraphUtil
 
     public void AddEdge(Node source, Node dest)
     {
-      Contract.Requires(source != null);
-      Contract.Requires(dest != null);
+      
+      
       //es += Set<Edge>{<source,dest>};
       //ns += Set<Node>{source, dest};
       edges.Add(new Tuple<Node, Node>(source, dest));
@@ -570,8 +570,8 @@ namespace Microsoft.Boogie.GraphUtil
 
     public bool Edge(Node x, Node y)
     {
-      Contract.Requires(x != null);
-      Contract.Requires(y != null);
+      
+      
       // original A#
       // return <x,y> in es;
       return edges.Contains(new Tuple<Node, Node>(x, y));
@@ -730,7 +730,7 @@ namespace Microsoft.Boogie.GraphUtil
 
     public List<Node> ImmediatelyDominatedBy(Node n)
     {
-      Contract.Requires(n != null);
+      
       ImmediateDominatorMap.TryGetValue(n, out var dominees);
       return dominees ?? new List<Node>();
     }
@@ -895,7 +895,7 @@ namespace Microsoft.Boogie.GraphUtil
     // [Dragon, Fig. 10.15, p. 604. Algorithm for constructing the natural loop.]
     static HashSet<Node> NaturalLoop(Graph<Node> g, Tuple<Node, Node> backEdge)
     {
-      Contract.Requires(backEdge.Item1 != null && backEdge.Item2 != null);
+      
       Node
         n = backEdge.Item1;
       Node
@@ -1020,7 +1020,7 @@ namespace Microsoft.Boogie.GraphUtil
       Node source,
       DomRelation<Node> DomRelation)
     {
-      Contract.Requires(DomRelation != null);
+      
 
       //Console.WriteLine("[" + DateTime.Now +"]: begin ComputeReducible");
       IEnumerable<Tuple<Node, Node>> edges = g.Edges;
@@ -1112,7 +1112,7 @@ namespace Microsoft.Boogie.GraphUtil
 
     public IEnumerable<Node> BackEdgeNodes(Node h)
     {
-      Contract.Requires(h != null);
+      
       // original A#:
       //return h in backEdgeNodes ? backEdgeNodes[h] : null;
       return (backEdgeNodes.ContainsKey(h) ? backEdgeNodes[h] : (IEnumerable<Node>) new List<Node>());
@@ -1120,8 +1120,8 @@ namespace Microsoft.Boogie.GraphUtil
 
     public IEnumerable<Node> NaturalLoops(Node header, Node backEdgeNode)
     {
-      Contract.Requires(header != null);
-      Contract.Requires(backEdgeNode != null);
+      
+      
       Tuple<Node, Node> e = new Tuple<Node, Node>(backEdgeNode, header);
       return naturalLoops.ContainsKey(e) ? naturalLoops[e] : (IEnumerable<Node>) new List<Node>();
     }
@@ -1593,9 +1593,9 @@ namespace Microsoft.Boogie.GraphUtil
       Adjacency<Node> succs)
       : base()
     {
-      Contract.Requires(succs != null);
-      Contract.Requires(preds != null);
-      Contract.Requires(graph != null);
+      
+      
+      
       Contract.Ensures(!Computed);
       IDictionary<Node, object>
         dict = new Dictionary<Node, object>();
@@ -1644,7 +1644,7 @@ namespace Microsoft.Boogie.GraphUtil
 
     public void Compute()
     {
-      Contract.Requires(!Computed);
+      
       Contract.Ensures(Computed);
       // Compute post times on graph with edges reversed
       dfsNext = preds;
@@ -1703,7 +1703,7 @@ namespace Microsoft.Boogie.GraphUtil
     // DFS to order nodes by post times
     private void OrderNodes(Node node)
     {
-      Contract.Requires(node != null);
+      
       seen.Add(node, null);
 
       Contract.Assert(dfsNext != null);
@@ -1725,8 +1725,8 @@ namespace Microsoft.Boogie.GraphUtil
     // DFS to compute SCCs
     private void FindSCCs(Node node, SCC<Node> currSCC)
     {
-      Contract.Requires(currSCC != null);
-      Contract.Requires(node != null);
+      
+      
       //modifies currSCC.*;
       seen.Add(node, null);
       currSCC.Add(node);
@@ -1779,8 +1779,8 @@ namespace Microsoft.Boogie.GraphUtil
   {
     static void TestGraph<T>(T source, params Tuple<T, T>[] edges)
     {
-      Contract.Requires(source != null);
-      Contract.Requires(Contract.ForAll(edges, pair => pair.Item1 != null && pair.Item2 != null));
+      
+      
       HashSet<Tuple<T, T>> es = new HashSet<Tuple<T, T>>();
       foreach (Tuple<T, T> e in edges)
       {

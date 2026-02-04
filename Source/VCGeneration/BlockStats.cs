@@ -30,7 +30,7 @@ class BlockStats
 
   public BlockStats(Block b, int i)
   {
-    Contract.Requires(b != null);
+    
     block = b;
     assertionCost = -1;
     id = i;

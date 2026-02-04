@@ -65,7 +65,7 @@ public sealed class Block : Absy
     }
     set
     {
-      Contract.Requires(Cce.NonNullElements(value, true));
+      
       if (value == null)
       {
         this.liveVarsBefore = null;
@@ -87,7 +87,7 @@ public sealed class Block : Absy
 
   public bool IsLive(Variable v)
   {
-    Contract.Requires(v != null);
+    
     if (LiveVarsBefore == null)
     {
       return true;
@@ -109,9 +109,9 @@ public sealed class Block : Absy
   public Block(IToken tok, string label, List<Cmd> cmds, TransferCmd transferCmd)
     : base(tok)
   {
-    Contract.Requires(label != null);
-    Contract.Requires(cmds != null);
-    Contract.Requires(tok != null);
+    
+    
+    
     this.Label = label;
     this.Cmds = cmds;
     this.TransferCmd = transferCmd;
@@ -123,7 +123,7 @@ public sealed class Block : Absy
 
   public void Emit(TokenTextWriter stream, int level)
   {
-    Contract.Requires(stream != null);
+    
     stream.WriteLine();
     stream.WriteLine(
       this,
@@ -146,7 +146,7 @@ public sealed class Block : Absy
 
   public void Register(ResolutionContext rc)
   {
-    Contract.Requires(rc != null);
+    
     rc.AddBlock(this);
   }
 

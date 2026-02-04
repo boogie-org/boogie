@@ -34,8 +34,8 @@ namespace Microsoft.Boogie.VCExprAST
 
     public void Print(VCExpr expr, TextWriter wr)
     {
-      Contract.Requires(wr != null);
-      Contract.Requires(expr != null);
+      
+      
       expr.Accept<bool, TextWriter>(this, wr);
     }
 
@@ -213,15 +213,15 @@ namespace Microsoft.Boogie.VCExprAST
 
     public VCExprOpPrinter(VCExprPrinter exprPrinter)
     {
-      Contract.Requires(exprPrinter != null);
+      
       this.ExprPrinter = exprPrinter;
     }
 
     private bool PrintNAry(string op, VCExprNAry node, TextWriter wr)
     {
-      Contract.Requires(wr != null);
-      Contract.Requires(node != null);
-      Contract.Requires(op != null);
+      
+      
+      
       wr.Write("({0}", op);
       foreach (VCExpr arg in node.Arguments)
       {

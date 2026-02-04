@@ -14,7 +14,7 @@ namespace Microsoft.Boogie
 
     public ContextCacheKey(Program prog)
     {
-      Contract.Requires(prog != null);
+      
       this.program = prog;
     }
 

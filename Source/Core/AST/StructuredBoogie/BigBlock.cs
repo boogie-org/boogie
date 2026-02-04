@@ -31,7 +31,7 @@ public class BigBlock
     }
     set
     {
-      Contract.Requires(Anonymous || value != null);
+      
       this.labelName = value;
     }
   }
@@ -50,7 +50,7 @@ public class BigBlock
     }
     set
     {
-      Contract.Requires(value != null);
+      
       this._simpleCmds = value;
     }
   }
@@ -62,7 +62,7 @@ public class BigBlock
     get { return this._ec; }
     set
     {
-      Contract.Requires(value == null || this.tc == null);
+      
       this._ec = value;
     }
   }
@@ -74,7 +74,7 @@ public class BigBlock
     get { return this._tc; }
     set
     {
-      Contract.Requires(value == null || this.ec == null);
+      
       this._tc = value;
     }
   }
@@ -83,9 +83,9 @@ public class BigBlock
 
   public BigBlock(IToken tok, string labelName, [Captured] List<Cmd> simpleCmds, StructuredCmd ec, TransferCmd tc)
   {
-    Contract.Requires(simpleCmds != null);
-    Contract.Requires(tok != null);
-    Contract.Requires(ec == null || tc == null);
+    
+    
+    
     this.tok = tok;
     this.Anonymous = labelName == null;
     this.labelName = labelName;
@@ -96,7 +96,7 @@ public class BigBlock
 
   public void Emit(TokenTextWriter stream, int level)
   {
-    Contract.Requires(stream != null);
+    
     if (!Anonymous)
     {
       stream.WriteLine(level, "{0}:",

@@ -26,7 +26,7 @@ public class Program : Absy
 
   public void Emit(TokenTextWriter stream)
   {
-    Contract.Requires(stream != null);
+    
     stream.SetToken(this);
     var functionAxioms = 
       this.Functions.Where(f => f.DefinitionAxioms.Any()).SelectMany(f => f.DefinitionAxioms);
@@ -94,7 +94,7 @@ public class Program : Absy
 
   private void ResolveTypes(ResolutionContext rc)
   {
-    Contract.Requires(rc != null);
+    
     // first resolve type constructors
     foreach (var d in TopLevelDeclarations.OfType<TypeCtorDecl>())
     {
@@ -230,7 +230,7 @@ public class Program : Absy
 
     set
     {
-      Contract.Requires(value != null);
+      
       // materialize the decls, in case there is any dependency
       // back on topLevelDeclarations
       var v = value.ToList();
@@ -245,8 +245,8 @@ public class Program : Absy
 
   public void AddTopLevelDeclaration(Declaration decl)
   {
-    Contract.Requires(!TopLevelDeclarationsAreFrozen);
-    Contract.Requires(decl != null);
+    
+    
 
     topLevelDeclarations.Add(decl);
     this.globalVariablesCache = null;
@@ -254,8 +254,8 @@ public class Program : Absy
 
   public void AddTopLevelDeclarations(IEnumerable<Declaration> decls)
   {
-    Contract.Requires(!TopLevelDeclarationsAreFrozen);
-    Contract.Requires(Cce.NonNullElements(decls));
+    
+    
 
     topLevelDeclarations.AddRange(decls);
     this.globalVariablesCache = null;
@@ -263,7 +263,7 @@ public class Program : Absy
 
   public void RemoveTopLevelDeclaration(Declaration decl)
   {
-    Contract.Requires(!TopLevelDeclarationsAreFrozen);
+    
 
     topLevelDeclarations.Remove(decl);
     this.globalVariablesCache = null;
@@ -271,7 +271,7 @@ public class Program : Absy
 
   public void RemoveTopLevelDeclarations(Predicate<Declaration> match)
   {
-    Contract.Requires(!TopLevelDeclarationsAreFrozen);
+    
 
     topLevelDeclarations.RemoveAll(match);
     this.globalVariablesCache = null;
@@ -279,7 +279,7 @@ public class Program : Absy
 
   public void ClearTopLevelDeclarations()
   {
-    Contract.Requires(!TopLevelDeclarationsAreFrozen);
+    
 
     topLevelDeclarations.Clear();
     this.globalVariablesCache = null;
@@ -475,7 +475,7 @@ public class Program : Absy
 
   public void UnrollLoops(int n, bool uc)
   {
-    Contract.Requires(0 <= n);
+    
     foreach (var impl in Implementations)
     {
       if (impl.Blocks != null && impl.Blocks.Count > 0)
@@ -581,7 +581,7 @@ public class Program : Absy
 
   public static Graph<Block> GraphFromImpl(Implementation impl, bool forward = true)
   {
-    Contract.Requires(impl != null);
+    
     Contract.Ensures(Cce.NonNullElements(Contract.Result<Graph<Block>>().Nodes));
     Contract.Ensures(Contract.Result<Graph<Block>>() != null);
 

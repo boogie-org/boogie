@@ -24,7 +24,7 @@ namespace Microsoft.Boogie.Clustering
 
     public SubtermCollector(VCExpressionGenerator gen)
     {
-      Contract.Requires(gen != null);
+      
       Gen = gen;
     }
 
@@ -54,13 +54,13 @@ namespace Microsoft.Boogie.Clustering
 
     public override bool Visit(VCExprLiteral node, bool arg)
     {
-      Contract.Requires(node != null);
+      
       return true;
     }
 
     public override bool Visit(VCExprNAry node, bool arg)
     {
-      Contract.Requires(node != null);
+      
       VCExprBoogieFunctionOp op = node.Op as VCExprBoogieFunctionOp;
       if (op == null)
       {
@@ -91,7 +91,7 @@ namespace Microsoft.Boogie.Clustering
 
     public override bool Visit(VCExprVar node, bool arg)
     {
-      Contract.Requires(node != null);
+      
       if (!BoundTermVars.ContainsKey(node))
       {
         GlobalVariables[node] = node;
@@ -144,9 +144,9 @@ namespace Microsoft.Boogie.Clustering
     public TermClustersSameHead(VCExprOp op, IDictionary<VCExprVar, VCExprVar> globalVars,
       VCExpressionGenerator gen)
     {
-      Contract.Requires(Cce.NonNullDictionaryAndValues(globalVars));
-      Contract.Requires(gen != null);
-      Contract.Requires(op != null);
+      
+      
+      
       Op = op;
       GlobalVariables = globalVars;
       Gen = gen;
@@ -170,7 +170,7 @@ namespace Microsoft.Boogie.Clustering
 
       public Cluster(VCExprNAry generator, int size)
       {
-        Contract.Requires(generator != null);
+        
         Generator = generator;
         Size = size;
       }
@@ -210,8 +210,8 @@ namespace Microsoft.Boogie.Clustering
 
     public void AddExpr(VCExprNAry expr)
     {
-      Contract.Requires(expr != null);
-      Contract.Requires(Op.Equals(expr.Op));
+      
+      
 
       Cluster c = new Cluster(expr, 1);
       for (int i = 0; i < Clusters.Count; ++i)
@@ -267,8 +267,8 @@ namespace Microsoft.Boogie.Clustering
         public Distance(Cluster a, Cluster b, IDictionary<VCExprVar, VCExprVar> globalVars,
           VCExpressionGenerator gen)
         {
-          Contract.Requires(gen != null);
-          Contract.Requires(Cce.NonNullDictionaryAndValues(globalVars));
+          
+          
           AntiUnificationVisitor
             visitor = new AntiUnificationVisitor(gen);
           Generator = (VCExprNAry) visitor.AntiUnify(a.Generator, b.Generator);
@@ -281,9 +281,9 @@ namespace Microsoft.Boogie.Clustering
       public ClusteringMatrix(List<Cluster> clusters, IDictionary<VCExprVar, VCExprVar> globalVars,
         VCExpressionGenerator gen)
       {
-        Contract.Requires(gen != null);
-        Contract.Requires(clusters != null);
-        Contract.Requires(Cce.NonNullDictionaryAndValues(globalVars));
+        
+        
+        
         List<Cluster> c = new List<Cluster>();
         c.AddRange(clusters);
         Clusters = c;
@@ -328,7 +328,7 @@ namespace Microsoft.Boogie.Clustering
 
       public void ResultingClusters(List<Cluster> clusters)
       {
-        Contract.Requires(clusters != null);
+        
         clusters.Clear();
         for (int i = 0; i < Clusters.Count; ++i)
         {
@@ -393,7 +393,7 @@ namespace Microsoft.Boogie.Clustering
 
       private void MergeClusters(int i, int j)
       {
-        Contract.Requires(j >= 0 && i > j && RemainingClusters[i] && RemainingClusters[j]);
+        
         Clusters[i] = new Cluster(Distances[i, j].Generator,
           Clusters[i].Size + Clusters[j].Size);
         RemainingClusters[j] = false;
@@ -443,7 +443,7 @@ namespace Microsoft.Boogie.Clustering
 
     public AntiUnificationVisitor(VCExpressionGenerator gen)
     {
-      Contract.Requires(gen != null);
+      
       Gen = gen;
     }
 
@@ -468,8 +468,8 @@ namespace Microsoft.Boogie.Clustering
 
       public ExprPair(VCExpr expr0, VCExpr expr1)
       {
-        Contract.Requires(expr1 != null);
-        Contract.Requires(expr0 != null);
+        
+        
         Expr0 = expr0;
         Expr1 = expr1;
       }
@@ -502,7 +502,7 @@ namespace Microsoft.Boogie.Clustering
 
     public bool RepresentationIsRenaming(IDictionary<VCExprVar, VCExprVar> globalVars)
     {
-      Contract.Requires(Cce.NonNullDictionaryAndValues(globalVars));
+      
       if (!Representation.Any(pair =>
         pair.Key.Expr0 is VCExprVar && pair.Key.Expr1 is VCExprVar &&
         !globalVars.ContainsKey(Cce.NonNull((VCExprVar) pair.Key.Expr0)) &&
@@ -521,7 +521,7 @@ namespace Microsoft.Boogie.Clustering
     public void RepresentationSize(IDictionary<VCExprVar, VCExprVar> globalVars, out int expr0Size,
       out int expr1Size)
     {
-      Contract.Requires(Cce.NonNullDictionaryAndValues(globalVars));
+      
       ReprSizeComputingVisitor
         size0Visitor = new ReprSizeComputingVisitor();
       ReprSizeComputingVisitor
@@ -540,9 +540,9 @@ namespace Microsoft.Boogie.Clustering
 
     public VCExpr AntiUnify(VCExpr s, VCExpr t)
     {
-      Contract.Requires(t != null);
-      Contract.Requires(s != null);
-      Contract.Requires((s.Type.Equals(t.Type)));
+      
+      
+      
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       return Traverse(s, t);
     }
@@ -551,9 +551,9 @@ namespace Microsoft.Boogie.Clustering
 
     private VCExprVar AbstractWithVariable(VCExpr s, VCExpr t)
     {
-      Contract.Requires(t != null);
-      Contract.Requires(s != null);
-      Contract.Requires((s.Type.Equals(t.Type)));
+      
+      
+      
       Contract.Ensures(Contract.Result<VCExprVar>() != null);
 
       ExprPair pair = new ExprPair(s, t);
@@ -570,8 +570,8 @@ namespace Microsoft.Boogie.Clustering
 
     public override VCExpr Visit(VCExprLiteral node, VCExpr that)
     {
-      Contract.Requires(that != null);
-      Contract.Requires(node != null);
+      
+      
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       if (node.Equals(that))
       {
@@ -583,8 +583,8 @@ namespace Microsoft.Boogie.Clustering
 
     public override VCExpr Visit(VCExprNAry node, VCExpr that)
     {
-      Contract.Requires(that != null);
-      Contract.Requires(node != null);
+      
+      
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       VCExprNAry thatNAry = that as VCExprNAry;
       if (thatNAry != null && node.Op.Equals(thatNAry.Op))
@@ -608,8 +608,8 @@ namespace Microsoft.Boogie.Clustering
 
     public override VCExpr Visit(VCExprVar node, VCExpr that)
     {
-      Contract.Requires(that != null);
-      Contract.Requires(node != null);
+      
+      
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       if (node.Equals(that))
       {
@@ -638,8 +638,8 @@ namespace Microsoft.Boogie.Clustering
 
     public void ComputeSize(VCExpr expr, IDictionary<VCExprVar, VCExprVar> globalVars)
     {
-      Contract.Requires(expr != null);
-      Contract.Requires(Cce.NonNullDictionaryAndValues(globalVars));
+      
+      
       Traverse(expr, globalVars);
     }
 

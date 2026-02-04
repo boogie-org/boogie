@@ -40,8 +40,8 @@ public class LoopExtractor {
     List<Implementation> loopImpls,
     Dictionary<string, Dictionary<string, Block>> fullMap)
   {
-    Contract.Requires(impl != null);
-    Contract.Requires(Cce.NonNullElements(loopImpls));
+    
+    
     // Enumerate the headers
     // for each header h:
     //   create implementation p_h with

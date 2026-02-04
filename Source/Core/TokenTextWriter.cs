@@ -220,37 +220,37 @@ namespace Microsoft.Boogie
 
     public void SetToken(Absy absy)
     {
-      Contract.Requires(absy != null);
+      
       this.SetToken(t => absy.tok = t);
     }
 
     public void SetToken(IfThenElse expr)
     {
-      Contract.Requires(expr != null);
+      
       this.SetToken(t => expr.tok = t);
     }
 
     public void SetToken(FieldAccess expr)
     {
-      Contract.Requires(expr != null);
+      
       this.SetToken(t => expr.tok = t);
     }
     
     public void SetToken(FieldUpdate expr)
     {
-      Contract.Requires(expr != null);
+      
       this.SetToken(t => expr.tok = t);
     }
     
     public void SetToken(IsConstructor expr)
     {
-      Contract.Requires(expr != null);
+      
       this.SetToken(t => expr.tok = t);
     }
 
     public void SetToken(Action<IToken> setter)
     {
-      Contract.Requires(setter != null);
+      
       if (this.setTokens)
       {
         setter(this.CurrentToken);
@@ -259,7 +259,7 @@ namespace Microsoft.Boogie
 
     public void SetToken(ref IToken tok)
     {
-      Contract.Requires(tok != null);
+      
       if (this.setTokens)
       {
         tok = this.CurrentToken;
@@ -268,7 +268,7 @@ namespace Microsoft.Boogie
 
     public static string SanitizeIdentifier(string name)
     {
-      Contract.Requires(name != null);
+      
       Contract.Ensures(Contract.Result<string>() != null);
       int index = Array.BinarySearch(TokenTextWriter.BplKeywords, name);
       if (index >= 0)
@@ -297,7 +297,7 @@ namespace Microsoft.Boogie
     public TokenTextWriter(string filename, bool pretty, CoreOptions options)
       : base()
     {
-      Contract.Requires(filename != null);
+      
       this.pretty = pretty;
       this.Options = options;
       this.filename = filename;
@@ -307,7 +307,7 @@ namespace Microsoft.Boogie
     public TokenTextWriter(string filename, bool setTokens, bool pretty, CoreOptions options)
       : base()
     {
-      Contract.Requires(filename != null);
+      
       this.pretty = pretty;
       this.Options = options;
       this.filename = filename;
@@ -319,8 +319,8 @@ namespace Microsoft.Boogie
     public TokenTextWriter(string filename, TextWriter writer, bool setTokens, bool pretty, PrintOptions options)
       : base()
     {
-      Contract.Requires(writer != null);
-      Contract.Requires(filename != null);
+      
+      
       this.pretty = pretty;
       this.Options = options;
       this.filename = filename;
@@ -332,8 +332,8 @@ namespace Microsoft.Boogie
     public TokenTextWriter(string filename, TextWriter writer, bool pretty, CoreOptions options)
       : base()
     {
-      Contract.Requires(writer != null);
-      Contract.Requires(filename != null);
+      
+      
       this.pretty = pretty;
       this.Options = options;
       this.filename = filename;
@@ -348,7 +348,7 @@ namespace Microsoft.Boogie
     public TokenTextWriter(TextWriter writer, bool pretty, CoreOptions options)
       : base()
     {
-      Contract.Requires(writer != null);
+      
       this.pretty = pretty;
       this.Options = options;
       this.filename = "<no file>";
@@ -357,7 +357,7 @@ namespace Microsoft.Boogie
 
     public void Write(string text)
     {
-      Contract.Requires(text != null);
+      
       this.writer.Write(text);
       this.col += text.Length;
     }
@@ -372,44 +372,44 @@ namespace Microsoft.Boogie
 
     public void Write(string text, params object[] args)
     {
-      Contract.Requires(text != null);
+      
       this.Write(string.Format(text, args));
     }
 
     public void Write(int level, string text)
     {
-      Contract.Requires(text != null);
+      
       this.WriteIndent(level);
       this.Write(text);
     }
 
     public void Write(int level, string text, params object[] args)
     {
-      Contract.Requires(text != null);
+      
       this.WriteIndent(level);
       this.Write(text, args);
     }
 
     public void Write(Absy node, string text)
     {
-      Contract.Requires(text != null);
-      Contract.Requires(node != null);
+      
+      
       this.SetToken(node);
       this.Write(text);
     }
 
     public void Write(Absy node, string text, params string[] args)
     {
-      Contract.Requires(text != null);
-      Contract.Requires(node != null);
+      
+      
       this.SetToken(node);
       this.Write(text, args);
     }
 
     public void Write(Absy node, int level, string text)
     {
-      Contract.Requires(text != null);
-      Contract.Requires(node != null);
+      
+      
       this.WriteIndent(level);
       this.SetToken(node);
       this.Write(text);
@@ -417,8 +417,8 @@ namespace Microsoft.Boogie
 
     public void Write(Absy node, int level, string text, params object[] args)
     {
-      Contract.Requires(text != null);
-      Contract.Requires(node != null);
+      
+      
       this.WriteIndent(level);
       this.SetToken(node);
       this.Write(text, args);
@@ -433,7 +433,7 @@ namespace Microsoft.Boogie
 
     public void WriteLine(string text)
     {
-      Contract.Requires(text != null);
+      
       this.writer.WriteLine(text);
       this.line++;
       this.col = 0;
@@ -441,7 +441,7 @@ namespace Microsoft.Boogie
 
     public void WriteText(string text)
     {
-      Contract.Requires(text != null);
+      
       int processed = 0;
       while (true)
       {
@@ -461,44 +461,44 @@ namespace Microsoft.Boogie
 
     public void WriteLine(string text, params object[] args)
     {
-      Contract.Requires(text != null);
+      
       this.WriteLine(string.Format(text, args));
     }
 
     public void WriteLine(int level, string text)
     {
-      Contract.Requires(text != null);
+      
       this.WriteIndent(level);
       this.WriteLine(text);
     }
 
     public void WriteLine(int level, string text, params object[] args)
     {
-      Contract.Requires(text != null);
+      
       this.WriteIndent(level);
       this.WriteLine(text, args);
     }
 
     public void WriteLine(Absy node, string text)
     {
-      Contract.Requires(text != null);
-      Contract.Requires(node != null);
+      
+      
       this.SetToken(node);
       this.WriteLine(text);
     }
 
     public void WriteLine(Absy node, int level, string text)
     {
-      Contract.Requires(text != null);
-      Contract.Requires(node != null);
+      
+      
       this.SetToken(node);
       this.WriteLine(level, text);
     }
 
     public void WriteLine(Absy node, int level, string text, params object[] args)
     {
-      Contract.Requires(text != null);
-      Contract.Requires(node != null);
+      
+      
       this.SetToken(node);
       this.WriteLine(level, text, args);
     }

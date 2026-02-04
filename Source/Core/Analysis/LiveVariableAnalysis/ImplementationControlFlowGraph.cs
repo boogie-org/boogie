@@ -75,7 +75,7 @@ public class ImplementationControlFlowGraph
   [NotDelayed]
   public ImplementationControlFlowGraph(CoreOptions options, Implementation impl)
   {
-    Contract.Requires(impl != null);
+    
     this.graph = new Graph<Block>();
     this.procsCalled = new Dictionary<string, List<Block>>();
     this.nodes = new HashSet<Block>();
@@ -101,7 +101,7 @@ public class ImplementationControlFlowGraph
 
   private void Initialize(Implementation impl)
   {
-    Contract.Requires(impl != null);
+    
     addSource(impl.Blocks[0]);
     graph.AddSource(impl.Blocks[0]);
 
@@ -167,7 +167,7 @@ public class ImplementationControlFlowGraph
 
   public int getPriority(Block b)
   {
-    Contract.Requires(b != null);
+    
     if (priority.ContainsKey(b))
     {
       return priority[b];
@@ -178,21 +178,21 @@ public class ImplementationControlFlowGraph
 
   private void addSource(Block b)
   {
-    Contract.Requires(b != null);
+    
     registerNode(b);
     this.srcNodes.Add(b);
   }
 
   private void addExit(Block b)
   {
-    Contract.Requires(b != null);
+    
     registerNode(b);
     this.exitNodes.Add(b);
   }
 
   private void registerNode(Block b)
   {
-    Contract.Requires(b != null);
+    
     if (!succEdges.ContainsKey(b))
     {
       succEdges.Add(b, new HashSet<Block>());
@@ -208,8 +208,8 @@ public class ImplementationControlFlowGraph
 
   private void addEdge(Block src, Block tgt)
   {
-    Contract.Requires(tgt != null);
-    Contract.Requires(src != null);
+    
+    
     registerNode(src);
     registerNode(tgt);
 

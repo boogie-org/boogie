@@ -68,9 +68,9 @@ public class NAryExpr : Expr
   public NAryExpr(IToken tok, IAppliable fun, IList<Expr> args, bool immutable = false)
     : base(tok, immutable)
   {
-    Contract.Requires(tok != null);
-    Contract.Requires(fun != null);
-    Contract.Requires(args != null);
+    
+    
+    
     _Fun = fun;
     Contract.Assert(Contract.ForAll(0, args.Count, index => args[index] != null));
     if (immutable)

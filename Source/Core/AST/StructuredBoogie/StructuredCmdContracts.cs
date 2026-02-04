@@ -8,7 +8,7 @@ public abstract class StructuredCmdContracts : StructuredCmd
 {
   public override void Emit(TokenTextWriter stream, int level)
   {
-    Contract.Requires(stream != null);
+    
     throw new NotImplementedException();
   }
 

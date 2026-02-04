@@ -79,7 +79,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
 
     public void RunAbstractInterpretation(Program program)
     {
-      Contract.Requires(program != null);
+      
 
       Helpers.ExtraTraceInformation(options, "Starting abstract interpretation");
 
@@ -124,7 +124,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
 
     private static Dictionary<Procedure, Implementation[]> ComputeProcImplMap(Program program)
     {
-      Contract.Requires(program != null);
+      
       // Since implementations call procedures (impl. signatures) 
       // rather than directly calling other implementations, we first
       // need to compute which implementations implement which
@@ -142,9 +142,9 @@ namespace Microsoft.Boogie.AbstractInterpretation
     public void ComputeProgramInvariants(Program program,
       Dictionary<Procedure, Implementation[]> procedureImplementations, NativeLattice lattice)
     {
-      Contract.Requires(program != null);
-      Contract.Requires(procedureImplementations != null);
-      Contract.Requires(lattice != null);
+      
+      
+      
 
       // Gather all the axioms to create the initial lattice element
       // Differently stated, it is the \alpha from axioms (i.e. first order formulae) to the underlyng abstract domain
@@ -269,8 +269,8 @@ namespace Microsoft.Boogie.AbstractInterpretation
 
     void Instrument(Implementation impl, NativeLattice.Element[] pre, NativeLattice.Element[] post)
     {
-      Contract.Requires(impl != null);
-      Contract.Requires(pre != null);
+      
+      
 
       foreach (var b in impl.Blocks)
       {
@@ -320,9 +320,9 @@ namespace Microsoft.Boogie.AbstractInterpretation
     /// </summary>
     NativeLattice.Element Step(NativeLattice lattice, Cmd cmd, NativeLattice.Element elmt)
     {
-      Contract.Requires(lattice != null);
-      Contract.Requires(cmd != null);
-      Contract.Requires(elmt != null);
+      
+      
+      
       Contract.Ensures(Contract.Result<NativeLattice.Element>() != null);
 
       if (cmd is AssignCmd)
@@ -394,7 +394,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
     /// </summary>
     public static IEnumerable<Expr> Conjuncts(Expr expr)
     {
-      Contract.Requires(expr != null);
+      
 
       var e = expr as NAryExpr;
       if (e != null && e.Fun.FunctionName == "&&")

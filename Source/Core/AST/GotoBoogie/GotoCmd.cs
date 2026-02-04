@@ -22,17 +22,17 @@ public class GotoCmd : TransferCmd, ICarriesAttributes
   public GotoCmd(IToken tok, List<string> labels)
     : base(tok)
   {
-    Contract.Requires(tok != null);
-    Contract.Requires(labels != null);
+    
+    
     this.LabelNames = labels;
   }
 
   public GotoCmd(IToken tok, List<string> labels, List<Block> blocks)
     : base(tok)
   {
-    Contract.Requires(tok != null);
-    Contract.Requires(labels != null);
-    Contract.Requires(blocks != null);
+    
+    
+    
     Debug.Assert(labels.Count == blocks.Count);
     for (int i = 0; i < labels.Count; i++)
     {
@@ -47,8 +47,8 @@ public class GotoCmd : TransferCmd, ICarriesAttributes
     : base(tok)
   {
     //requires (blockSeq[i] != null ==> blockSeq[i].Label != null);
-    Contract.Requires(tok != null);
-    Contract.Requires(blocks != null);
+    
+    
     var labels = new List<string>();
     foreach (var block in blocks)
     {
@@ -66,20 +66,20 @@ public class GotoCmd : TransferCmd, ICarriesAttributes
     
   public void AddTarget(Block b)
   {
-    Contract.Requires(b != null);
-    Contract.Requires(b.Label != null);
-    Contract.Requires(this.LabelTargets != null);
-    Contract.Requires(this.LabelNames != null);
+    
+    
+    
+    
     this.LabelTargets.Add(b);
     this.LabelNames.Add(b.Label);
   }
 
   public void AddTargets(IEnumerable<Block> blocks)
   {
-    Contract.Requires(blocks != null);
-    Contract.Requires(Cce.NonNullElements(blocks));
-    Contract.Requires(this.LabelTargets != null);
-    Contract.Requires(this.LabelNames != null);
+    
+    
+    
+    
     foreach (var block in blocks)
     {
       AddTarget(block);

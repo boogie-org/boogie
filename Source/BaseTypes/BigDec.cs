@@ -302,7 +302,7 @@ namespace Microsoft.BaseTypes
     [Pure]
     public static string Zeros(int n)
     {
-      Contract.Requires(0 <= n);
+      
       if (n <= 10)
       {
         var tenZeros = "0000000000";

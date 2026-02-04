@@ -40,7 +40,7 @@ namespace Microsoft.Boogie.VCExprAST
     
     protected ScopedNamer(ScopedNamer namer)
     {
-      Contract.Requires(namer != null);
+      
 
       Spacer = namer.Spacer;
       GlobalNames = new Dictionary<Object, string>(namer.GlobalNames);
@@ -101,8 +101,8 @@ namespace Microsoft.Boogie.VCExprAST
 
     protected string NextFreeName(Object thing, string baseName)
     {
-      Contract.Requires(baseName != null);
-      Contract.Requires(thing != null);
+      
+      
       Contract.Ensures(Contract.Result<string>() != null);
       string candidate;
 
@@ -134,7 +134,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       get
       {
-        Contract.Requires(thingie != null);
+        
 
         string res;
         for (int i = LocalNames.Count - 1; i >= 0; --i)
@@ -152,7 +152,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     public string Lookup(Object thingie)
     {
-      Contract.Requires(thingie != null);
+      
       Contract.Ensures(Contract.Result<string>() != null);
       if (GlobalPlusLocalNames.TryGetValue(thingie, out var name))
       {
@@ -164,8 +164,8 @@ namespace Microsoft.Boogie.VCExprAST
 
     public virtual string GetName(object thing, string inherentName)
     {
-      Contract.Requires(inherentName != null);
-      Contract.Requires(thing != null);
+      
+      
       Contract.Ensures(Contract.Result<string>() != null);
       string result = this[thing];
       if (result != null)
@@ -199,8 +199,8 @@ namespace Microsoft.Boogie.VCExprAST
 
     public virtual string GetLocalName(Object thing, string inherentName)
     {
-      Contract.Requires(inherentName != null);
-      Contract.Requires(thing != null);
+      
+      
       Contract.Ensures(Contract.Result<string>() != null);
       if (!boogieDeterminedNames.Contains(inherentName)) {
         inherentName = GetModifiedName(inherentName);

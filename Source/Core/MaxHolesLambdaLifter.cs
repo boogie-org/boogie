@@ -81,7 +81,7 @@ namespace Core
 
     public override Expr VisitNAryExpr(NAryExpr node)
     {
-      Contract.Requires(node != null);
+      
       if (_templates.ContainsKey(node))
       {
         return node;
@@ -116,7 +116,7 @@ namespace Core
 
     public override Expr VisitIdentifierExpr(IdentifierExpr node)
     {
-      Contract.Requires(node != null);
+      
       if (_templates.ContainsKey(node))
       {
         return node;
@@ -137,7 +137,7 @@ namespace Core
 
     public override Expr VisitLiteralExpr(LiteralExpr node)
     {
-      Contract.Requires(node != null);
+      
       if (_templates.ContainsKey(node))
       {
         return node;
@@ -150,7 +150,7 @@ namespace Core
 
     public override Expr VisitLetExpr(LetExpr node)
     {
-      Contract.Requires(node != null);
+      
       if (_templates.ContainsKey(node))
       {
         return node;
@@ -187,7 +187,7 @@ namespace Core
 
     public override Expr VisitForallExpr(ForallExpr node)
     {
-      Contract.Requires(node != null);
+      
       if (_templates.ContainsKey(node))
       {
         return node;
@@ -223,7 +223,7 @@ namespace Core
 
     public override Expr VisitExistsExpr(ExistsExpr node)
     {
-      Contract.Requires(node != null);
+      
       if (_templates.ContainsKey(node))
       {
         return node;
@@ -259,7 +259,7 @@ namespace Core
 
     private List<Expr> QKeyValueReplacements(QKeyValue node)
     {
-      Contract.Requires(node != null);
+      
       var ts = (from e in node.Params where e != null && e is Expr select _templates[e as Expr]).ToList();
       var replacements = new List<Expr>();
       foreach (LambdaLiftingTemplate llt in ts)
@@ -285,7 +285,7 @@ namespace Core
 
     public override Trigger VisitTrigger(Trigger node)
     {
-      Contract.Requires(node != null);
+      
       if (_templates.ContainsKey(node))
       {
         return node;
@@ -451,7 +451,7 @@ namespace Core
 
     public override Variable VisitVariable(Variable node)
     {
-      Contract.Requires(node != null);
+      
       if (_templates.ContainsKey(node))
       {
         return node;
@@ -474,7 +474,7 @@ namespace Core
 
     public override Expr VisitOldExpr(OldExpr node)
     {
-      Contract.Requires(node != null);
+      
       if (_templates.ContainsKey(node))
       {
         return node;

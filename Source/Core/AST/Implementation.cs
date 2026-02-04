@@ -82,7 +82,7 @@ public class Implementation : DeclWithFormals
 
   public void AddAssertionChecksum(byte[] checksum)
   {
-    Contract.Requires(checksum != null);
+    
 
     if (AssertionChecksums != null)
     {
@@ -94,7 +94,7 @@ public class Implementation : DeclWithFormals
 
   public bool IsAssertionChecksumInCachedSnapshot(byte[] checksum)
   {
-    Contract.Requires(AssertionChecksumsInCachedSnapshot != null);
+    
 
     return AssertionChecksumsInCachedSnapshot.Contains(checksum);
   }
@@ -217,14 +217,14 @@ public class Implementation : DeclWithFormals
 
   public bool IsErrorChecksumInCachedSnapshot(byte[] checksum)
   {
-    Contract.Requires(ErrorChecksumToCachedError != null);
+    
 
     return ErrorChecksumToCachedError.ContainsKey(checksum);
   }
 
   public void SetErrorChecksumToCachedError(IEnumerable<Tuple<byte[], byte[], object>> errors)
   {
-    Contract.Requires(errors != null);
+    
 
     ErrorChecksumToCachedError = new Dictionary<byte[], object>(ChecksumComparer.Default);
     foreach (var kv in errors)
@@ -246,7 +246,7 @@ public class Implementation : DeclWithFormals
   {
     get
     {
-      Contract.Requires(ErrorChecksumToCachedError != null);
+      
 
       return ErrorChecksumToCachedError.Any();
     }
@@ -305,7 +305,7 @@ public class Implementation : DeclWithFormals
 
   public Expr ConjunctionOfInjectedAssumptionVariables(Dictionary<Variable, Expr> incarnationMap, out bool isTrue)
   {
-    Contract.Requires(incarnationMap != null);
+    
 
     var vars = RelevantInjectedAssumptionVariables(incarnationMap).Select(v => incarnationMap[v]).ToList();
     isTrue = vars.Count == 0;
@@ -339,13 +339,13 @@ public class Implementation : DeclWithFormals
     List<Variable> outParams, List<Variable> localVariables, [Captured] StmtList structuredStmts, QKeyValue kv)
     : this(tok, name, typeParams, inParams, outParams, localVariables, structuredStmts, kv, new Errors())
   {
-    Contract.Requires(structuredStmts != null);
-    Contract.Requires(localVariables != null);
-    Contract.Requires(outParams != null);
-    Contract.Requires(inParams != null);
-    Contract.Requires(typeParams != null);
-    Contract.Requires(name != null);
-    Contract.Requires(tok != null);
+    
+    
+    
+    
+    
+    
+    
     //:this(tok, name, typeParams, inParams, outParams, localVariables, structuredStmts, null, new Errors());
   }
 
@@ -353,13 +353,13 @@ public class Implementation : DeclWithFormals
     List<Variable> outParams, List<Variable> localVariables, [Captured] StmtList structuredStmts)
     : this(tok, name, typeParams, inParams, outParams, localVariables, structuredStmts, null, new Errors())
   {
-    Contract.Requires(structuredStmts != null);
-    Contract.Requires(localVariables != null);
-    Contract.Requires(outParams != null);
-    Contract.Requires(inParams != null);
-    Contract.Requires(typeParams != null);
-    Contract.Requires(name != null);
-    Contract.Requires(tok != null);
+    
+    
+    
+    
+    
+    
+    
     //:this(tok, name, typeParams, inParams, outParams, localVariables, structuredStmts, null, new Errors());
   }
 
@@ -367,14 +367,14 @@ public class Implementation : DeclWithFormals
     List<Variable> outParams, List<Variable> localVariables, [Captured] StmtList structuredStmts, Errors errorHandler)
     : this(tok, name, typeParams, inParams, outParams, localVariables, structuredStmts, null, errorHandler)
   {
-    Contract.Requires(errorHandler != null);
-    Contract.Requires(structuredStmts != null);
-    Contract.Requires(localVariables != null);
-    Contract.Requires(outParams != null);
-    Contract.Requires(inParams != null);
-    Contract.Requires(typeParams != null);
-    Contract.Requires(name != null);
-    Contract.Requires(tok != null);
+    
+    
+    
+    
+    
+    
+    
+    
     //:this(tok, name, typeParams, inParams, outParams, localVariables, structuredStmts, null, errorHandler);
   }
 
@@ -389,14 +389,14 @@ public class Implementation : DeclWithFormals
     Errors errorHandler)
     : base(tok, name, typeParams, inParams, outParams)
   {
-    Contract.Requires(tok != null);
-    Contract.Requires(name != null);
-    Contract.Requires(typeParams != null);
-    Contract.Requires(inParams != null);
-    Contract.Requires(outParams != null);
-    Contract.Requires(localVariables != null);
-    Contract.Requires(structuredStmts != null);
-    Contract.Requires(errorHandler != null);
+    
+    
+    
+    
+    
+    
+    
+    
     LocVars = localVariables;
     StructuredStmts = structuredStmts;
     BigBlocksResolutionContext ctx = new BigBlocksResolutionContext(structuredStmts, errorHandler);
@@ -410,13 +410,13 @@ public class Implementation : DeclWithFormals
     List<Variable> outParams, List<Variable> localVariables, [Captured] List<Block> block)
     : this(tok, name, typeParams, inParams, outParams, localVariables, block, null)
   {
-    Contract.Requires(Cce.NonNullElements(block));
-    Contract.Requires(localVariables != null);
-    Contract.Requires(outParams != null);
-    Contract.Requires(inParams != null);
-    Contract.Requires(typeParams != null);
-    Contract.Requires(name != null);
-    Contract.Requires(tok != null);
+    
+    
+    
+    
+    
+    
+    
     //:this(tok, name, typeParams, inParams, outParams, localVariables, block, null);
   }
 
@@ -430,11 +430,11 @@ public class Implementation : DeclWithFormals
     QKeyValue kv)
     : base(tok, name, typeParams, inParams, outParams)
   {
-    Contract.Requires(name != null);
-    Contract.Requires(inParams != null);
-    Contract.Requires(outParams != null);
-    Contract.Requires(localVariables != null);
-    Contract.Requires(Cce.NonNullElements(blocks));
+    
+    
+    
+    
+    
     LocVars = localVariables;
     Blocks = blocks;
     BlockPredecessorsComputed = false;
@@ -738,10 +738,10 @@ public class Implementation : DeclWithFormals
   void MatchFormals(List<Variable> implFormals, List<Variable> procFormals, string inout,
     TypecheckingContext tc)
   {
-    Contract.Requires(implFormals != null);
-    Contract.Requires(procFormals != null);
-    Contract.Requires(inout != null);
-    Contract.Requires(tc != null);
+    
+    
+    
+    
     if (implFormals.Count != procFormals.Count)
     {
       tc.Error(this, "mismatched number of {0}-parameters in procedure implementation: {1}",
@@ -874,7 +874,7 @@ public class Implementation : DeclWithFormals
   /// </summary>
   public ICollection<Block> GetConnectedComponents(Block startingBlock)
   {
-    Contract.Requires(startingBlock != null);
+    
     Contract.Ensures(Cce.NonNullElements(Contract.Result<ICollection<Block>>(), true));
     Contract.Assert(this.Blocks.Contains(startingBlock));
 
@@ -948,7 +948,7 @@ public class Implementation : DeclWithFormals
   /// </summary>
   private IEnumerable /*<Block!>*/ Successors(Block node)
   {
-    Contract.Requires(node != null);
+    
     Contract.Ensures(Contract.Result<IEnumerable>() != null);
 
     GotoCmd gotoCmd = node.TransferCmd as GotoCmd;
@@ -975,7 +975,7 @@ public class Implementation : DeclWithFormals
   /// </summary>
   private IEnumerable /*<Block!>*/ Predecessors(Block node)
   {
-    Contract.Requires(node != null);
+    
     Contract.Ensures(Contract.Result<IEnumerable>() != null);
 
     Contract.Assert(this.BlockPredecessorsComputed);
@@ -1110,7 +1110,7 @@ public class Implementation : DeclWithFormals
     // Returns attributes identical to Attributes, but:
     // - reversed (for ease of implementation; should not matter)
     // - with the value for "captureState" replaced by a fresh value
-    Contract.Requires(QKeyValue.FindStringAttribute(Attributes, "captureState") != null);
+    
     string FreshValue = QKeyValue.FindStringAttribute(Attributes, "captureState") + "$renamed$" + Name + "$" +
                         FreshCounter;
 

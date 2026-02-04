@@ -9,9 +9,9 @@ namespace Microsoft.Boogie
   {
     public static List<Block> UnrollLoops(Block start, int unrollMaxDepth, bool soundLoopUnrolling)
     {
-      Contract.Requires(start != null);
+      
 
-      Contract.Requires(0 <= unrollMaxDepth);
+      
       Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Block>>()));
       Dictionary<Block, GraphNode> gd = new Dictionary<Block, GraphNode>();
       HashSet<Block> beingVisited = new HashSet<Block>();
@@ -57,7 +57,7 @@ namespace Microsoft.Boogie
 
     private static System.Collections.IEnumerable Succs(GraphNode n)
     {
-      Contract.Requires(n != null);
+      
       Contract.Ensures(Contract.Result<System.Collections.IEnumerable>() != null);
 
       List<GraphNode>
@@ -69,7 +69,7 @@ namespace Microsoft.Boogie
 
     private static System.Collections.IEnumerable Preds(GraphNode n)
     {
-      Contract.Requires(n != null);
+      
       Contract.Ensures(Contract.Result<System.Collections.IEnumerable>() != null);
 
       return n.Predecessors;
@@ -107,15 +107,15 @@ namespace Microsoft.Boogie
 
       GraphNode(Block b, List<Cmd> body)
       {
-        Contract.Requires(body != null);
-        Contract.Requires(b != null);
+        
+        
         this.Block = b;
         this.Body = body;
       }
 
       static List<Cmd> GetOptimizedBody(List<Cmd> cmds)
       {
-        Contract.Requires(cmds != null);
+        
         Contract.Ensures(Contract.Result<List<Cmd>>() != null);
         int n = 0;
         foreach (Cmd c in cmds)
@@ -141,9 +141,9 @@ namespace Microsoft.Boogie
       public static GraphNode ComputeGraphInfo(GraphNode from, Block b,
         Dictionary<Block, GraphNode> gd, HashSet<Block> beingVisited)
       {
-        Contract.Requires(beingVisited != null);
-        Contract.Requires(b != null);
-        Contract.Requires(Cce.NonNullDictionaryAndValues(gd));
+        
+        
+        
         Contract.Ensures(Contract.Result<GraphNode>() != null);
         if (gd.TryGetValue(b, out var g))
         {
@@ -230,10 +230,10 @@ namespace Microsoft.Boogie
       Dictionary<GraphNode, SCC<GraphNode>> scc, List<Block> newBlockSeqGlobal)
       : base()
     {
-      Contract.Requires(Cce.NonNullElements(newBlockSeqGlobal));
+      
       Contract.Requires(Cce.NonNullDictionaryAndValues(scc) &&
                         Contract.ForAll(scc.Values, v => Cce.NonNullElements(v)));
-      Contract.Requires(0 <= unrollMaxDepth);
+      
       this.newBlockSeqGlobal = newBlockSeqGlobal;
       this.c = unrollMaxDepth;
       this.containingSCC = scc;
@@ -247,10 +247,10 @@ namespace Microsoft.Boogie
     private LoopUnroll(int unrollMaxDepth, bool soundLoopUnrolling,
       Dictionary<GraphNode, SCC<GraphNode>> scc, List<Block> newBlockSeqGlobal, LoopUnroll head)
     {
-      Contract.Requires(head != null);
-      Contract.Requires(Cce.NonNullDictionaryAndValues(scc));
-      Contract.Requires(Cce.NonNullElements(newBlockSeqGlobal));
-      Contract.Requires(0 <= unrollMaxDepth);
+      
+      
+      
+      
       this.newBlockSeqGlobal = newBlockSeqGlobal;
       this.c = unrollMaxDepth;
       this.soundLoopUnrolling = soundLoopUnrolling;
@@ -264,7 +264,7 @@ namespace Microsoft.Boogie
 
     Block Visit(GraphNode node)
     {
-      Contract.Requires(node != null);
+      
       Contract.Ensures(Contract.Result<Block>() != null);
       Block orig = node.Block;
       if (newBlocks.TryGetValue(orig, out var nw))

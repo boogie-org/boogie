@@ -23,11 +23,11 @@ public class ReturnCounterexample : Counterexample
     : base(options, trace, augmentedTrace, model, mvInfo, context, proofRun, failingAssertEnsures)
   {
     var failingEnsures = failingAssertEnsures.Ensures;
-    Contract.Requires(trace != null);
-    Contract.Requires(context != null);
-    Contract.Requires(failingReturn != null);
-    Contract.Requires(failingEnsures != null);
-    Contract.Requires(!failingEnsures.Free);
+    
+    
+    
+    
+    
     this.FailingReturn = failingReturn;
     this.FailingEnsures = failingEnsures;
     this.checksum = checksum;

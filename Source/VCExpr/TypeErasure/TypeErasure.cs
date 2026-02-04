@@ -35,9 +35,9 @@ namespace Microsoft.Boogie.TypeErasure
 
     public TypeCtorRepr(Function ctor, List<Function> dtors)
     {
-      Contract.Requires(ctor != null);
-      Contract.Requires(Cce.NonNullElements(dtors));
-      Contract.Requires(ctor.InParams.Count == dtors.Count);
+      
+      
+      
       this.Ctor = ctor;
       this.Dtors = dtors;
     }
@@ -71,7 +71,7 @@ namespace Microsoft.Boogie.TypeErasure
 
     public override Type TypeAfterErasure(Type type)
     {
-      Contract.Requires(type != null);
+      
       Contract.Ensures(Contract.Result<Type>() != null);
 
       throw new NotImplementedException();
@@ -79,14 +79,14 @@ namespace Microsoft.Boogie.TypeErasure
 
     public override bool UnchangedType(Type type)
     {
-      Contract.Requires(type != null);
+      
       throw new NotImplementedException();
     }
 
     protected override void AddVarTypeAxiom(VCExprVar var, Type originalType)
     {
-      Contract.Requires(var != null);
-      Contract.Requires(originalType != null);
+      
+      
       throw new NotImplementedException();
     }
 
@@ -115,7 +115,7 @@ namespace Microsoft.Boogie.TypeErasure
     public TypeAxiomBuilderIntBoolU(VCExpressionGenerator gen)
       : base(gen)
     {
-      Contract.Requires(gen != null);
+      
 
       TypeCasts = new Dictionary<Type, TypeCastSet>();
     }
@@ -124,7 +124,7 @@ namespace Microsoft.Boogie.TypeErasure
     internal TypeAxiomBuilderIntBoolU(TypeAxiomBuilderIntBoolU builder)
       : base(builder)
     {
-      Contract.Requires(builder != null);
+      
 
       TypeCasts = new Dictionary<Type, TypeCastSet>(builder.TypeCasts);
     }
@@ -144,8 +144,8 @@ namespace Microsoft.Boogie.TypeErasure
     protected VCExpr GenReverseCastEq(Function castToU, Function castFromU, out VCExprVar var,
       out List<VCTrigger> triggers)
     {
-      Contract.Requires((castFromU != null));
-      Contract.Requires((castToU != null));
+      
+      
       Contract.Ensures((Cce.NonNullElements(Contract.ValueAtReturn(out triggers))));
       Contract.Ensures(Contract.ValueAtReturn(out var) != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
@@ -175,7 +175,7 @@ namespace Microsoft.Boogie.TypeErasure
 
     private TypeCastSet GetTypeCasts(Type type)
     {
-      Contract.Requires(type != null);
+      
       if (!TypeCasts.TryGetValue(type, out var res))
       {
         Function
@@ -197,16 +197,16 @@ namespace Microsoft.Boogie.TypeErasure
     [Pure]
     public Function CastTo(Type type)
     {
-      Contract.Requires(type != null);
-      Contract.Requires(UnchangedType(type));
+      
+      
       Contract.Ensures(Contract.Result<Function>() != null);
       return GetTypeCasts(type).CastFromU;
     }
 
     public Function CastFrom(Type type)
     {
-      Contract.Requires(type != null);
-      Contract.Requires((UnchangedType(type)));
+      
+      
       Contract.Ensures(Contract.Result<Function>() != null);
       return GetTypeCasts(type).CastToU;
     }
@@ -229,8 +229,8 @@ namespace Microsoft.Boogie.TypeErasure
 
       public TypeCastSet(Function castToU, Function castFromU)
       {
-        Contract.Requires(castFromU != null);
-        Contract.Requires(castToU != null);
+        
+        
         CastToU = castToU;
         CastFromU = castFromU;
       }
@@ -238,7 +238,7 @@ namespace Microsoft.Boogie.TypeErasure
 
     public bool IsCast(Function fun)
     {
-      Contract.Requires(fun != null);
+      
       if (fun.InParams.Count != 1)
       {
         return false;
@@ -304,10 +304,10 @@ namespace Microsoft.Boogie.TypeErasure
 
     public override VCExpr Cast(VCExpr expr, Type toType)
     {
-      Contract.Requires(toType != null);
-      Contract.Requires(expr != null);
-      Contract.Requires((expr.Type.Equals(U) || UnchangedType(expr.Type)));
-      Contract.Requires((toType.Equals(U) || UnchangedType(toType)));
+      
+      
+      
+      
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       if (expr.Type.Equals(toType))
       {
@@ -327,8 +327,8 @@ namespace Microsoft.Boogie.TypeErasure
 
     public List<VCExpr> CastSeq(List<VCExpr> exprs, Type toType)
     {
-      Contract.Requires(toType != null);
-      Contract.Requires(Cce.NonNullElements(exprs));
+      
+      
       Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCExpr>>()));
       List<VCExpr>
         res = new List<VCExpr>(exprs.Count);
@@ -352,8 +352,8 @@ namespace Microsoft.Boogie.TypeErasure
 
     protected override VCExpr GenReverseCastAxiom(Function castToU, Function castFromU)
     {
-      Contract.Requires(castToU != null);
-      Contract.Requires(castFromU != null);
+      
+      
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       throw new NotImplementedException();
@@ -361,8 +361,8 @@ namespace Microsoft.Boogie.TypeErasure
 
     protected override VCExpr GenCastTypeAxioms(Function castToU, Function castFromU)
     {
-      Contract.Requires(castFromU != null);
-      Contract.Requires(castToU != null);
+      
+      
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       throw new NotImplementedException();
@@ -406,8 +406,8 @@ namespace Microsoft.Boogie.TypeErasure
     protected override void GenSelectStoreFunctions(MapType abstractedType, TypeCtorDecl synonymDecl,
       out Function select, out Function store)
     {
-      Contract.Requires(abstractedType != null);
-      Contract.Requires(synonymDecl != null);
+      
+      
       Contract.Ensures(Contract.ValueAtReturn(out select) != null);
       Contract.Ensures(Contract.ValueAtReturn(out store) != null);
 

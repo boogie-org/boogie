@@ -18,8 +18,8 @@ namespace Microsoft.Boogie.SMTLib
 
     public OptionValue(string option, string value)
     {
-      Contract.Requires(option != null);
-      Contract.Requires(value != null);
+      
+      
       Option = option;
       Value = value;
     }

@@ -27,9 +27,9 @@ public class CommandLineParseState
 
   public CommandLineParseState(string[] args, string toolName)
   {
-    Contract.Requires(args != null);
-    Contract.Requires(Contract.ForAll(0, args.Length, i => args[i] != null));
-    Contract.Requires(toolName != null);
+    
+    
+    
     Contract.Ensures(this.args == args);
     this.ToolName = toolName;
     this.s = null; // set later by client
@@ -42,7 +42,7 @@ public class CommandLineParseState
 
   public bool CheckBooleanFlag(string flagName, Action<bool> setFlag, bool valueWhenPresent = true)
   {
-    Contract.Requires(flagName != null);
+    
     //modifies nextIndex, encounteredErrors, Console.Error.*;
     bool flagPresent = false;
 
@@ -57,7 +57,7 @@ public class CommandLineParseState
 
   public bool CheckBooleanFlag(string flagName, ref bool flag, bool valueWhenPresent)
   {
-    Contract.Requires(flagName != null);
+    
     //modifies nextIndex, encounteredErrors, Console.Error.*;
     bool flagPresent = false;
 
@@ -72,7 +72,7 @@ public class CommandLineParseState
 
   public bool CheckBooleanFlag(string flagName, ref bool flag)
   {
-    Contract.Requires(flagName != null);
+    
     //modifies nextIndex, encounteredErrors, Console.Error.*;
     return CheckBooleanFlag(flagName, ref flag, true);
   }
@@ -114,7 +114,7 @@ public class CommandLineParseState
   {
     filter ??= a => 0 <= a;
 
-    Contract.Requires(filter != null);
+    
 
     if (this.ConfirmArgumentCount(1))
     {
@@ -223,7 +223,7 @@ public class CommandLineParseState
   /// </summary>
   public bool GetIntArgument(ref int arg, Predicate<int> filter)
   {
-    Contract.Requires(filter != null);
+    
 
     if (this.ConfirmArgumentCount(1))
     {
@@ -261,7 +261,7 @@ public class CommandLineParseState
   /// </summary>
   public bool GetIntArgument(Action<int> setArg, int limit)
   {
-    Contract.Requires(this.i < args.Length);
+    
     int a = 0;
     if (!GetIntArgument(x => a = x))
     {
@@ -284,7 +284,7 @@ public class CommandLineParseState
   /// </summary>
   public bool GetIntArgument(ref int arg, int limit)
   {
-    Contract.Requires(this.i < args.Length);
+    
     Contract.Ensures(Math.Min(arg, 0) <= Contract.ValueAtReturn(out arg) &&
                      Contract.ValueAtReturn(out arg) < limit);
     //modifies nextIndex, encounteredErrors, Console.Error.*;
@@ -343,7 +343,7 @@ public class CommandLineParseState
 
   public bool ConfirmArgumentCount(int argCount)
   {
-    Contract.Requires(0 <= argCount);
+    
     //modifies nextIndex, encounteredErrors, Console.Error.*;
     Contract.Ensures(Contract.Result<bool>() ==
                      (!(hasColonArgument && argCount != 1) && !(args.Length < i + argCount)));
@@ -368,8 +368,8 @@ public class CommandLineParseState
 
   public virtual void Error(string message, params string[] args)
   {
-    Contract.Requires(args != null);
-    Contract.Requires(message != null);
+    
+    
     //modifies encounteredErrors, Console.Error.*;
     Console.Error.WriteLine("{0}: Error: {1}", ToolName, String.Format(message, args));
     EncounteredErrors = true;

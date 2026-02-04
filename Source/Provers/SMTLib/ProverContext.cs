@@ -24,36 +24,36 @@ namespace Microsoft.Boogie
 
     protected virtual void ProcessDeclaration(Declaration decl)
     {
-      Contract.Requires(decl != null);
+      
     }
 
     public virtual void DeclareType(TypeCtorDecl t, string attributes)
     {
-      Contract.Requires(t != null);
+      
       ProcessDeclaration(t);
     }
 
     public virtual void DeclareConstant(Constant c, bool uniq, string attributes)
     {
-      Contract.Requires(c != null);
+      
       ProcessDeclaration(c);
     }
 
     public virtual void DeclareFunction(Function f, string attributes)
     {
-      Contract.Requires(f != null);
+      
       ProcessDeclaration(f);
     }
 
     public virtual void AddAxiom(Axiom a, string attributes)
     {
-      Contract.Requires(a != null);
+      
       ProcessDeclaration(a);
     }
 
     public virtual void DeclareGlobalVariable(GlobalVariable v, string attributes)
     {
-      Contract.Requires(v != null);
+      
       ProcessDeclaration(v);
     }
 
@@ -146,8 +146,8 @@ namespace Microsoft.Boogie
     public DeclFreeProverContext(VCExpressionGenerator gen,
       VCGenerationOptions genOptions, SMTLibOptions options)
     {
-      Contract.Requires(gen != null);
-      Contract.Requires(genOptions != null);
+      
+      
       this.gen = gen;
       this.genOptions = genOptions;
       this.options = options;
@@ -174,7 +174,7 @@ namespace Microsoft.Boogie
 
     protected DeclFreeProverContext(DeclFreeProverContext ctxt)
     {
-      Contract.Requires(ctxt != null);
+      
       this.options = ctxt.options;
       this.gen = ctxt.gen;
       this.genOptions = ctxt.genOptions;
@@ -316,7 +316,7 @@ namespace Microsoft.Boogie
 
     public override string Lookup(VCExprVar var)
     {
-      Contract.Requires(var != null);
+      
       Contract.Ensures(Contract.Result<string>() != null);
 
       throw new NotImplementedException();
@@ -324,7 +324,7 @@ namespace Microsoft.Boogie
 
     public override string translate(VCExpr expr, int polarity)
     {
-      Contract.Requires(expr != null);
+      
 
       Contract.Ensures(Contract.Result<string>() != null);
 

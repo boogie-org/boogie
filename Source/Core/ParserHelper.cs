@@ -22,8 +22,8 @@ namespace Microsoft.Boogie
     // "arg" is assumed to be trimmed
     private static bool IfdefConditionSaysToInclude(string arg, List<string> defines)
     {
-      Contract.Requires(arg != null);
-      Contract.Requires(Cce.NonNullElements(defines));
+      
+      
       bool sense = true;
       while (arg.StartsWith("!"))
       {
@@ -36,8 +36,8 @@ namespace Microsoft.Boogie
 
     public static string Fill(Stream stream, List<string> defines)
     {
-      Contract.Requires(stream != null);
-      Contract.Requires(Cce.NonNullElements(defines));
+      
+      
       Contract.Ensures(Contract.Result<string>() != null);
       StreamReader
         reader = new StreamReader(stream);
@@ -46,8 +46,8 @@ namespace Microsoft.Boogie
 
     public static string Fill(TextReader reader, List<string> defines)
     {
-      Contract.Requires(reader != null);
-      Contract.Requires(Cce.NonNullElements(defines));
+      
+      
       Contract.Ensures(Contract.Result<string>() != null);
       StringBuilder sb = new StringBuilder();
       List<ReadState>

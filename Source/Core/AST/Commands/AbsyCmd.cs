@@ -15,7 +15,7 @@ namespace Microsoft.Boogie
 
     public override void Emit(TokenTextWriter stream, int level)
     {
-      Contract.Requires(stream != null);
+      
       throw new NotImplementedException();
     }
 
@@ -113,7 +113,7 @@ namespace Microsoft.Boogie
 
     public static byte[] CombineChecksums(byte[] first, byte[] second, bool unordered = false)
     {
-      Contract.Requires(first != null && (second == null || first.Length == second.Length));
+      
 
       var result = (byte[]) (first.Clone());
       for (int i = 0; second != null && i < second.Length; i++)
@@ -169,7 +169,7 @@ namespace Microsoft.Boogie
 
     public void CheckAssignments(TypecheckingContext tc)
     {
-      Contract.Requires(tc != null);
+      
       var vars = GetAssignedVariables().ToList();
       foreach (Variable v in vars)
       {
@@ -193,9 +193,9 @@ namespace Microsoft.Boogie
     // Methods to simulate the old SimpleAssignCmd and MapAssignCmd
     public static AssignCmd SimpleAssign(IToken tok, IdentifierExpr lhs, Expr rhs)
     {
-      Contract.Requires(rhs != null);
-      Contract.Requires(lhs != null);
-      Contract.Requires(tok != null);
+      
+      
+      
       Contract.Ensures(Contract.Result<AssignCmd>() != null);
       List<AssignLhs>
         lhss = new List<AssignLhs>();
@@ -212,10 +212,10 @@ namespace Microsoft.Boogie
       IdentifierExpr map,
       List<Expr> indexes, Expr rhs)
     {
-      Contract.Requires(tok != null);
-      Contract.Requires(map != null);
-      Contract.Requires(indexes != null);
-      Contract.Requires(rhs != null);
+      
+      
+      
+      
       Contract.Ensures(Contract.Result<AssignCmd>() != null);
       List<AssignLhs>
         lhss = new List<AssignLhs>();
@@ -242,11 +242,11 @@ namespace Microsoft.Boogie
       IdentifierExpr map,
       params Expr[] args)
     {
-      Contract.Requires(tok != null);
-      Contract.Requires(map != null);
-      Contract.Requires(args != null);
-      Contract.Requires(args.Length > 0); // at least the rhs
-      Contract.Requires(Contract.ForAll(args, i => i != null));
+      
+      
+      
+       // at least the rhs
+      
       Contract.Ensures(Contract.Result<AssignCmd>() != null);
 
       List<AssignLhs>
@@ -275,7 +275,7 @@ namespace Microsoft.Boogie
     /// </summary>
     public static void EmitAttributes(TokenTextWriter stream, QKeyValue attributes)
     {
-      Contract.Requires(stream != null);
+      
 
       if (stream.UseForComputingChecksums)
       {
@@ -314,7 +314,7 @@ namespace Microsoft.Boogie
     public CommentCmd(string c)
       : base(Token.NoToken)
     {
-      Contract.Requires(c != null);
+      
       Comment = c;
     }
 
@@ -370,15 +370,15 @@ namespace Microsoft.Boogie
       }
       set
       {
-        Contract.Requires(Cce.NonNullElements(value));
+        
         this._lhss = new List<AssignLhs>(value);
       }
     }
 
     internal void SetLhs(int index, AssignLhs lhs)
     {
-      Contract.Requires(0 <= index && index < this.Lhss.Count);
-      Contract.Requires(lhs != null);
+      
+      
       Contract.Ensures(this.Lhss[index] == lhs);
       this._lhss[index] = lhs;
     }
@@ -395,15 +395,15 @@ namespace Microsoft.Boogie
       }
       set
       {
-        Contract.Requires(Cce.NonNullElements(value));
+        
         this._rhss = new List<Expr>(value);
       }
     }
 
     internal void SetRhs(int index, Expr rhs)
     {
-      Contract.Requires(0 <= index && index < this.Rhss.Count);
-      Contract.Requires(rhs != null);
+      
+      
       Contract.Ensures(this.Rhss[index] == rhs);
       this._rhss[index] = rhs;
     }
@@ -418,9 +418,9 @@ namespace Microsoft.Boogie
     public AssignCmd(IToken tok, IList<AssignLhs> lhss, IList<Expr> rhss, QKeyValue kv)
       : base(tok)
     {
-      Contract.Requires(tok != null);
-      Contract.Requires(Cce.NonNullElements(rhss));
-      Contract.Requires(Cce.NonNullElements(lhss));
+      
+      
+      
       this._lhss = new List<AssignLhs>(lhss);
       this._rhss = new List<Expr>(rhss);
       this.Attributes = kv;
@@ -429,9 +429,9 @@ namespace Microsoft.Boogie
     public AssignCmd(IToken tok, IList<AssignLhs> lhss, IList<Expr> rhss)
       : base(tok)
     {
-      Contract.Requires(tok != null);
-      Contract.Requires(Cce.NonNullElements(rhss));
-      Contract.Requires(Cce.NonNullElements(lhss));
+      
+      
+      
       this._lhss = new List<AssignLhs>(lhss);
       this._rhss = new List<Expr>(rhss);
     }
@@ -640,7 +640,7 @@ namespace Microsoft.Boogie
     public AssignLhs(IToken tok)
       : base(tok)
     {
-      Contract.Requires(tok != null);
+      
     }
 
     public abstract void Emit(TokenTextWriter stream);
@@ -681,7 +681,7 @@ namespace Microsoft.Boogie
 
     internal override void AsSimpleAssignment(Expr rhs, out IdentifierExpr simpleLhs, out Expr simpleRhs)
     {
-      Contract.Requires(rhs != null);
+      
       Contract.Ensures(Contract.ValueAtReturn(out simpleLhs) != null);
       Contract.Ensures(Contract.ValueAtReturn(out simpleRhs) != null);
 
@@ -720,8 +720,8 @@ namespace Microsoft.Boogie
     public SimpleAssignLhs(IToken tok, IdentifierExpr assignedVariable)
       : base(tok)
     {
-      Contract.Requires(assignedVariable != null);
-      Contract.Requires(tok != null);
+      
+      
       AssignedVariable = assignedVariable;
     }
 
@@ -820,9 +820,9 @@ namespace Microsoft.Boogie
     public MapAssignLhs(IToken tok, AssignLhs map, List<Expr> indexes)
       : base(tok)
     {
-      Contract.Requires(map != null);
-      Contract.Requires(tok != null);
-      Contract.Requires(Cce.NonNullElements(indexes));
+      
+      
+      
 
       Map = map;
       Indexes = indexes;
@@ -1178,7 +1178,7 @@ namespace Microsoft.Boogie
       }
       internal set
       {
-        Contract.Requires(value != null);
+        
         this._locals = value;
       }
     }
@@ -1194,7 +1194,7 @@ namespace Microsoft.Boogie
       }
       set
       {
-        Contract.Requires(value != null);
+        
         this._cmds = value;
       }
     }
@@ -1202,9 +1202,9 @@ namespace Microsoft.Boogie
     public StateCmd(IToken tok, List<Variable> locals, List<Cmd> cmds)
       : base(tok)
     {
-      Contract.Requires(locals != null);
-      Contract.Requires(cmds != null);
-      Contract.Requires(tok != null);
+      
+      
+      
       this._locals = locals;
       this._cmds = cmds;
     }
@@ -1288,7 +1288,7 @@ namespace Microsoft.Boogie
     public SugaredCmd(IToken tok)
       : base(tok)
     {
-      Contract.Requires(tok != null);
+      
     }
 
     public Cmd GetDesugaring(PrintOptions options)
@@ -1317,7 +1317,7 @@ namespace Microsoft.Boogie
     /// </summary>
     public void VisitDesugaring(StandardVisitor visitor)
     {
-      Contract.Requires(visitor != null && !(visitor is ReadOnlyVisitor));
+      
       if (desugaring != null)
       {
         desugaring = (Cmd) visitor.Visit(desugaring);
@@ -1401,7 +1401,7 @@ namespace Microsoft.Boogie
     protected CallCommonality(IToken tok, QKeyValue kv)
       : base(tok)
     {
-      Contract.Requires(tok != null);
+      
       Attributes = kv;
     }
 
@@ -1416,9 +1416,9 @@ namespace Microsoft.Boogie
     protected Variable CreateTemporaryVariable(List<Variable> tempVars, Variable likeThisOne, Type ty, TempVarKind kind,
       ref int uniqueId)
     {
-      Contract.Requires(ty != null);
-      Contract.Requires(likeThisOne != null);
-      Contract.Requires(tempVars != null);
+      
+      
+      
       Contract.Ensures(Contract.Result<Variable>() != null);
       string
         tempNamePrefix;
@@ -1674,16 +1674,16 @@ namespace Microsoft.Boogie
     public PredicateCmd(IToken tok, Expr expr)
       : base(tok)
     {
-      Contract.Requires(tok != null);
-      Contract.Requires(expr != null);
+      
+      
       Expr = expr;
     }
 
     public PredicateCmd(IToken tok, Expr expr, QKeyValue kv)
       : base(tok)
     {
-      Contract.Requires(tok != null);
-      Contract.Requires(expr != null);
+      
+      
       Expr = expr;
       Attributes = kv;
     }
@@ -1734,7 +1734,7 @@ namespace Microsoft.Boogie
       }
       set
       {
-        Contract.Requires(value != null);
+        
         this._msList = value;
       }
     }
@@ -1747,7 +1747,7 @@ namespace Microsoft.Boogie
 
     public ListOfMiningStrategies(List<MiningStrategy> l)
     {
-      Contract.Requires(l != null);
+      
       this._msList = l;
     }
   }
@@ -1766,7 +1766,7 @@ namespace Microsoft.Boogie
       }
       set
       {
-        Contract.Requires(value != null);
+        
         this._reason = value;
       }
     }
@@ -1783,7 +1783,7 @@ namespace Microsoft.Boogie
       }
       set
       {
-        Contract.Requires(Cce.NonNullElements(value));
+        
         this.exprList = new List<Expr>(value);
       }
     }
@@ -1798,8 +1798,8 @@ namespace Microsoft.Boogie
 
     public EEDTemplate(string reason, List<Expr> exprList)
     {
-      Contract.Requires(reason != null);
-      Contract.Requires(Cce.NonNullElements(exprList));
+      
+      
       this._reason = reason;
       this.exprList = exprList;
     }
@@ -1879,7 +1879,7 @@ namespace Microsoft.Boogie
 
     public static MiningStrategy GenerateBoundVarMiningStrategy(Expr expr)
     {
-      Contract.Requires(expr != null);
+      
       List<MiningStrategy> l = new List<MiningStrategy>();
       if (expr != null)
       {
@@ -1891,8 +1891,8 @@ namespace Microsoft.Boogie
 
     public static List<MiningStrategy> GenerateBoundVarListForMining(Expr expr, List<MiningStrategy> l)
     {
-      Contract.Requires(l != null);
-      Contract.Requires(expr != null);
+      
+      
       Contract.Ensures(Contract.Result<List<MiningStrategy>>() != null);
 
       // go through the origExpr and identify all bound variables in the AST.
@@ -1954,8 +1954,8 @@ namespace Microsoft.Boogie
       : base(tok, expr, new InvariantEstablishedDescription())
     {
       this.originalAssert = original;
-      Contract.Requires(tok != null);
-      Contract.Requires(expr != null);
+      
+      
     }
   }
 
@@ -1968,8 +1968,8 @@ namespace Microsoft.Boogie
       : base(tok, expr, new InvariantMaintainedDescription())
     {
       this.originalAssert = original;
-      Contract.Requires(tok != null);
-      Contract.Requires(expr != null);
+      
+      
     }
   }
 
@@ -1993,8 +1993,8 @@ namespace Microsoft.Boogie
     public AssertRequiresCmd(CallCmd call, Requires requires)
       : base(call.tok, requires.Condition, requires.Description)
     {
-      Contract.Requires(call != null);
-      Contract.Requires(requires != null);
+      
+      
       this.Call = call;
       this.Requires = requires;
     }
@@ -2024,7 +2024,7 @@ namespace Microsoft.Boogie
     public AssertEnsuresCmd(Ensures ens)
       : base(ens.tok, ens.Condition, ens.Description)
     {
-      Contract.Requires(ens != null);
+      
       this.Ensures = ens;
     }
 
@@ -2040,15 +2040,15 @@ namespace Microsoft.Boogie
     public AssumeCmd(IToken tok, Expr expr)
       : base(tok, expr)
     {
-      Contract.Requires(tok != null);
-      Contract.Requires(expr != null);
+      
+      
     }
 
     public AssumeCmd(IToken tok, Expr expr, QKeyValue kv)
       : base(tok, expr, kv)
     {
-      Contract.Requires(tok != null);
-      Contract.Requires(expr != null);
+      
+      
     }
 
     public override void Emit(TokenTextWriter stream, int level)
@@ -2099,8 +2099,8 @@ namespace Microsoft.Boogie
     public ReturnExprCmd(IToken tok, Expr expr)
       : base(tok)
     {
-      Contract.Requires(tok != null);
-      Contract.Requires(expr != null);
+      
+      
       Expr = expr;
     }
 
@@ -2146,7 +2146,7 @@ namespace Microsoft.Boogie
       }
       set
       {
-        Contract.Requires(value != null);
+        
         this._vars = value;
       }
     }
@@ -2160,8 +2160,8 @@ namespace Microsoft.Boogie
     public HavocCmd(IToken tok, List<IdentifierExpr> vars)
       : base(tok)
     {
-      Contract.Requires(tok != null);
-      Contract.Requires(vars != null);
+      
+      
       this._vars = vars;
     }
 

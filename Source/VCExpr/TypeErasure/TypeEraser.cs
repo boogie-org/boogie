@@ -24,15 +24,15 @@ public abstract class TypeEraser : MutatingVCExprVisitor<VariableBindings>
   public TypeEraser(TypeAxiomBuilderIntBoolU axBuilder, VCExpressionGenerator gen)
     : base(gen)
   {
-    Contract.Requires(gen != null);
-    Contract.Requires(axBuilder != null);
+    
+    
     AxBuilder = axBuilder;
   }
 
   public VCExpr Erase(VCExpr expr, int polarity)
   {
-    Contract.Requires(expr != null);
-    Contract.Requires((polarity >= -1 && polarity <= 1));
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     this.Polarity = polarity;
     return Mutate(expr, new VariableBindings());
@@ -44,8 +44,8 @@ public abstract class TypeEraser : MutatingVCExprVisitor<VariableBindings>
 
   public override VCExpr Visit(VCExprLiteral node, VariableBindings bindings)
   {
-    Contract.Requires(bindings != null);
-    Contract.Requires(node != null);
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     Contract.Assume(node.Type == Type.Bool || node.Type == Type.Int || node.Type == Type.Real ||
                     node.Type == Type.RMode || node.Type == Type.String || node.Type == Type.RegEx ||
@@ -63,8 +63,8 @@ public abstract class TypeEraser : MutatingVCExprVisitor<VariableBindings>
 
   public override VCExpr Visit(VCExprNAry node, VariableBindings bindings)
   {
-    Contract.Requires(bindings != null);
-    Contract.Requires(node != null);
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     VCExprOp
       op = node.Op;
@@ -93,8 +93,8 @@ public abstract class TypeEraser : MutatingVCExprVisitor<VariableBindings>
 
   public override VCExpr Visit(VCExprVar node, VariableBindings bindings)
   {
-    Contract.Requires(bindings != null);
-    Contract.Requires(node != null);
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     if (!bindings.VCExprVarBindings.TryGetValue(node, out var res))
     {
@@ -108,7 +108,7 @@ public abstract class TypeEraser : MutatingVCExprVisitor<VariableBindings>
 
   protected bool IsUniversalQuantifier(VCExprQuantifier node)
   {
-    Contract.Requires(node != null);
+    
     return Polarity == 1 && node.Quan == Quantifier.EX ||
            Polarity == -1 && node.Quan == Quantifier.ALL;
   }
@@ -118,8 +118,8 @@ public abstract class TypeEraser : MutatingVCExprVisitor<VariableBindings>
     // is added to this bindings-object
     VariableBindings bindings)
   {
-    Contract.Requires(bindings != null);
-    Contract.Requires(Cce.NonNullElements(oldBoundVars));
+    
+    
     Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCExprVar>>()));
 
     List<VCExprVar>
@@ -151,10 +151,10 @@ public abstract class TypeEraser : MutatingVCExprVisitor<VariableBindings>
     out VariableBindings newBindings,
     out List<VCExprVar> newBoundVars)
   {
-    Contract.Requires(node != null);
-    Contract.Requires(newNode != null);
-    Contract.Requires(Cce.NonNullElements(occurringVars));
-    Contract.Requires(oldBindings != null);
+    
+    
+    
+    
     Contract.Ensures(Contract.ValueAtReturn(out newBindings) != null);
     Contract.Ensures(Cce.NonNullElements(Contract.ValueAtReturn(out newBoundVars)));
     List<VCExprVar> castVariables =
@@ -193,8 +193,8 @@ public abstract class TypeEraser : MutatingVCExprVisitor<VariableBindings>
 
   public override VCExpr Visit(VCExprLet node, VariableBindings bindings)
   {
-    Contract.Requires(bindings != null);
-    Contract.Requires(node != null);
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     VariableBindings
       newVarBindings = bindings.Clone();

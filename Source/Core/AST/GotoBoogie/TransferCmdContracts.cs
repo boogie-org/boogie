@@ -12,7 +12,7 @@ public abstract class TransferCmdContracts : TransferCmd
 
   public override void Emit(TokenTextWriter stream, int level)
   {
-    Contract.Requires(stream != null);
+    
     throw new NotImplementedException();
   }
 }

@@ -14,13 +14,13 @@ public class QKeyValue : Absy
 
   public void AddParam(object p)
   {
-    Contract.Requires(p != null);
+    
     this._params.Add(p);
   }
 
   public void AddParams(IEnumerable<object> ps)
   {
-    Contract.Requires(Cce.NonNullElements(ps));
+    
     this._params.AddRange(ps);
   }
 
@@ -51,9 +51,9 @@ public class QKeyValue : Absy
   public QKeyValue(IToken tok, string key, IList<object> parameters = null, QKeyValue next = null)
     : base(tok)
   {
-    Contract.Requires(key != null);
-    Contract.Requires(tok != null);
-    Contract.Requires(Cce.NonNullElements(parameters));
+    
+    
+    
     Key = key;
     this._params = parameters == null ? new List<object>() : new List<object>(parameters);
     Next = next;
@@ -61,7 +61,7 @@ public class QKeyValue : Absy
 
   public void Emit(TokenTextWriter stream)
   {
-    Contract.Requires(stream != null);
+    
     stream.Write("{:");
     stream.Write(Key);
     string sep = " ";
@@ -166,7 +166,7 @@ public class QKeyValue : Absy
 
   public void AddLast(QKeyValue other)
   {
-    Contract.Requires(other != null);
+    
     QKeyValue current = this;
     while (current.Next != null)
     {
@@ -192,7 +192,7 @@ public class QKeyValue : Absy
   [Pure]
   public static string FindStringAttribute(QKeyValue kv, string name)
   {
-    Contract.Requires(name != null);
+    
     kv = FindAttribute(kv, qkv => qkv.Key == name && qkv.Params.Count == 1 && qkv.Params[0] is string);
     if (kv != null)
     {
@@ -205,7 +205,7 @@ public class QKeyValue : Absy
   // Look for {:name expr} in list of attributes.
   public static Expr FindExprAttribute(QKeyValue kv, string name)
   {
-    Contract.Requires(name != null);
+    
     kv = FindAttribute(kv, qkv => qkv.Key == name && qkv.Params.Count == 1 && qkv.Params[0] is Expr);
     if (kv != null)
     {
@@ -217,7 +217,7 @@ public class QKeyValue : Absy
 
   public static int FindIntAttribute(QKeyValue kv, string name, int defl)
   {
-    Contract.Requires(name != null);
+    
     Expr e = FindExprAttribute(kv, name);
     LiteralExpr l = e as LiteralExpr;
     if (l != null && l.isBigNum)

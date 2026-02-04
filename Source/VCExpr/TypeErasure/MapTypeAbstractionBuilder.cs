@@ -23,8 +23,8 @@ internal abstract class MapTypeAbstractionBuilder
 
   internal MapTypeAbstractionBuilder(TypeAxiomBuilder axBuilder, VCExpressionGenerator gen)
   {
-    Contract.Requires(gen != null);
-    Contract.Requires(axBuilder != null);
+    
+    
     this.AxBuilder = axBuilder;
     this.Gen = gen;
     AbstractionVariables = new List<TypeVariable>();
@@ -35,9 +35,9 @@ internal abstract class MapTypeAbstractionBuilder
   internal MapTypeAbstractionBuilder(TypeAxiomBuilder axBuilder, VCExpressionGenerator gen,
     MapTypeAbstractionBuilder builder)
   {
-    Contract.Requires(builder != null);
-    Contract.Requires(gen != null);
-    Contract.Requires(axBuilder != null);
+    
+    
+    
     this.AxBuilder = axBuilder;
     this.Gen = gen;
     AbstractionVariables =
@@ -62,7 +62,7 @@ internal abstract class MapTypeAbstractionBuilder
 
   private TypeVariable AbstractionVariable(int num)
   {
-    Contract.Requires((num >= 0));
+    
     Contract.Ensures(Contract.Result<TypeVariable>() != null);
     while (AbstractionVariables.Count <= num)
     {
@@ -101,9 +101,9 @@ internal abstract class MapTypeAbstractionBuilder
 
     public MapTypeClassRepresentation(TypeCtorDecl representingType, Function select, Function store)
     {
-      Contract.Requires(store != null);
-      Contract.Requires(select != null);
-      Contract.Requires(representingType != null);
+      
+      
+      
       this.RepresentingType = representingType;
       this.Select = select;
       this.Store = store;
@@ -121,7 +121,7 @@ internal abstract class MapTypeAbstractionBuilder
 
   protected MapTypeClassRepresentation GetClassRepresentation(MapType abstractedType)
   {
-    Contract.Requires(abstractedType != null);
+    
     if (!ClassRepresentations.TryGetValue(abstractedType, out var res))
     {
       int num = ClassRepresentations.Count;
@@ -147,7 +147,7 @@ internal abstract class MapTypeAbstractionBuilder
 
   public Function Select(MapType rawType, out List<Type> instantiations)
   {
-    Contract.Requires((rawType != null));
+    
     Contract.Ensures(Contract.ValueAtReturn(out instantiations) != null);
     Contract.Ensures(Contract.Result<Function>() != null);
     return AbstractAndGetRepresentation(rawType, out instantiations).Select;
@@ -155,7 +155,7 @@ internal abstract class MapTypeAbstractionBuilder
 
   public Function Store(MapType rawType, out List<Type> instantiations)
   {
-    Contract.Requires((rawType != null));
+    
     Contract.Ensures(Contract.ValueAtReturn(out instantiations) != null);
     Contract.Ensures(Contract.Result<Function>() != null);
     return AbstractAndGetRepresentation(rawType, out instantiations).Store;
@@ -164,7 +164,7 @@ internal abstract class MapTypeAbstractionBuilder
   private MapTypeClassRepresentation
     AbstractAndGetRepresentation(MapType rawType, out List<Type> instantiations)
   {
-    Contract.Requires((rawType != null));
+    
     Contract.Ensures(Contract.ValueAtReturn(out instantiations) != null);
     instantiations = new List<Type>();
     MapType
@@ -174,7 +174,7 @@ internal abstract class MapTypeAbstractionBuilder
 
   public CtorType AbstractMapType(MapType rawType)
   {
-    Contract.Requires(rawType != null);
+    
     Contract.Ensures(Contract.Result<CtorType>() != null);
     List<Type>
       instantiations = new List<Type>();
@@ -189,8 +189,8 @@ internal abstract class MapTypeAbstractionBuilder
   // TODO: cache the result of this operation
   protected MapType ThinOutMapType(MapType rawType, List<Type> instantiations)
   {
-    Contract.Requires(instantiations != null);
-    Contract.Requires(rawType != null);
+    
+    
     Contract.Ensures(Contract.Result<MapType>() != null);
     List<Type>
       newArguments = new List<Type>();
@@ -210,9 +210,9 @@ internal abstract class MapTypeAbstractionBuilder
   // the instantiations of inserted type variables, the order corresponds to the order in which "AbstractionVariable(int)" delivers variables
   private Type ThinOutType(Type rawType, List<TypeVariable> boundTypeParams, List<Type> instantiations)
   {
-    Contract.Requires(instantiations != null);
-    Contract.Requires(boundTypeParams != null);
-    Contract.Requires(rawType != null);
+    
+    
+    
     Contract.Ensures(Contract.Result<Type>() != null);
 
     if (rawType.FreeVariables.All(var => !boundTypeParams.Contains(var)))

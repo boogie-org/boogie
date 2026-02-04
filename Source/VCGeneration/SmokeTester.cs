@@ -34,9 +34,9 @@ public class SmokeTester
 
   internal SmokeTester(VerificationConditionGenerator par, ImplementationRun run, VerifierCallback callback)
   {
-    Contract.Requires(par != null);
-    Contract.Requires(run != null);
-    Contract.Requires(callback != null);
+    
+    
+    
     parent = par;
     this.run = run;
     initial = run.Implementation.Blocks[0];
@@ -78,7 +78,7 @@ public class SmokeTester
   // this one copies forward
   Block CloneBlock(Block b)
   {
-    Contract.Requires(b != null);
+    
     Contract.Ensures(Contract.Result<Block>() != null);
 
     if (copies.TryGetValue(b, out var fake_res))
@@ -109,7 +109,7 @@ public class SmokeTester
   // this one copies backwards
   Block CopyBlock(Block b)
   {
-    Contract.Requires(b != null);
+    
     Contract.Ensures(Contract.Result<Block>() != null);
 
     if (copies.TryGetValue(b, out var fake_res))
@@ -196,7 +196,7 @@ public class SmokeTester
   // if so return true and the value of the expression in val
   bool BooleanEval(Expr e, ref bool val)
   {
-    Contract.Requires(e != null);
+    
     LiteralExpr lit = e as LiteralExpr;
     NAryExpr call = e as NAryExpr;
 
@@ -229,15 +229,15 @@ public class SmokeTester
 
   bool IsFalse(Expr e)
   {
-    Contract.Requires(e != null);
+    
     bool val = false;
     return BooleanEval(e, ref val) && !val;
   }
 
   async Task<bool> CheckUnreachable(TextWriter traceWriter, Block cur, List<Cmd> seq)
   {
-    Contract.Requires(cur != null);
-    Contract.Requires(seq != null);
+    
+    
     Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
     foreach (Cmd cmd in seq)
     {
@@ -357,7 +357,7 @@ public class SmokeTester
 
   async Task DepthFirstSearch(TextWriter traceWriter, Block cur)
   {
-    Contract.Requires(cur != null);
+    
     Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
     if (visited.Contains(cur))
     {
@@ -475,8 +475,8 @@ public class SmokeTester
 
     public ErrorHandler(VCGenOptions options, ControlFlowIdMap<Absy> absyIds, VerifierCallback callback)  : base(options)
     {
-      Contract.Requires(absyIds != null);
-      Contract.Requires(callback != null);
+      
+      
       this.absyIds = absyIds;
       this.callback = callback;
     }

@@ -48,9 +48,9 @@ namespace Microsoft.Boogie.SMTLib
     public SMTLibProcessTheoremProver(SMTLibOptions libOptions, SMTLibSolverOptions options, VCExpressionGenerator gen,
       SMTLibProverContext ctx)
     {
-      Contract.Requires(options != null);
-      Contract.Requires(gen != null);
-      Contract.Requires(ctx != null);
+      
+      
+      
 
       this.options = options;
       this.libOptions = libOptions;
@@ -509,7 +509,7 @@ namespace Microsoft.Boogie.SMTLib
 
     protected TextWriter OpenOutputFile(string descriptiveName)
     {
-      Contract.Requires(descriptiveName != null);
+      
       Contract.Ensures(Contract.Result<TextWriter>() != null);
 
       string filenameTemplate = options.LogFilename;
@@ -972,7 +972,7 @@ namespace Microsoft.Boogie.SMTLib
 
     protected string VCExpr2String(VCExpr expr, int polarity)
     {
-      Contract.Requires(expr != null);
+      
       Contract.Ensures(Contract.Result<string>() != null);
 
       lock (gen)
@@ -1047,7 +1047,7 @@ namespace Microsoft.Boogie.SMTLib
 
     protected void AddAxiom(string axiom)
     {
-      Contract.Requires(axiom != null);
+      
       Axioms.Add(axiom);
       //      if (thmProver != null) {
       //        LogActivity(":assume " + axiom);
@@ -1057,7 +1057,7 @@ namespace Microsoft.Boogie.SMTLib
 
     protected void AddTypeDecl(string decl)
     {
-      Contract.Requires(decl != null);
+      
       TypeDecls.Add(decl);
       //     if (thmProver != null) {
       //       LogActivity(decl);
@@ -1665,9 +1665,9 @@ namespace Microsoft.Boogie.SMTLib
       VCExpressionGenerator gen,
       SMTLibProverContext ctx)
     {
-      Contract.Requires(options != null);
-      Contract.Requires(gen != null);
-      Contract.Requires(ctx != null);
+      
+      
+      
       Contract.Ensures(Contract.Result<SMTLibProcessTheoremProver>() != null);
       if (options.BatchMode) {
         return new SMTLibBatchTheoremProver(libOptions, (SMTLibSolverOptions)options, gen, ctx);

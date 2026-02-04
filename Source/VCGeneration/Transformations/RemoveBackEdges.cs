@@ -19,7 +19,7 @@ public class RemoveBackEdges {
   public void ConvertCfg2Dag(ImplementationRun run, Dictionary<Block, List<Block>> edgesCut = null, int taskID = -1)
   {
     var impl = run.Implementation;
-    Contract.Requires(impl != null);
+    
     impl.PruneUnreachableBlocks(generator.Options); // This is needed for VCVariety.BlockNested, and is otherwise just an optimization
 
     generator.CurrentLocalVariables = impl.LocVars;
@@ -316,9 +316,9 @@ public class RemoveBackEdges {
     int inductionK)
   {
     // K-induction has not been adapted to be aware of these parameters which standard CFG to DAG transformation uses
-    Contract.Requires(edgesCut == null);
-    Contract.Requires(taskID == -1);
-    Contract.Requires(0 <= inductionK);
+    
+    
+    
 
     bool contRuleApplication = true;
     while (contRuleApplication)

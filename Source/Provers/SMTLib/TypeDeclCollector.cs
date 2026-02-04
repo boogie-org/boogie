@@ -30,7 +30,7 @@ namespace Microsoft.Boogie.SMTLib
 
     public TypeDeclCollector(SMTLibOptions options, UniqueNamer namer)
     {
-      Contract.Requires(namer != null);
+      
       this.options = options;
       this.Namer = namer;
       InitializeKnownDecls();
@@ -147,14 +147,14 @@ namespace Microsoft.Boogie.SMTLib
 
     private void AddDeclaration(string decl)
     {
-      Contract.Requires(decl != null);
+      
       AllDecls.Add(decl);
       IncDecls.Add(decl);
     }
 
     public void Collect(VCExpr expr)
     {
-      Contract.Requires(expr != null);
+      
       Traverse(expr, true);
     }
 
@@ -162,7 +162,7 @@ namespace Microsoft.Boogie.SMTLib
 
     private string TypeToString(Type t)
     {
-      Contract.Requires(t != null);
+      
       Contract.Ensures(Contract.Result<string>() != null);
 
       return new SMTLibExprLineariser(options).TypeToString(t);
@@ -196,7 +196,7 @@ namespace Microsoft.Boogie.SMTLib
 
     public override bool Visit(VCExprNAry node, bool arg)
     {
-      Contract.Requires(node != null);
+      
 
       if (node.Op is VCExprStoreOp)
       {
@@ -267,7 +267,7 @@ namespace Microsoft.Boogie.SMTLib
 
     public override bool Visit(VCExprVar node, bool arg)
     {
-      Contract.Requires(node != null);
+      
       if (!BoundTermVars.ContainsKey(node) && !KnownVariables.Contains(node))
       {
         string printedName = Namer.GetQuotedName(node, node.Name);
@@ -288,7 +288,7 @@ namespace Microsoft.Boogie.SMTLib
 
     public override bool Visit(VCExprQuantifier node, bool arg)
     {
-      Contract.Requires(node != null);
+      
       foreach (VCExprVar v in node.BoundVars)
       {
         Contract.Assert(v != null);
@@ -300,7 +300,7 @@ namespace Microsoft.Boogie.SMTLib
 
     private void RegisterType(Type type)
     {
-      Contract.Requires(type != null);
+      
       if (KnownTypes.Contains(type))
       {
         return;

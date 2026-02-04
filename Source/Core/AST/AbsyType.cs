@@ -15,7 +15,7 @@ namespace Microsoft.Boogie
     public Type(IToken token)
       : base(token)
     {
-      Contract.Requires(token != null);
+      
     }
 
     //-----------  Cloning  ----------------------------------
@@ -43,7 +43,7 @@ namespace Microsoft.Boogie
 
     public void Emit(TokenTextWriter stream)
     {
-      Contract.Requires(stream != null);
+      
       this.Emit(stream, 0);
     }
 
@@ -103,7 +103,7 @@ namespace Microsoft.Boogie
     /// </summary>
     public bool Unify(Type that)
     {
-      Contract.Requires(that != null);
+      
       return Unify(that, new List<TypeVariable>(), new Dictionary<TypeVariable, Type>());
     }
 
@@ -116,7 +116,7 @@ namespace Microsoft.Boogie
     [Pure]
     public static bool IsIdempotent(IDictionary<TypeVariable, Type> unifier)
     {
-      Contract.Requires(Cce.NonNullDictionaryAndValues(unifier));
+      
       return unifier.Values.All(val => val.FreeVariables.All(var => !unifier.ContainsKey(var)));
     }
 
@@ -166,8 +166,8 @@ namespace Microsoft.Boogie
 
     protected static void AppendWithoutDups<A>(List<A> a, List<A> b)
     {
-      Contract.Requires(b != null);
-      Contract.Requires(a != null);
+      
+      
       foreach (A x in b)
       {
         if (!a.Contains(x))
@@ -381,7 +381,7 @@ namespace Microsoft.Boogie
 
     static public BvType GetBvType(int sz)
     {
-      Contract.Requires(0 <= sz);
+      
       Contract.Ensures(Contract.Result<BvType>() != null);
 
       if (bvtypeCache == null)
@@ -408,8 +408,8 @@ namespace Microsoft.Boogie
 
     static public FloatType GetFloatType(int sig, int exp)
     {
-      Contract.Requires(0 <= exp);
-      Contract.Requires(0 <= sig);
+      
+      
       Contract.Ensures(Contract.Result<FloatType>() != null);
 
       return new FloatType(sig, exp);
@@ -427,15 +427,15 @@ namespace Microsoft.Boogie
         string opName,
         TypecheckingContext tc)
     {
-      Contract.Requires(typeParams != null);
-      Contract.Requires(formalArgs != null);
-      Contract.Requires(actualArgs != null);
-      Contract.Requires(opName != null);
-      Contract.Requires(tc != null);
-      Contract.Requires(formalArgs.Count == actualArgs.Count);
-      Contract.Requires((formalOuts == null) == (actualOuts == null));
-      Contract.Requires(formalOuts == null || formalOuts.Count == Cce.NonNull(actualOuts).Count);
-      Contract.Requires(tc == null || opName != null); //Redundant
+      
+      
+      
+      
+      
+      
+      
+      
+      
       Contract.Ensures(Cce.NonNullDictionaryAndValues(Contract.Result<IDictionary<TypeVariable, Type>>()));
 
       // requires "actualArgs" and "actualOuts" to have been type checked
@@ -506,13 +506,13 @@ namespace Microsoft.Boogie
         TypecheckingContext tc)
       // requires "actualIns" and "actualOuts" to have been type checked
     {
-      Contract.Requires(typeParams != null);
+      
 
-      Contract.Requires(formalIns != null);
-      Contract.Requires(formalOuts != null);
-      Contract.Requires(actualIns != null);
-      Contract.Requires(typeCheckingSubject != null);
-      Contract.Requires(opName != null);
+      
+      
+      
+      
+      
       Contract.Ensures(Cce.NonNullElements(Contract.ValueAtReturn(out actualTypeParams)));
       actualTypeParams = new List<Type>();
 
@@ -585,10 +585,10 @@ namespace Microsoft.Boogie
       Type formalResult,
       List<Type> actualArgs)
     {
-      Contract.Requires(typeParams != null);
-      Contract.Requires(formalArgs != null);
-      Contract.Requires(formalResult != null);
-      Contract.Requires(actualArgs != null);
+      
+      
+      
+      
       Contract.Ensures(Contract.Result<Type>() != null);
 
       IDictionary<TypeVariable, Type>
@@ -616,10 +616,10 @@ namespace Microsoft.Boogie
         List<Type> formalArgs,
         List<Type> actualArgs)
     {
-      Contract.Requires(typeParams != null);
-      Contract.Requires(formalArgs != null);
-      Contract.Requires(actualArgs != null);
-      Contract.Requires(formalArgs.Count == actualArgs.Count);
+      
+      
+      
+      
       Contract.Ensures(Cce.NonNullDictionaryAndValues(Contract.Result<IDictionary<TypeVariable, Type>>()));
 
 
@@ -656,8 +656,8 @@ namespace Microsoft.Boogie
 
     public static void EmitOptionalTypeParams(TokenTextWriter stream, List<TypeVariable> typeParams)
     {
-      Contract.Requires(typeParams != null);
-      Contract.Requires(stream != null);
+      
+      
       if (typeParams.Count > 0)
       {
         stream.Write("<");
@@ -670,8 +670,8 @@ namespace Microsoft.Boogie
     public static List<TypeVariable> SortTypeParams(List<TypeVariable> typeParams,
       List<Type> argumentTypes, Type resultType)
     {
-      Contract.Requires(typeParams != null);
-      Contract.Requires(argumentTypes != null);
+      
+      
       Contract.Ensures(Contract.Result<List<TypeVariable>>() != null);
 
       Contract.Ensures(Contract.Result<List<TypeVariable>>().Count == typeParams.Count);
@@ -719,11 +719,11 @@ namespace Microsoft.Boogie
       string subjectName,
       ResolutionContext rc)
     {
-      Contract.Requires(typeParams != null);
-      Contract.Requires(argumentTypes != null);
-      Contract.Requires(resolutionSubject != null);
-      Contract.Requires(subjectName != null);
-      Contract.Requires(rc != null);
+      
+      
+      
+      
+      
       List<TypeVariable> freeVarsInArgs = FreeVariablesIn(argumentTypes);
       List<TypeVariable> moreFreeVarsInArgs = moreArgumentTypes == null ? new List<TypeVariable>() : FreeVariablesIn(moreArgumentTypes);
       foreach (TypeVariable var in typeParams)
@@ -752,7 +752,7 @@ namespace Microsoft.Boogie
     [Pure]
     public static List<TypeVariable> FreeVariablesIn(List<Type> arguments)
     {
-      Contract.Requires(arguments != null);
+      
       Contract.Ensures(Contract.Result<List<TypeVariable>>() != null);
       List<TypeVariable>
         res = new List<TypeVariable>();
@@ -793,7 +793,7 @@ namespace Microsoft.Boogie
 
     public override Type Clone(IDictionary<TypeVariable, TypeVariable> varMap)
     {
-      Contract.Requires(Cce.NonNullDictionaryAndValues(varMap));
+      
       Contract.Ensures(Contract.Result<Type>() != null);
 
       throw new NotImplementedException();
@@ -808,32 +808,32 @@ namespace Microsoft.Boogie
 
     public override void Emit(TokenTextWriter stream, int contextBindingStrength)
     {
-      Contract.Requires(stream != null);
+      
       throw new NotImplementedException();
     }
 
     public override bool Equals(Type that, List<TypeVariable> thisBoundVariables, List<TypeVariable> thatBoundVariables)
     {
-      Contract.Requires(that != null);
-      Contract.Requires(thisBoundVariables != null);
-      Contract.Requires(thatBoundVariables != null);
+      
+      
+      
       throw new NotImplementedException();
     }
 
     public override bool Unify(Type that, List<TypeVariable> unifiableVariables,
       IDictionary<TypeVariable, Type> unifier)
     {
-      Contract.Requires(that != null);
-      Contract.Requires(unifiableVariables != null);
-      Contract.Requires(Cce.NonNullDictionaryAndValues(unifier));
-      Contract.Requires(Contract.ForAll(unifier.Keys, key => unifiableVariables.Contains(key)));
-      Contract.Requires(IsIdempotent(unifier));
+      
+      
+      
+      
+      
       throw new NotImplementedException();
     }
 
     public override Type Substitute(IDictionary<TypeVariable, Type> subst)
     {
-      Contract.Requires(Cce.NonNullDictionaryAndValues(subst));
+      
       Contract.Ensures(Contract.Result<Type>() != null);
 
       throw new NotImplementedException();
@@ -841,7 +841,7 @@ namespace Microsoft.Boogie
 
     public override Type ResolveType(ResolutionContext rc)
     {
-      Contract.Requires(rc != null);
+      
       Contract.Ensures(Contract.Result<Type>() != null);
 
       throw new NotImplementedException();
@@ -849,7 +849,7 @@ namespace Microsoft.Boogie
 
     public override int GetHashCode(List<TypeVariable> boundVariables)
     {
-      Contract.Requires(boundVariables != null);
+      
       throw new NotImplementedException();
     }
   }
@@ -862,7 +862,7 @@ namespace Microsoft.Boogie
     public BasicType(IToken token, SimpleType t)
       : base(token)
     {
-      Contract.Requires(token != null);
+      
       T = t;
     }
 
@@ -1074,7 +1074,7 @@ namespace Microsoft.Boogie
     public FloatType(IToken token, int significand, int exponent)
       : base(token)
     {
-      Contract.Requires(token != null);
+      
       Significand = significand;
       Exponent = exponent;
     }
@@ -1228,7 +1228,7 @@ namespace Microsoft.Boogie
     public BvType(IToken token, int bits)
       : base(token)
     {
-      Contract.Requires(token != null);
+      
       Bits = bits;
     }
 
@@ -1390,16 +1390,16 @@ namespace Microsoft.Boogie
     public UnresolvedTypeIdentifier(IToken token, string name)
       : this(token, name, new List<Type>())
     {
-      Contract.Requires(name != null);
-      Contract.Requires(token != null);
+      
+      
     }
 
     public UnresolvedTypeIdentifier(IToken token, string name, List<Type> arguments)
       : base(token)
     {
-      Contract.Requires(arguments != null);
-      Contract.Requires(name != null);
-      Contract.Requires(token != null);
+      
+      
+      
       this.Name = name;
       this.Arguments = arguments;
     }
@@ -1641,7 +1641,7 @@ namespace Microsoft.Boogie
 
     private List<Type> ResolveArguments(ResolutionContext rc)
     {
-      Contract.Requires(rc != null);
+      
       Contract.Ensures(Contract.Result<List<Type>>() != null);
       List<Type>
         resolvedArgs = new List<Type>();
@@ -1722,8 +1722,8 @@ namespace Microsoft.Boogie
     public TypeVariable(IToken token, string name)
       : base(token)
     {
-      Contract.Requires(name != null);
-      Contract.Requires(token != null);
+      
+      
       this.Name = name;
     }
 
@@ -1825,9 +1825,9 @@ namespace Microsoft.Boogie
       // the type that "this" is instantiated with
       Type newSubst)
     {
-      Contract.Requires(Cce.NonNullDictionaryAndValues(oldSolution));
-      Contract.Requires(newSubst != null);
-      Contract.Requires(!oldSolution.ContainsKey(this));
+      
+      
+      
 
       Dictionary<TypeVariable, Type>
         newMapping = new Dictionary<TypeVariable, Type>();
@@ -1965,16 +1965,16 @@ namespace Microsoft.Boogie
     public TypeProxy(IToken token, string givenName)
       : this(token, givenName, "proxy")
     {
-      Contract.Requires(givenName != null);
-      Contract.Requires(token != null);
+      
+      
     }
 
     protected TypeProxy(IToken token, string givenName, string kind)
       : base(token)
     {
-      Contract.Requires(kind != null);
-      Contract.Requires(givenName != null);
-      Contract.Requires(token != null);
+      
+      
+      
       Name = givenName + "$" + kind + "#" + proxies;
       proxies++;
     }
@@ -2002,7 +2002,7 @@ namespace Microsoft.Boogie
     [Reads(ReadsAttribute.Reads.Everything)]
     public static Type FollowProxy(Type t)
     {
-      Contract.Requires(t != null);
+      
       Contract.Ensures(Contract.Result<Type>() != null);
       Contract.Ensures(
         !(Contract.Result<Type>() is TypeProxy) || ((TypeProxy) Contract.Result<Type>()).proxyFor == null);
@@ -2020,8 +2020,8 @@ namespace Microsoft.Boogie
 
     protected void DefineProxy(Type ty)
     {
-      Contract.Requires(ty != null);
-      Contract.Requires(ProxyFor == null);
+      
+      
       // follow ty down to the leaf level, so that we can avoid creating a cycle
       ty = FollowProxy(ty);
       if (!object.ReferenceEquals(this, ty))
@@ -2081,7 +2081,7 @@ namespace Microsoft.Boogie
     // determine whether the occurs check fails: this is a strict subtype of that
     protected bool ReallyOccursIn(Type that)
     {
-      Contract.Requires(that != null);
+      
       that = FollowProxy(that.Expanded);
       return that.FreeProxies.Contains(this) &&
              (that.IsCtor || that.IsMap && this != that && this.ProxyFor != that);
@@ -2439,9 +2439,9 @@ namespace Microsoft.Boogie
     protected ConstrainedProxy(IToken token, string givenName, string kind)
       : base(token, givenName, kind)
     {
-      Contract.Requires(kind != null);
-      Contract.Requires(givenName != null);
-      Contract.Requires(token != null);
+      
+      
+      
     }
   }
 
@@ -2484,9 +2484,9 @@ namespace Microsoft.Boogie
 
       public BvTypeConstraint(Type t0, Type t1)
       {
-        Contract.Requires(t1 != null);
-        Contract.Requires(t0 != null);
-        Contract.Requires(t0.IsBv && t1.IsBv);
+        
+        
+        
         T0 = t0;
         T1 = t1;
       }
@@ -2495,8 +2495,8 @@ namespace Microsoft.Boogie
     public BvTypeProxy(IToken token, string name, int minBits)
       : base(token, name, "bv" + minBits + "proxy")
     {
-      Contract.Requires(name != null);
-      Contract.Requires(token != null);
+      
+      
       this.MinBits = minBits;
     }
 
@@ -2507,11 +2507,11 @@ namespace Microsoft.Boogie
     public BvTypeProxy(IToken token, string name, Type t0, Type t1)
       : base(token, name, "bvproxy")
     {
-      Contract.Requires(t1 != null);
-      Contract.Requires(t0 != null);
-      Contract.Requires(name != null);
-      Contract.Requires(token != null);
-      Contract.Requires(t0.IsBv && t1.IsBv);
+      
+      
+      
+      
+      
       t0 = FollowProxy(t0);
       t1 = FollowProxy(t1);
       this.MinBits = MinBitsFor(t0) + MinBitsFor(t1);
@@ -2526,7 +2526,7 @@ namespace Microsoft.Boogie
     private BvTypeProxy(BvTypeProxy p, int minBits)
       : base(p.tok, p.Name, "")
     {
-      Contract.Requires(p != null);
+      
       this.MinBits = minBits;
       this.constraints = p.constraints;
     }
@@ -2534,9 +2534,9 @@ namespace Microsoft.Boogie
     private BvTypeProxy(IToken token, string name, int minBits, List<BvTypeConstraint> constraints)
       : base(token, name, "")
     {
-      Contract.Requires(Cce.NonNullElements(constraints, true));
-      Contract.Requires(name != null);
-      Contract.Requires(token != null);
+      
+      
+      
       this.MinBits = minBits;
       this.constraints = constraints;
     }
@@ -2545,8 +2545,8 @@ namespace Microsoft.Boogie
     [Reads(ReadsAttribute.Reads.Everything)]
     private static int MinBitsFor(Type t)
     {
-      Contract.Requires(t != null);
-      Contract.Requires(t.IsBv);
+      
+      
       Contract.Ensures(0 <= Contract.Result<int>());
 
       if (t is TypeSynonymAnnotation)
@@ -2690,8 +2690,8 @@ namespace Microsoft.Boogie
 
     private static int IncreaseBits(Type t, int to)
     {
-      Contract.Requires(t != null);
-      Contract.Requires(t.IsBv && 0 <= to && MinBitsFor(t) <= to);
+      
+      
       Contract.Ensures(0 <= Contract.Result<int>() && Contract.Result<int>() <= to);
 
       if (t is TypeSynonymAnnotation)
@@ -2808,15 +2808,15 @@ namespace Microsoft.Boogie
 
       public Constraint(List<Type> arguments, Type result)
       {
-        Contract.Requires(result != null);
-        Contract.Requires(arguments != null);
+        
+        
         Arguments = arguments;
         Result = result;
       }
 
       public Constraint Clone(IDictionary<TypeVariable, TypeVariable> varMap)
       {
-        Contract.Requires(Cce.NonNullDictionaryAndValues(varMap));
+        
         List<Type>
           args = new List<Type>();
         foreach (Type t in Arguments)
@@ -2835,10 +2835,10 @@ namespace Microsoft.Boogie
         List<TypeVariable> unifiableVariables,
         IDictionary<TypeVariable, Type> result)
       {
-        Contract.Requires(unifiableVariables != null);
-        Contract.Requires(Cce.NonNullDictionaryAndValues(result));
-        Contract.Requires(that != null);
-        Contract.Requires(Arguments.Count == that.Arguments.Count);
+        
+        
+        
+        
         Dictionary<TypeVariable, Type>
           subst = new Dictionary<TypeVariable, Type>();
         foreach (TypeVariable tv in that.TypeParameters)
@@ -2864,15 +2864,15 @@ namespace Microsoft.Boogie
     public MapTypeProxy(IToken token, string name, int arity)
       : base(token, name, "mapproxy")
     {
-      Contract.Requires(name != null);
-      Contract.Requires(token != null);
-      Contract.Requires(0 <= arity);
+      
+      
+      
       this.Arity = arity;
     }
 
     private void AddConstraint(Constraint c)
     {
-      Contract.Requires(c.Arguments.Count == Arity);
+      
 
       Type f = ProxyFor;
       MapType mf = f as MapType;
@@ -2901,10 +2901,10 @@ namespace Microsoft.Boogie
       string opName,
       TypecheckingContext tc)
     {
-      Contract.Requires(actualArgs != null);
-      Contract.Requires(typeCheckingSubject != null);
-      Contract.Requires(opName != null);
-      Contract.Requires(tc != null);
+      
+      
+      
+      
       Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
 
 
@@ -3165,10 +3165,10 @@ namespace Microsoft.Boogie
     public TypeSynonymAnnotation(IToken token, TypeSynonymDecl decl, List<Type> arguments)
       : base(token)
     {
-      Contract.Requires(token != null);
-      Contract.Requires(decl != null);
-      Contract.Requires(arguments != null);
-      Contract.Requires(arguments.Count == decl.TypeParameters.Count);
+      
+      
+      
+      
       this.Decl = decl;
       this.Arguments = arguments;
 
@@ -3189,10 +3189,10 @@ namespace Microsoft.Boogie
       Type expandedType)
       : base(token)
     {
-      Contract.Requires(token != null);
-      Contract.Requires(decl != null);
-      Contract.Requires(arguments != null);
-      Contract.Requires(expandedType != null);
+      
+      
+      
+      
 
       this.Decl = decl;
       this.Arguments = arguments;
@@ -3486,10 +3486,10 @@ namespace Microsoft.Boogie
     public CtorType(IToken token, TypeCtorDecl decl, List<Type> arguments)
       : base(token)
     {
-      Contract.Requires(token != null);
-      Contract.Requires(decl != null);
-      Contract.Requires(arguments != null);
-      Contract.Requires(arguments.Count == decl.Arity);
+      
+      
+      
+      
       this.Decl = decl;
       this.Arguments = arguments;
     }
@@ -3679,9 +3679,9 @@ namespace Microsoft.Boogie
 
     internal static void EmitCtorType(string name, List<Type> args, TokenTextWriter stream, int contextBindingStrength)
     {
-      Contract.Requires(stream != null);
-      Contract.Requires(args != null);
-      Contract.Requires(name != null);
+      
+      
+      
       int opBindingStrength = args.Count > 0 ? 0 : 2;
       if (opBindingStrength < contextBindingStrength)
       {
@@ -3800,10 +3800,10 @@ namespace Microsoft.Boogie
       Type result)
       : base(token)
     {
-      Contract.Requires(token != null);
-      Contract.Requires(typeParameters != null);
-      Contract.Requires(arguments != null);
-      Contract.Requires(result != null);
+      
+      
+      
+      
 
       this.TypeParameters = typeParameters;
       this.Result = result;
@@ -4026,7 +4026,7 @@ namespace Microsoft.Boogie
     [Pure]
     private bool collisionsPossible(IDictionary<TypeVariable, Type> subst)
     {
-      Contract.Requires(Cce.NonNullDictionaryAndValues(subst));
+      
       // PR: could be written more efficiently
       return TypeParameters.Any(param =>
         subst.ContainsKey(param) || subst.Values.Any(val => val.FreeVariables.Contains(param)));
@@ -4227,11 +4227,11 @@ namespace Microsoft.Boogie
       string opName,
       TypecheckingContext tc)
     {
-      Contract.Requires(actualArgs != null);
-      Contract.Requires(typeCheckingSubject != null);
+      
+      
 
-      Contract.Requires(opName != null);
-      Contract.Requires(tc != null);
+      
+      
       Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
       List<Type> actualResult =
         Type.CheckArgumentTypes(TypeParameters, out var actualTypeParams, Arguments, actualArgs,
@@ -4304,7 +4304,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Requires(var != null);
+        
         Contract.Ensures(Contract.Result<Type>() != null);
 
         throw new NotImplementedException();
@@ -4338,8 +4338,8 @@ namespace Microsoft.Boogie
     public SimpleTypeParamInstantiation(List<TypeVariable> typeParams,
       IDictionary<TypeVariable, Type> instantiations)
     {
-      Contract.Requires(Cce.NonNullElements(typeParams));
-      Contract.Requires(Cce.NonNullDictionaryAndValues(instantiations));
+      
+      
       this.TypeParams = typeParams;
       this.Instantiations = instantiations;
     }
@@ -4347,9 +4347,9 @@ namespace Microsoft.Boogie
     public static TypeParamInstantiation
       From(List<TypeVariable> typeParams, List<Type> actualTypeParams)
     {
-      Contract.Requires(Cce.NonNullElements(actualTypeParams));
-      Contract.Requires(typeParams != null);
-      Contract.Requires(typeParams.Count == actualTypeParams.Count);
+      
+      
+      
       Contract.Ensures(Contract.Result<TypeParamInstantiation>() != null);
 
       if (typeParams.Count == 0)
@@ -4422,8 +4422,8 @@ namespace Microsoft.Boogie
     public MapTypeProxyParamInstantiation(MapTypeProxy proxy,
       List<Type> argumentsResult)
     {
-      Contract.Requires(proxy != null);
-      Contract.Requires(argumentsResult != null);
+      
+      
       this.Proxy = proxy;
       this.ArgumentsResult = argumentsResult;
     }

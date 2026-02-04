@@ -160,7 +160,7 @@ namespace Microsoft.BaseTypes
     [Pure]
     public string ToString(string format)
     {
-      Contract.Requires(format != null);
+      
       Contract.Ensures(Contract.Result<string>() != null);
       if (format.StartsWith("d") || format.StartsWith("D"))
       {
@@ -187,7 +187,7 @@ namespace Microsoft.BaseTypes
     [Pure]
     private string toHex(string format)
     {
-      Contract.Requires(format != null);
+      
       Contract.Ensures(Contract.Result<string>() != null);
       string res = "";
       System.Numerics.BigInteger rem = this.Abs.val;
@@ -204,7 +204,7 @@ namespace Microsoft.BaseTypes
     [Pure]
     private int extractPrecision(string format)
     {
-      Contract.Requires(format != null);
+      
       if (format.Length > 1)
       {
         // will throw a FormatException if the precision is invalid;
@@ -218,7 +218,7 @@ namespace Microsoft.BaseTypes
     [Pure]
     private string addMinus(int signum, string suffix)
     {
-      Contract.Requires(suffix != null);
+      
       Contract.Ensures(Contract.Result<string>() != null);
       if (signum < 0)
       {
@@ -231,7 +231,7 @@ namespace Microsoft.BaseTypes
     [Pure]
     private string prefixWithZeros(int minLength, string suffix)
     {
-      Contract.Requires(suffix != null);
+      
       Contract.Ensures(Contract.Result<string>() != null);
       StringBuilder res = new StringBuilder();
       while (res.Length + suffix.Length < minLength)

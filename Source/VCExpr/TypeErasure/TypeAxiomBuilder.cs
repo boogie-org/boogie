@@ -47,7 +47,7 @@ public abstract class TypeAxiomBuilder : ICloneable
 
   internal void AddTypeAxiom(VCExpr axiom)
   {
-    Contract.Requires(axiom != null);
+    
     AllTypeAxioms.Add(axiom);
     IncTypeAxioms.Add(axiom);
   }
@@ -71,7 +71,7 @@ public abstract class TypeAxiomBuilder : ICloneable
 
   private VCExpr GenCtorAssignment(VCExpr typeRepr)
   {
-    Contract.Requires(typeRepr != null);
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
 
     VCExpr res = Gen.Eq(Gen.Function(Ctor, typeRepr),
@@ -82,7 +82,7 @@ public abstract class TypeAxiomBuilder : ICloneable
 
   private VCExpr GenCtorAssignment(Function typeRepr)
   {
-    Contract.Requires(typeRepr != null);
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
 
     List<VCExprVar>
@@ -104,8 +104,8 @@ public abstract class TypeAxiomBuilder : ICloneable
   // generate an axiom (forall x0, x1, ... :: invFun(fun(x0, x1, ...) == xi)
   protected VCExpr GenLeftInverseAxiom(Function fun, Function invFun, int dtorNum)
   {
-    Contract.Requires(invFun != null);
-    Contract.Requires(fun != null);
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     List<VCExprVar>
       quantifiedVars = HelperFuns.GenVarsForInParams(fun, Gen);
@@ -170,8 +170,8 @@ public abstract class TypeAxiomBuilder : ICloneable
 
   private VCExpr GetBasicTypeRepr(Type type)
   {
-    Contract.Requires(type != null);
-    Contract.Requires(type.IsBasic || type.IsBv || type.IsFloat);
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     if (!BasicTypeReprs.TryGetValue(type, out var res))
     {
@@ -194,7 +194,7 @@ public abstract class TypeAxiomBuilder : ICloneable
 
   internal TypeCtorRepr GetTypeCtorReprStruct(TypeCtorDecl decl)
   {
-    Contract.Requires(decl != null);
+    
     if (!TypeCtorReprs.TryGetValue(decl, out var reprSet))
     {
       Function
@@ -221,14 +221,14 @@ public abstract class TypeAxiomBuilder : ICloneable
 
   public Function GetTypeCtorRepr(TypeCtorDecl decl)
   {
-    Contract.Requires(decl != null);
+    
     Contract.Ensures(Contract.Result<Function>() != null);
     return GetTypeCtorReprStruct(decl).Ctor;
   }
 
   public Function GetTypeDtor(TypeCtorDecl decl, int num)
   {
-    Contract.Requires(decl != null);
+    
     Contract.Ensures(Contract.Result<Function>() != null);
     return GetTypeCtorReprStruct(decl).Dtors[num];
   }
@@ -245,7 +245,7 @@ public abstract class TypeAxiomBuilder : ICloneable
 
   public VCExprVar Typed2Untyped(TypeVariable var)
   {
-    Contract.Requires(var != null);
+    
     Contract.Ensures(Contract.Result<VCExprVar>() != null);
     if (!TypeVariableMapping.TryGetValue(var, out var res))
     {
@@ -273,7 +273,7 @@ public abstract class TypeAxiomBuilder : ICloneable
   // This method must only be used for free (unbound) variables
   public VCExprVar Typed2Untyped(VCExprVar var)
   {
-    Contract.Requires(var != null);
+    
     Contract.Ensures(Contract.Result<VCExprVar>() != null);
     VCExprVar res = TryTyped2Untyped(var);
     if (res == null)
@@ -295,7 +295,7 @@ public abstract class TypeAxiomBuilder : ICloneable
   /// <returns></returns>
   public VCExprVar TryTyped2Untyped(VCExprVar var)
   {
-    Contract.Requires(var != null);
+    
     if (Typed2UntypedVariables.TryGetValue(var, out var res))
     {
       return res;
@@ -313,8 +313,8 @@ public abstract class TypeAxiomBuilder : ICloneable
 
   public VCExpr Type2Term(Type type, IDictionary<TypeVariable, VCExpr> varMapping)
   {
-    Contract.Requires(type != null);
-    Contract.Requires(Cce.NonNullDictionaryAndValues(varMapping));
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     //
     if (type.IsBasic || type.IsBv || type.IsFloat)
@@ -371,7 +371,7 @@ public abstract class TypeAxiomBuilder : ICloneable
 
   public TypeAxiomBuilder(VCExpressionGenerator gen)
   {
-    Contract.Requires(gen != null);
+    
     this.Gen = gen;
     AllTypeAxioms = new List<VCExpr>();
     IncTypeAxioms = new List<VCExpr>();
@@ -408,7 +408,7 @@ public abstract class TypeAxiomBuilder : ICloneable
   // constructor to allow cloning
   internal TypeAxiomBuilder(TypeAxiomBuilder builder)
   {
-    Contract.Requires(builder != null);
+    
     Gen = builder.Gen;
     AllTypeAxioms = new List<VCExpr>(builder.AllTypeAxioms);
     IncTypeAxioms = new List<VCExpr>(builder.IncTypeAxioms);

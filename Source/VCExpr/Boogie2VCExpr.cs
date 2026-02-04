@@ -59,7 +59,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     private void Push(VCExpr expr)
     {
-      Contract.Requires(expr != null);
+      
       SubExpressions.Push(expr);
     }
 
@@ -71,7 +71,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     public VCExpr Translate(Expr expr)
     {
-      Contract.Requires(expr != null);
+      
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       this.Visit(expr);
       return Pop();
@@ -79,7 +79,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     public List<VCExpr> Translate(IList<Expr> exprs)
     {
-      Contract.Requires(exprs != null);
+      
       Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCExpr>>()));
       List<VCExpr>
         res = new List<VCExpr>();
@@ -99,8 +99,8 @@ namespace Microsoft.Boogie.VCExprAST
     public Boogie2VCExprTranslator(VCExpressionGenerator gen,
       VCGenerationOptions genOptions)
     {
-      Contract.Requires(gen != null);
-      Contract.Requires(genOptions != null);
+      
+      
       this.Gen = gen;
       this.GenerationOptions = genOptions;
       UnboundVariables = new VariableMapping<Variable>();
@@ -110,7 +110,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     private Boogie2VCExprTranslator(Boogie2VCExprTranslator tl)
     {
-      Contract.Requires(tl != null);
+      
       this.Gen = tl.Gen;
       this.GenerationOptions = tl.GenerationOptions;
       UnboundVariables =
@@ -168,7 +168,7 @@ namespace Microsoft.Boogie.VCExprAST
 
       private VariableMapping(VariableMapping<VarKind> vm)
       {
-        Contract.Requires(vm != null);
+        
         List<Dictionary<VarKind, VCExprVar>>
           mapping =
             new List<Dictionary<VarKind, VCExprVar>>();
@@ -200,15 +200,15 @@ namespace Microsoft.Boogie.VCExprAST
 
       public void Bind(VarKind boogieVar, VCExprVar vcExprVar)
       {
-        Contract.Requires(vcExprVar != null);
-        Contract.Requires(boogieVar != null);
-        Contract.Requires(!Contains(boogieVar));
+        
+        
+        
         Mapping[Mapping.Count - 1].Add(boogieVar, vcExprVar);
       }
 
       public VCExprVar Lookup(VarKind boogieVar)
       {
-        Contract.Requires(boogieVar != null);
+        
         Contract.Ensures(Contract.Result<VCExprVar>() != null);
         VCExprVar res = LookupHelp(boogieVar);
         Contract.Assume(res != null);
@@ -218,13 +218,13 @@ namespace Microsoft.Boogie.VCExprAST
       [Pure]
       public bool Contains(VarKind boogieVar)
       {
-        Contract.Requires(boogieVar != null);
+        
         return LookupHelp(boogieVar) != null;
       }
 
       public bool TryGetValue(VarKind boogieVar, out VCExprVar res)
       {
-        Contract.Requires(boogieVar != null);
+        
         res = LookupHelp(boogieVar);
         return res != null;
       }
@@ -232,7 +232,7 @@ namespace Microsoft.Boogie.VCExprAST
       [Pure]
       private VCExprVar LookupHelp(VarKind boogieVar)
       {
-        Contract.Requires(boogieVar != null);
+        
         foreach (Dictionary<VarKind, VCExprVar> d in Mapping)
         {
           //Contract.Assert(cce.NonNullElements(d));
@@ -290,7 +290,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     public VCExprVar BindVariable(Variable boogieVar)
     {
-      Contract.Requires(boogieVar != null);
+      
       Contract.Ensures(Contract.Result<VCExprVar>() != null);
       if (boogieVar is BoundVariable)
       {
@@ -316,7 +316,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     public VCExprVar LookupVariable(Variable boogieVar)
     {
-      Contract.Requires(boogieVar != null);
+      
       Contract.Ensures(Contract.Result<VCExprVar>() != null);
 
       BoundVariable bv = boogieVar as BoundVariable;
@@ -359,7 +359,7 @@ namespace Microsoft.Boogie.VCExprAST
     /// <returns></returns>
     public VCExprVar TryLookupVariable(Variable boogieVar)
     {
-      Contract.Requires(boogieVar != null);
+      
 
       Formal fml = boogieVar as Formal;
       if (fml != null && Formals.TryGetValue(fml, out var res))
@@ -397,7 +397,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     private VCExpr TranslateLiteralExpr(LiteralExpr node)
     {
-      Contract.Requires(node != null);
+      
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       if (node.Val is bool)
       {
@@ -479,7 +479,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     private VCExpr TranslateNAryExpr(NAryExpr node)
     {
-      Contract.Requires(node != null);
+      
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       if (node.Fun is FieldUpdate fieldUpdate)
@@ -547,7 +547,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     private List<Type> ToList(TypeParamInstantiation insts)
     {
-      Contract.Requires(insts != null);
+      
       Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Type>>()));
       if (insts.FormalTypeParams.Count == 0)
       {
@@ -590,7 +590,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     private VCExpr TranslateQuantifierExpr(QuantifierExpr node)
     {
-      Contract.Requires(node != null);
+      
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       List<TypeVariable>
         typeParams = new List<TypeVariable>();
@@ -658,7 +658,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     private VCQuantifierInfo GenerateQuantifierInfo(QuantifierExpr node, List<VCExprVar> boundVars)
     {
-      Contract.Requires(node != null);
+      
       Contract.Ensures(Contract.Result<VCQuantifierInfo>() != null);
       return new VCQuantifierInfo(
         GetQid(node),
@@ -752,8 +752,8 @@ namespace Microsoft.Boogie.VCExprAST
 
     private VCExpr TranslateBvExtractExpr(BvExtractExpr node)
     {
-      Contract.Requires(node != null);
-      Contract.Requires((node.Start <= node.End));
+      
+      
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       VCExpr
         bv = Translate(node.Bitvector);
@@ -771,7 +771,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     private VCExpr TranslateBvConcatExpr(BvConcatExpr node)
     {
-      Contract.Requires(node != null);
+      
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       VCExpr
         bv0 = Translate(node.E0);
@@ -1217,7 +1217,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     public IAppliableTranslator(Boogie2VCExprTranslator baseTranslator)
     {
-      Contract.Requires(baseTranslator != null);
+      
       this.BaseTranslator = baseTranslator;
     }
 
@@ -1239,10 +1239,10 @@ namespace Microsoft.Boogie.VCExprAST
 
     public VCExpr Translate(IAppliable app, Type ty, List<VCExpr> args, List<Type> typeArgs)
     {
-      Contract.Requires(ty != null);
-      Contract.Requires(app != null);
-      Contract.Requires(Cce.NonNullElements(typeArgs));
-      Contract.Requires(Cce.NonNullElements(args));
+      
+      
+      
+      
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       List<VCExpr>
@@ -1381,8 +1381,8 @@ namespace Microsoft.Boogie.VCExprAST
 
     private VCExpr TranslateBinaryOperator(BinaryOperator app, List<VCExpr> args)
     {
-      Contract.Requires(app != null);
-      Contract.Requires(Cce.NonNullElements(args));
+      
+      
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       Contract.Assert(args.Count == 2);
       Type t = Cce.NonNull(Cce.NonNull(args[0]).Type);
@@ -1517,10 +1517,10 @@ namespace Microsoft.Boogie.VCExprAST
     private VCExpr
       TranslateFunctionCall(FunctionCall app, List<VCExpr> args, List<Type> typeArgs)
     {
-      Contract.Requires(Cce.NonNullElements(args));
-      Contract.Requires(Cce.NonNullElements(typeArgs));
-      Contract.Requires(app != null);
-      Contract.Requires((app.Func != null));
+      
+      
+      
+      
       Contract.Ensures(Contract.Result<VCExpr>() != null); // resolution must have happened
 
       VCExpr res = ApplyExpansion(app, args, typeArgs);
@@ -1536,9 +1536,9 @@ namespace Microsoft.Boogie.VCExprAST
 
     private VCExpr ApplyExpansion(FunctionCall app, List<VCExpr> args, List<Type> typeArgs)
     {
-      Contract.Requires(app != null);
-      Contract.Requires(Cce.NonNullElements(args));
-      Contract.Requires(Cce.NonNullElements(typeArgs));
+      
+      
+      
       Contract.Assert(app.Func != null); // resolution must have happened
 
       lock (app.Func)

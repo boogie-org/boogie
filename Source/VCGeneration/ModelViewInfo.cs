@@ -12,8 +12,8 @@ namespace VC
 
     public ModelViewInfo(Program program, Implementation impl)
     {
-      Contract.Requires(program != null);
-      Contract.Requires(impl != null);
+      
+      
 
       // global variables
       lock (program.TopLevelDeclarations)
@@ -47,7 +47,7 @@ namespace VC
 
     public ModelViewInfo(CodeExpr codeExpr)
     {
-      Contract.Requires(codeExpr != null);
+      
       // TODO: also need all variables of enclosing scopes (the global variables of the program, the parameters
       // and perhaps locals of the implementation (if any), any enclosing code expressions).
 

@@ -25,7 +25,7 @@ sealed class DependencyCollector : ReadOnlyVisitor
 
   public static bool CanExpressOldSpecs(Procedure oldProc, Program newProg, bool ignoreModifiesClauses = false)
   {
-    Contract.Requires(oldProc != null && newProg != null);
+    
 
     var funcs = newProg.Functions;
     var globals = newProg.GlobalVariables;

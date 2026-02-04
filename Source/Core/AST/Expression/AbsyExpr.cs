@@ -25,13 +25,13 @@ namespace Microsoft.Boogie
     public Expr(IToken tok, bool immutable)
       : base(tok)
     {
-      Contract.Requires(tok != null);
+      
       this.Immutable = immutable;
     }
 
     public void Emit(TokenTextWriter stream)
     {
-      Contract.Requires(stream != null);
+      
       Emit(stream, 0, false);
     }
 
@@ -149,81 +149,81 @@ namespace Microsoft.Boogie
 
     public static NAryExpr Unary(IToken x, UnaryOperator.Opcode op, Expr e1)
     {
-      Contract.Requires(e1 != null);
-      Contract.Requires(x != null);
+      
+      
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
       return new NAryExpr(x, new UnaryOperator(x, op), new List<Expr> {e1});
     }
 
     public static NAryExpr Binary(IToken x, BinaryOperator.Opcode op, Expr e0, Expr e1)
     {
-      Contract.Requires(e1 != null);
-      Contract.Requires(e0 != null);
-      Contract.Requires(x != null);
+      
+      
+      
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
       return new NAryExpr(x, new BinaryOperator(x, op), new List<Expr> {e0, e1});
     }
 
     public static NAryExpr Binary(BinaryOperator.Opcode op, Expr e0, Expr e1)
     {
-      Contract.Requires(e1 != null);
-      Contract.Requires(e0 != null);
+      
+      
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
       return Binary(e0.tok ?? e1.tok ?? Token.NoToken, op, e0, e1);
     }
 
     public static NAryExpr Eq(Expr e1, Expr e2)
     {
-      Contract.Requires(e2 != null);
-      Contract.Requires(e1 != null);
+      
+      
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
       return Binary(BinaryOperator.Opcode.Eq, e1, e2);
     }
 
     public static NAryExpr Neq(Expr e1, Expr e2)
     {
-      Contract.Requires(e2 != null);
-      Contract.Requires(e1 != null);
+      
+      
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
       return Binary(BinaryOperator.Opcode.Neq, e1, e2);
     }
 
     public static NAryExpr Le(Expr e1, Expr e2)
     {
-      Contract.Requires(e2 != null);
-      Contract.Requires(e1 != null);
+      
+      
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
       return Binary(BinaryOperator.Opcode.Le, e1, e2);
     }
 
     public static NAryExpr Ge(Expr e1, Expr e2)
     {
-      Contract.Requires(e2 != null);
-      Contract.Requires(e1 != null);
+      
+      
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
       return Binary(BinaryOperator.Opcode.Ge, e1, e2);
     }
 
     public static NAryExpr Lt(Expr e1, Expr e2)
     {
-      Contract.Requires(e2 != null);
-      Contract.Requires(e1 != null);
+      
+      
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
       return Binary(BinaryOperator.Opcode.Lt, e1, e2);
     }
 
     public static NAryExpr Gt(Expr e1, Expr e2)
     {
-      Contract.Requires(e2 != null);
-      Contract.Requires(e1 != null);
+      
+      
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
       return Binary(BinaryOperator.Opcode.Gt, e1, e2);
     }
 
     public static Expr And(Expr e1, Expr e2)
     {
-      Contract.Requires(e2 != null);
-      Contract.Requires(e1 != null);
+      
+      
       Contract.Ensures(Contract.Result<Expr>() != null);
       if (e1 == true_)
       {
@@ -248,8 +248,8 @@ namespace Microsoft.Boogie
 
     public static Expr Or(Expr e1, Expr e2)
     {
-      Contract.Requires(e2 != null);
-      Contract.Requires(e1 != null);
+      
+      
       Contract.Ensures(Contract.Result<Expr>() != null);
       if (e1 == false_)
       {
@@ -274,7 +274,7 @@ namespace Microsoft.Boogie
 
     public static Expr Not(Expr e1)
     {
-      Contract.Requires(e1 != null);
+      
       Contract.Ensures(Contract.Result<Expr>() != null);
       NAryExpr nary = e1 as NAryExpr;
 
@@ -333,102 +333,102 @@ namespace Microsoft.Boogie
 
     public static Expr Neg(Expr e1)
     {
-      Contract.Requires(e1 != null);
+      
       Contract.Ensures(Contract.Result<Expr>() != null);
       return Unary(Token.NoToken, UnaryOperator.Opcode.Neg, e1);
     }
 
     public static NAryExpr Imp(Expr e1, Expr e2)
     {
-      Contract.Requires(e2 != null);
-      Contract.Requires(e1 != null);
+      
+      
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
       return Binary(BinaryOperator.Opcode.Imp, e1, e2);
     }
 
     public static NAryExpr Iff(Expr e1, Expr e2)
     {
-      Contract.Requires(e2 != null);
-      Contract.Requires(e1 != null);
+      
+      
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
       return Binary(BinaryOperator.Opcode.Iff, e1, e2);
     }
 
     public static NAryExpr Add(Expr e1, Expr e2)
     {
-      Contract.Requires(e2 != null);
-      Contract.Requires(e1 != null);
+      
+      
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
       return Binary(BinaryOperator.Opcode.Add, e1, e2);
     }
 
     public static NAryExpr Sub(Expr e1, Expr e2)
     {
-      Contract.Requires(e2 != null);
-      Contract.Requires(e1 != null);
+      
+      
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
       return Binary(BinaryOperator.Opcode.Sub, e1, e2);
     }
 
     public static NAryExpr Mul(Expr e1, Expr e2)
     {
-      Contract.Requires(e2 != null);
-      Contract.Requires(e1 != null);
+      
+      
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
       return Binary(BinaryOperator.Opcode.Mul, e1, e2);
     }
 
     public static NAryExpr Div(Expr e1, Expr e2)
     {
-      Contract.Requires(e2 != null);
-      Contract.Requires(e1 != null);
+      
+      
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
       return Binary(BinaryOperator.Opcode.Div, e1, e2);
     }
 
     public static NAryExpr Mod(Expr e1, Expr e2)
     {
-      Contract.Requires(e2 != null);
-      Contract.Requires(e1 != null);
+      
+      
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
       return Binary(BinaryOperator.Opcode.Mod, e1, e2);
     }
 
     public static NAryExpr RealDiv(Expr e1, Expr e2)
     {
-      Contract.Requires(e2 != null);
-      Contract.Requires(e1 != null);
+      
+      
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
       return Binary(BinaryOperator.Opcode.RealDiv, e1, e2);
     }
 
     public static NAryExpr FloatDiv(Expr e1, Expr e2)
     {
-      Contract.Requires(e2 != null);
-      Contract.Requires(e1 != null);
+      
+      
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
       return Binary(BinaryOperator.Opcode.FloatDiv, e1, e2);
     }
 
     public static NAryExpr Pow(Expr e1, Expr e2)
     {
-      Contract.Requires(e2 != null);
-      Contract.Requires(e1 != null);
+      
+      
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
       return Binary(BinaryOperator.Opcode.Pow, e1, e2);
     }
 
     public static IdentifierExpr Ident(string name, Type type)
     {
-      Contract.Requires(type != null);
-      Contract.Requires(name != null);
+      
+      
       Contract.Ensures(Contract.Result<IdentifierExpr>() != null);
       return new IdentifierExpr(Token.NoToken, name, type);
     }
 
     public static IdentifierExpr Ident(Variable decl)
     {
-      Contract.Requires(decl != null);
+      
       Contract.Ensures(Contract.Result<IdentifierExpr>() != null);
       IdentifierExpr result = new IdentifierExpr(Token.NoToken, decl);
       return result;
@@ -503,16 +503,16 @@ namespace Microsoft.Boogie
 
     public static NAryExpr Select(Expr map, params Expr[] args)
     {
-      Contract.Requires(args != null);
-      Contract.Requires(map != null);
+      
+      
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
       return SelectTok(Token.NoToken, map, args);
     }
 
     public static NAryExpr Select(Expr map, List<Expr> args)
     {
-      Contract.Requires(map != null);
-      Contract.Requires(Cce.NonNullElements(args));
+      
+      
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
       return Select(map, args.ToArray());
     }
@@ -521,9 +521,9 @@ namespace Microsoft.Boogie
     // (-> some bug prevents overloading in this case)
     public static NAryExpr SelectTok(IToken x, Expr map, params Expr[] args)
     {
-      Contract.Requires(args != null);
-      Contract.Requires(map != null);
-      Contract.Requires(x != null);
+      
+      
+      
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
       List<Expr>
         allArgs = new List<Expr>();
@@ -539,17 +539,17 @@ namespace Microsoft.Boogie
 
     public static NAryExpr Store(Expr map, params Expr[] args)
     {
-      Contract.Requires(args != null);
-      Contract.Requires(map != null);
+      
+      
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
       return StoreTok(Token.NoToken, map, args);
     }
 
     public static NAryExpr Store(Expr map, List<Expr> indexes, Expr rhs)
     {
-      Contract.Requires(rhs != null);
-      Contract.Requires(map != null);
-      Contract.Requires(Cce.NonNullElements(indexes));
+      
+      
+      
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
       Expr[]
         allArgs = new Expr[indexes.Count + 1];
@@ -566,10 +566,10 @@ namespace Microsoft.Boogie
     // (-> some bug prevents overloading in this case)
     public static NAryExpr StoreTok(IToken x, Expr map, params Expr[] args)
     {
-      Contract.Requires(args != null);
-      Contract.Requires(map != null);
-      Contract.Requires(x != null);
-      Contract.Requires(args.Length > 0); // zero or more indices, plus the value
+      
+      
+      
+      
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
 
       List<Expr>
@@ -586,9 +586,9 @@ namespace Microsoft.Boogie
 
     public static NAryExpr CoerceType(IToken x, Expr subexpr, Type type)
     {
-      Contract.Requires(type != null);
-      Contract.Requires(subexpr != null);
-      Contract.Requires(x != null);
+      
+      
+      
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
       List<Expr>
         args = new List<Expr>();
@@ -682,13 +682,13 @@ namespace Microsoft.Boogie
 
     public override void Emit(TokenTextWriter wr, int contextBindingStrength, bool fragileContext)
     {
-      Contract.Requires(wr != null);
+      
       throw new NotImplementedException();
     }
 
     public override void ComputeFreeVariables(Set freeVars)
     {
-      Contract.Requires(freeVars != null);
+      
       throw new NotImplementedException();
     }
 
@@ -733,7 +733,7 @@ namespace Microsoft.Boogie
     public LiteralExpr(IToken tok, bool b, bool immutable = false)
       : base(tok, immutable)
     {
-      Contract.Requires(tok != null);
+      
       Val = b;
       Type = Type.Bool;
       if (immutable)
@@ -750,7 +750,7 @@ namespace Microsoft.Boogie
     public LiteralExpr(IToken tok, BigNum v, bool immutable = false)
       : base(tok, immutable)
     {
-      Contract.Requires(tok != null);
+      
       Val = v;
       Type = Type.Int;
       if (immutable)
@@ -767,7 +767,7 @@ namespace Microsoft.Boogie
     public LiteralExpr(IToken tok, BigDec v, bool immutable = false)
       : base(tok, immutable)
     {
-      Contract.Requires(tok != null);
+      
       Val = v;
       Type = Type.Real;
       if (immutable)
@@ -784,7 +784,7 @@ namespace Microsoft.Boogie
     public LiteralExpr(IToken tok, BigFloat v, bool immutable = false)
       : base(tok, immutable)
     {
-      Contract.Requires(tok != null);
+      
       Val = v;
       Type = Type.GetFloatType(v.SignificandSize, v.ExponentSize);
       if (immutable)
@@ -799,8 +799,8 @@ namespace Microsoft.Boogie
     public LiteralExpr(IToken tok, BigNum v, int b, bool immutable = false)
       : base(tok, immutable)
     {
-      Contract.Requires(tok != null);
-      Contract.Requires(0 <= b);
+      
+      
       Val = new BvConst(v, b);
       Type = Type.GetBvType(b);
       if (immutable)
@@ -817,7 +817,7 @@ namespace Microsoft.Boogie
     public LiteralExpr(IToken tok, RoundingMode v, bool immutable = false)
       : base(tok, immutable)
     {
-      Contract.Requires(tok != null);
+      
       Val = v;
       Type = Type.RMode;
       if (immutable)
@@ -834,7 +834,7 @@ namespace Microsoft.Boogie
     public LiteralExpr(IToken tok, String v, bool immutable = false)
       : base(tok, immutable)
     {
-      Contract.Requires(tok != null);
+      
       Val = v;
       Type = Type.String;
       if (immutable)
@@ -1193,8 +1193,8 @@ namespace Microsoft.Boogie
     public IdentifierExpr(IToken tok, string name, bool immutable = false)
       : base(tok, immutable)
     {
-      Contract.Requires(tok != null);
-      Contract.Requires(name != null);
+      
+      
       _Name = name;
       if (immutable)
       {
@@ -1211,9 +1211,9 @@ namespace Microsoft.Boogie
     public IdentifierExpr(IToken tok, string name, Type type, bool immutable = false)
       : base(tok, immutable)
     {
-      Contract.Requires(tok != null);
-      Contract.Requires(name != null);
-      Contract.Requires(type != null);
+      
+      
+      
       _Name = name;
       Type = type;
       if (immutable)
@@ -1230,8 +1230,8 @@ namespace Microsoft.Boogie
     public IdentifierExpr(IToken tok, Variable d, bool immutable = false)
       : base(tok, immutable)
     {
-      Contract.Requires(tok != null);
-      Contract.Requires(d != null);
+      
+      
       _Name = Cce.NonNull(d.Name);
       _Decl = d;
       Type = d.TypedIdent.Type;
@@ -1443,7 +1443,7 @@ namespace Microsoft.Boogie
       {
         get
         {
-          Contract.Requires(IdentifierExpr != null);
+          
           return identifierExpr;
         }
       }
@@ -1462,8 +1462,8 @@ namespace Microsoft.Boogie
 
       public ConstantFunApp(IdentifierExpr ie, Constant c)
       {
-        Contract.Requires(c != null);
-        Contract.Requires(ie != null);
+        
+        
         this.identifierExpr = ie;
       }
     }
@@ -1507,8 +1507,8 @@ namespace Microsoft.Boogie
     public OldExpr(IToken tok, Expr expr, bool immutable = false)
       : base(tok, immutable)
     {
-      Contract.Requires(tok != null);
-      Contract.Requires(expr != null);
+      
+      
       _Expr = expr;
       if (immutable)
       {
@@ -1623,67 +1623,67 @@ namespace Microsoft.Boogie
 
     public T Visit(UnaryOperator unaryOperator)
     {
-      Contract.Requires(unaryOperator != null);
+      
       throw new NotImplementedException();
     }
 
     public T Visit(BinaryOperator binaryOperator)
     {
-      Contract.Requires(binaryOperator != null);
+      
       throw new NotImplementedException();
     }
 
     public T Visit(FunctionCall functionCall)
     {
-      Contract.Requires(functionCall != null);
+      
       throw new NotImplementedException();
     }
 
     public T Visit(MapSelect mapSelect)
     {
-      Contract.Requires(mapSelect != null);
+      
       throw new NotImplementedException();
     }
 
     public T Visit(MapStore mapStore)
     {
-      Contract.Requires(mapStore != null);
+      
       throw new NotImplementedException();
     }
 
     public T Visit(TypeCoercion typeCoercion)
     {
-      Contract.Requires(typeCoercion != null);
+      
       throw new NotImplementedException();
     }
 
     public T Visit(ArithmeticCoercion arithCoercion)
     {
-      Contract.Requires(arithCoercion != null);
+      
       throw new NotImplementedException();
     }
 
     public T Visit(IfThenElse ifThenElse)
     {
-      Contract.Requires(ifThenElse != null);
+      
       throw new NotImplementedException();
     }
 
     public T Visit(FieldAccess fieldAccess)
     {
-      Contract.Requires(fieldAccess != null);
+      
       throw new NotImplementedException();
     }
 
     public T Visit(FieldUpdate fieldUpdate)
     {
-      Contract.Requires(fieldUpdate != null);
+      
       throw new NotImplementedException();
     }
     
     public T Visit(IsConstructor isConstructor)
     {
-      Contract.Requires(isConstructor != null);
+      
       throw new NotImplementedException();
     }
     #endregion
@@ -1754,15 +1754,15 @@ namespace Microsoft.Boogie
 
     public void Emit(IList<Expr> args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext)
     {
-      Contract.Requires(args != null);
-      Contract.Requires(stream != null);
+      
+      
       throw new NotImplementedException();
     }
 
     public void Resolve(ResolutionContext rc, Expr subjectForErrorReporting)
     {
-      Contract.Requires(rc != null);
-      Contract.Requires(subjectForErrorReporting != null);
+      
+      
       throw new NotImplementedException();
     }
 
@@ -1773,8 +1773,8 @@ namespace Microsoft.Boogie
 
     public Type Typecheck(IList<Expr> args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc)
     {
-      Contract.Requires(args != null);
-      Contract.Requires(tc != null);
+      
+      
       Contract.Ensures(Contract.ValueAtReturn(out args) != null);
       Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
       Contract.Ensures(args.Count == Contract.OldValue(args.Count));
@@ -1783,7 +1783,7 @@ namespace Microsoft.Boogie
 
     public Type ShallowType(IList<Expr> args)
     {
-      Contract.Requires(args != null);
+      
       Contract.Ensures(Contract.Result<Type>() != null);
 
       throw new NotImplementedException();
@@ -1791,7 +1791,7 @@ namespace Microsoft.Boogie
 
     public T Dispatch<T>(IAppliableVisitor<T> visitor)
     {
-      Contract.Requires(visitor != null);
+      
       throw new NotImplementedException();
     }
 
@@ -1813,7 +1813,7 @@ namespace Microsoft.Boogie
 
     void IOverloadedAppliable.ResolveOverloading(NAryExpr expr)
     {
-      Contract.Requires(expr != null);
+      
       throw new NotImplementedException();
     }
 
@@ -1852,7 +1852,7 @@ namespace Microsoft.Boogie
 
     public UnaryOperator(IToken tok, Opcode op)
     {
-      Contract.Requires(tok != null);
+      
       this.tok = tok;
       this.op = op;
     }
@@ -2085,7 +2085,7 @@ namespace Microsoft.Boogie
 
     public BinaryOperator(IToken tok, Opcode op)
     {
-      Contract.Requires(tok != null);
+      
       this.tok = tok;
       this.op = op;
     }
@@ -2726,8 +2726,8 @@ namespace Microsoft.Boogie
 
     public TypeCoercion(IToken tok, Type type)
     {
-      Contract.Requires(type != null);
-      Contract.Requires(tok != null);
+      
+      
       this.tok = tok;
       this.Type = type;
     }
@@ -2959,7 +2959,7 @@ namespace Microsoft.Boogie
 
     public MapSelect(IToken tok, int arity)
     {
-      Contract.Requires(tok != null);
+      
       this.tok = tok;
       this.Arity = arity;
     }
@@ -3004,8 +3004,8 @@ namespace Microsoft.Boogie
       int contextBindingStrength, bool fragileContext,
       bool withRhs)
     {
-      Contract.Requires(args != null);
-      Contract.Requires(stream != null);
+      
+      
       const int opBindingStrength = 0x90;
       bool parensNeeded = opBindingStrength < contextBindingStrength ||
                           (fragileContext && opBindingStrength == contextBindingStrength);
@@ -3067,12 +3067,12 @@ namespace Microsoft.Boogie
       IToken typeCheckingSubject,
       string opName)
     {
-      Contract.Requires(mapType != null);
-      Contract.Requires(map != null);
-      Contract.Requires(indexes != null);
-      Contract.Requires(tc != null);
-      Contract.Requires(typeCheckingSubject != null);
-      Contract.Requires(opName != null);
+      
+      
+      
+      
+      
+      
       Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
 
       mapType = mapType.Expanded;
@@ -3168,7 +3168,7 @@ namespace Microsoft.Boogie
 
     public MapStore(IToken tok, int arity)
     {
-      Contract.Requires(tok != null);
+      
       this.tok = tok;
       this.Arity = arity;
     }
@@ -3225,10 +3225,10 @@ namespace Microsoft.Boogie
       IToken typeCheckingSubject,
       string opName)
     {
-      Contract.Requires(args != null);
-      Contract.Requires(tc != null);
-      Contract.Requires(typeCheckingSubject != null);
-      Contract.Requires(opName != null);
+      
+      
+      
+      
       Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
 
       // part of the type checking works exactly as for MapSelect
@@ -3301,7 +3301,7 @@ namespace Microsoft.Boogie
       }
       set
       {
-        Contract.Requires(value != null);
+        
         this._tok = value;
       }
     }
@@ -3314,7 +3314,7 @@ namespace Microsoft.Boogie
 
     public IfThenElse(IToken tok)
     {
-      Contract.Requires(tok != null);
+      
       this._tok = tok;
     }
 
@@ -3845,9 +3845,9 @@ namespace Microsoft.Boogie
     public CodeExpr(List<Variable> localVariables, List<Block> blocks, bool immutable = false)
       : base(Token.NoToken, immutable)
     {
-      Contract.Requires(localVariables != null);
-      Contract.Requires(Cce.NonNullElements(blocks));
-      Contract.Requires(0 < blocks.Count);
+      
+      
+      
       LocVars = localVariables;
       Blocks = blocks;
       if (immutable)
@@ -4016,8 +4016,8 @@ namespace Microsoft.Boogie
     public BvExtractExpr(IToken tok, Expr bv, int end, int start, bool immutable = false)
       : base(tok, immutable)
     {
-      Contract.Requires(tok != null);
-      Contract.Requires(bv != null);
+      
+      
       _Bitvector = bv;
       Start = start;
       End = end;
@@ -4197,9 +4197,9 @@ namespace Microsoft.Boogie
     public BvConcatExpr(IToken tok, Expr e0, Expr e1, bool immutable = false)
       : base(tok, immutable)
     {
-      Contract.Requires(tok != null);
-      Contract.Requires(e0 != null);
-      Contract.Requires(e1 != null);
+      
+      
+      
       _E0 = e0;
       _E1 = e1;
       if (immutable)

@@ -27,8 +27,8 @@ namespace VC
     public override Task<VcOutcome> VerifyImplementation(ImplementationRun run, VerifierCallback callback,
       CancellationToken cancellationToken)
     {
-      Contract.Requires(run != null);
-      Contract.Requires(callback != null);
+      
+      
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
       throw new NotImplementedException();
     }
@@ -90,7 +90,7 @@ namespace VC
 
     public ConditionGeneration(Program program, CheckerPool checkerPool)
     {
-      Contract.Requires(program != null && checkerPool != null);
+      
       this.program = program;
       CheckerPool = checkerPool;
     }
@@ -108,7 +108,7 @@ namespace VC
     public async Task<(VcOutcome, List<Counterexample> errors, List<VerificationRunResult> vcResults)> VerifyImplementationDirectly(
       ImplementationRun run, CancellationToken cancellationToken)
     {
-      Contract.Requires(run != null);
+      
 
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
       Helpers.ExtraTraceInformation(Options, "Starting implementation verification");
@@ -140,9 +140,9 @@ namespace VC
         bool replaceWithAssert,
         TokenTextWriter debugWriter)
     {
-      Contract.Requires(impl != null);
-      Contract.Requires(codeExpr != null);
-      Contract.Requires(targetBlock != null);
+      
+      
+      
       // Go through codeExpr and for all blocks that have a "return e"
       // as their transfer command:
       //   Replace all "return e" with "assert/assume e"
@@ -187,8 +187,8 @@ namespace VC
 
     private static void AddAsPrefix(Block b, List<Cmd> cs)
     {
-      Contract.Requires(b != null);
-      Contract.Requires(cs != null);
+      
+      
       List<Cmd> newCommands = new List<Cmd>();
       newCommands.AddRange(cs);
       newCommands.AddRange(b.Cmds);
@@ -206,9 +206,9 @@ namespace VC
     protected static void InjectPreconditions(VCGenOptions options, ImplementationRun run, [Captured] List<Cmd> startCmds)
     {
       var impl = run.Implementation;
-      Contract.Requires(impl != null);
-      Contract.Requires(startCmds != null);
-      Contract.Requires(impl.Proc != null);
+      
+      
+      
 
       TokenTextWriter debugWriter = null;
       if (options.PrintWithUniqueASTIds)
@@ -265,8 +265,8 @@ namespace VC
     protected static List<Cmd> GetPre(VCGenOptions options, ImplementationRun run)
     {
       var impl = run.Implementation;
-      Contract.Requires(impl != null);
-      Contract.Requires(impl.Proc != null);
+      
+      
       Contract.Ensures(Contract.Result<List<Cmd>>() != null);
 
 
@@ -311,8 +311,8 @@ namespace VC
     protected static List<Cmd> GetPost(VCGenOptions options, ImplementationRun run)
     {
       var impl = run.Implementation;
-      Contract.Requires(impl != null);
-      Contract.Requires(impl.Proc != null);
+      
+      
       Contract.Ensures(Contract.Result<List<Cmd>>() != null);
       if (options.PrintWithUniqueASTIds)
       {
@@ -359,8 +359,8 @@ namespace VC
     protected static List<Cmd> GetParamWhereClauses(VCGenOptions options, ImplementationRun run)
     {
       var impl = run.Implementation;
-      Contract.Requires(impl != null);
-      Contract.Requires(impl.Proc != null);
+      
+      
       Contract.Ensures(Contract.Result<List<Cmd>>() != null);
       TokenTextWriter debugWriter = null;
       if (options.PrintWithUniqueASTIds)
@@ -421,7 +421,7 @@ namespace VC
 
     protected static void RestoreParamWhereClauses(Implementation impl)
     {
-      Contract.Requires(impl != null);
+      
       // We no longer need the where clauses on the out parameters, so we remove them to restore the situation from before VC generation
       foreach (Formal f in impl.OutParams)
       {
@@ -442,7 +442,7 @@ namespace VC
       var impl = run.Implementation;
       overrideBlocks ??= impl.Blocks;
       
-      Contract.Requires(impl != null);
+      
       bool oldPrintDesugaringSetting = options.PrintDesugarings;
       options.PrintDesugarings = printDesugarings;
       var writer = new TokenTextWriter("<console>", run.OutputWriter, /*setTokens=*/ false, /*pretty=*/ false, options);
@@ -452,7 +452,7 @@ namespace VC
 
     public static void ResetPredecessors(IList<Block> blocks)
     {
-      Contract.Requires(blocks != null);
+      
       foreach (Block b in blocks)
       {
         Contract.Assert(b != null);
@@ -472,11 +472,11 @@ namespace VC
 
     protected Variable CreateIncarnation(Variable x, Absy a)
     {
-      Contract.Requires(this.Variable2SequenceNumber != null);
-      Contract.Requires(this.CurrentLocalVariables != null);
-      Contract.Requires(a is Block || a is AssignCmd || a is HavocCmd);
+      
+      
+      
 
-      Contract.Requires(x != null);
+      
       Contract.Ensures(Contract.Result<Variable>() != null);
 
       int currentIncarnationNumber =
@@ -508,8 +508,8 @@ namespace VC
     protected Dictionary<Variable, Expr> ComputeIncarnationMap(Block b,
       Dictionary<Block, Dictionary<Variable, Expr>> block2Incarnation)
     {
-      Contract.Requires(b != null);
-      Contract.Requires(block2Incarnation != null);
+      
+      
       Contract.Ensures(Contract.Result<Dictionary<Variable, Expr>>() != null);
 
       if (b.Predecessors.Count == 0)
@@ -644,10 +644,10 @@ namespace VC
     protected void TurnIntoPassiveBlock(TextWriter traceWriter, Block b, Dictionary<Variable, Expr> incarnationMap, ModelViewInfo mvInfo,
       Substitution oldFrameSubst, MutableVariableCollector variableCollector, Dictionary<Cmd, List<object>> debugInfos, byte[] currentChecksum = null)
     {
-      Contract.Requires(b != null);
-      Contract.Requires(incarnationMap != null);
-      Contract.Requires(mvInfo != null);
-      Contract.Requires(oldFrameSubst != null);
+      
+      
+      
+      
 
       #region Walk forward over the commands in this block and convert them to passive commands
 
@@ -678,8 +678,8 @@ namespace VC
 
     protected Dictionary<Variable, Expr> Convert2PassiveCmd(ImplementationRun run, ModelViewInfo mvInfo)
     {
-      Contract.Requires(run != null);
-      Contract.Requires(mvInfo != null);
+      
+      
 
       var implementation = run.Implementation;
       currentImplementation = run.Implementation;
@@ -725,9 +725,9 @@ namespace VC
     protected Dictionary<Variable, Expr> ConvertBlocks2PassiveCmd(TextWriter traceWriter, IList<Block> blocks, List<IdentifierExpr> modifies,
       ModelViewInfo mvInfo, Dictionary<Cmd, List<object>> debugInfos)
     {
-      Contract.Requires(blocks != null);
-      Contract.Requires(modifies != null);
-      Contract.Requires(mvInfo != null);
+      
+      
+      
 
       #region Convert to Passive Commands
 
@@ -909,12 +909,12 @@ namespace VC
     protected void TurnIntoPassiveCmd(TextWriter traceWriter, Cmd c, Block enclosingBlock, Dictionary<Variable, Expr> incarnationMap, Substitution oldFrameSubst,
       List<Cmd> passiveCmds, ModelViewInfo mvInfo, Dictionary<Cmd, List<object>> debugInfos)
     {
-      Contract.Requires(c != null);
-      Contract.Requires(enclosingBlock != null);
-      Contract.Requires(incarnationMap != null);
-      Contract.Requires(oldFrameSubst != null);
-      Contract.Requires(passiveCmds != null);
-      Contract.Requires(mvInfo != null);
+      
+      
+      
+      
+      
+      
 
       AddDebugInfo(c, incarnationMap, passiveCmds, debugInfos);
       Substitution incarnationSubst = Substituter.SubstitutionFromDictionary(incarnationMap);
@@ -1354,8 +1354,8 @@ namespace VC
 
     NAryExpr TypedExprEq(Expr e0, Expr e1, bool doNotResolveOverloading = false)
     {
-      Contract.Requires(e0 != null);
-      Contract.Requires(e1 != null);
+      
+      
       NAryExpr e = Expr.Eq(e0, e1);
       var fun = e.Fun as IOverloadedAppliable;
       if (fun != null)
@@ -1374,10 +1374,10 @@ namespace VC
     /// </summary>
     public Block CreateBlockBetween(int predIndex, Block succ)
     {
-      Contract.Requires(0 <= predIndex && predIndex < succ.Predecessors.Count);
+      
 
 
-      Contract.Requires(succ != null);
+      
       Contract.Ensures(Contract.Result<Block>() != null);
 
       Block pred = Cce.NonNull(succ.Predecessors[predIndex]);
@@ -1429,7 +1429,7 @@ namespace VC
 
     protected void AddBlocksBetween(IList<Block> blocks)
     {
-      Contract.Requires(blocks != null);
+      
 
       #region Introduce empty blocks between join points and their multi-successor predecessors
 

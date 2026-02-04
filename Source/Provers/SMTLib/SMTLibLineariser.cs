@@ -32,8 +32,8 @@ namespace Microsoft.Boogie.SMTLib
     public SMTLibExprLineariser(TextWriter wr, UniqueNamer namer, SMTLibOptions libOptions, SMTLibSolverOptions opts,
       ISet<VCExprVar> namedAssumes = null, IList<string> optReqs = null) : this(libOptions)
     {
-      Contract.Requires(wr != null);
-      Contract.Requires(namer != null);
+      
+      
       this.wr = wr;
       this.Namer = namer;
       this.solverOptions = opts;
@@ -48,16 +48,16 @@ namespace Microsoft.Boogie.SMTLib
 
     public string StoreOpName(VCExprNAry node)
     {
-      Contract.Requires(node != null);
-      Contract.Requires((node.Op is VCExprSelectOp) || (node.Op is VCExprStoreOp));
+      
+      
       Contract.Ensures(Contract.Result<string>() != null);
       return "Store_" + TypeToString(node[0].Type);
     }
 
     public string SelectOpName(VCExprNAry node)
     {
-      Contract.Requires(node != null);
-      Contract.Requires((node.Op is VCExprSelectOp) || (node.Op is VCExprStoreOp));
+      
+      
       Contract.Ensures(Contract.Result<string>() != null);
       return "Select_" + TypeToString(node[0].Type);
     }
@@ -65,8 +65,8 @@ namespace Microsoft.Boogie.SMTLib
     public static string ToString(VCExpr e, UniqueNamer namer, SMTLibOptions libOptions, SMTLibSolverOptions opts,
       ISet<VCExprVar> namedAssumes = null, IList<string> optReqs = null, ISet<VCExprVar> tryAssumes = null)
     {
-      Contract.Requires(e != null);
-      Contract.Requires(namer != null);
+      
+      
       Contract.Ensures(Contract.Result<string>() != null);
 
       StringWriter sw = new StringWriter();
@@ -113,8 +113,8 @@ namespace Microsoft.Boogie.SMTLib
 
     public void Linearise(VCExpr expr, LineariserOptions options)
     {
-      Contract.Requires(expr != null);
-      Contract.Requires(options != null);
+      
+      
       expr.Accept<bool, LineariserOptions>(this, options);
     }
 
@@ -122,7 +122,7 @@ namespace Microsoft.Boogie.SMTLib
 
     private void TypeToStringHelper(Type t, StringBuilder sb)
     {
-      Contract.Requires(t != null);
+      
 
       if (t is TypeSynonymAnnotation syn)
       {
@@ -176,7 +176,7 @@ namespace Microsoft.Boogie.SMTLib
 
     public string TypeToString(Type t)
     {
-      Contract.Requires(t != null);
+      
       Contract.Ensures(Contract.Result<string>() != null);
 
       if (t.IsBool)
@@ -237,7 +237,7 @@ namespace Microsoft.Boogie.SMTLib
 
     public string ExtractBuiltin(Function f)
     {
-      Contract.Requires(f != null);
+      
       string retVal = null;
       retVal = (f as ICarriesAttributes).FindStringAttribute("bvbuiltin");
 
@@ -496,8 +496,8 @@ namespace Microsoft.Boogie.SMTLib
 
     private void WriteTriggers(List<VCTrigger /*!>!*/> triggers, LineariserOptions options)
     {
-      Contract.Requires(options != null);
-      Contract.Requires(triggers != null);
+      
+      
       // first, count how many neg/pos triggers there are
       int negTriggers = 0;
       int posTriggers = 0;
@@ -606,8 +606,8 @@ namespace Microsoft.Boogie.SMTLib
 
       public SMTLibOpLineariser(SMTLibExprLineariser ExprLineariser, TextWriter wr)
       {
-        Contract.Requires(ExprLineariser != null);
-        Contract.Requires(wr != null);
+        
+        
         this.ExprLineariser = ExprLineariser;
         this.wr = wr;
       }
@@ -622,8 +622,8 @@ namespace Microsoft.Boogie.SMTLib
       ///////////////////////////////////////////////////////////////////////////////////
       private void WriteApplication(string opName, VCExprNAry /*!>!*/ call, LineariserOptions options)
       {
-        Contract.Requires(Cce.NonNullElements(call.Arguments));
-        Contract.Requires(options != null);
+        
+        
         Contract.Assert(opName != null);
 
         bool hasArgs = false;
@@ -660,8 +660,8 @@ namespace Microsoft.Boogie.SMTLib
 
       private bool PrintEq(VCExprNAry node, LineariserOptions options)
       {
-        Contract.Requires(node != null);
-        Contract.Requires(options != null);
+        
+        
 
         WriteApplication("=", node, options);
 

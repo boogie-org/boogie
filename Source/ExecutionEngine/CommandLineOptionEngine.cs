@@ -32,7 +32,7 @@ public class CommandLineOptionEngine
     }
     set
     {
-      Contract.Requires(value != null);
+      
       this._environment = value;
     }
   }
@@ -55,8 +55,8 @@ public class CommandLineOptionEngine
 
   public CommandLineOptionEngine(string toolName, string descriptiveName, TextWriter outputWriter)
   {
-    Contract.Requires(toolName != null);
-    Contract.Requires(descriptiveName != null);
+    
+    
     ToolName = toolName;
     DescriptiveToolName = descriptiveName;
     OutputWriter = outputWriter;
@@ -103,7 +103,7 @@ public class CommandLineOptionEngine
     }
     set
     {
-      Contract.Requires(value != null);
+      
       this._fileTimestamp = value;
     }
   }
@@ -125,8 +125,8 @@ public class CommandLineOptionEngine
   /// </summary>
   protected virtual bool ParseOption(string name, CommandLineParseState ps)
   {
-    Contract.Requires(name != null);
-    Contract.Requires(ps != null);
+    
+    
 
     if (ps.CheckBooleanFlag("version", ref VersionRequested) ||
         ps.CheckBooleanFlag("help", ref HelpRequested) ||
@@ -188,7 +188,7 @@ public class CommandLineOptionEngine
   /// </summary>
   public virtual bool Parse(string[] args)
   {
-    Contract.Requires(Cce.NonNullElements(args));
+    
 
     // save the command line options for the log files
     Environment += "Command Line Options: " + string.Join(" ", args);

@@ -42,12 +42,12 @@ namespace VC
     public VerificationConditionGenerator(Program program, CheckerPool checkerPool)
       : base(program, checkerPool)
     {
-      Contract.Requires(program != null);
+      
     }
 
     public static AssumeCmd AssertTurnedIntoAssume(VCGenOptions options, AssertCmd assrt)
     {
-      Contract.Requires(assrt != null);
+      
       Contract.Ensures(Contract.Result<AssumeCmd>() != null);
 
       Expr expr = assrt.Expr;
@@ -150,8 +150,8 @@ namespace VC
     public VCExpr GenerateVC(Implementation impl, VCExpr controlFlowVariableExpr,
       ControlFlowIdMap<Absy> absyIds, ProverContext proverContext)
     {
-      Contract.Requires(impl != null);
-      Contract.Requires(proverContext != null);
+      
+      
       Contract.Ensures(Contract.ValueAtReturn(out absyIds) != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
@@ -161,8 +161,8 @@ namespace VC
     public VCExpr GenerateVCAux(Implementation impl, VCExpr controlFlowVariableExpr,
       ControlFlowIdMap<Absy> absyIds, ProverContext proverContext)
     {
-      Contract.Requires(impl != null);
-      Contract.Requires(proverContext != null);
+      
+      
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       TypecheckingContext tc = new TypecheckingContext(null, Options);
@@ -192,8 +192,8 @@ namespace VC
     public static void CheckIntAttributeOnImpl(ImplementationRun run, string name, ref int val)
     {
       var impl = run.Implementation;
-      Contract.Requires(impl != null);
-      Contract.Requires(name != null);
+      
+      
       if (impl.FindAttribute(name) == null || impl.CheckIntAttribute(name, ref val))
       {
         return;
@@ -513,11 +513,11 @@ namespace VC
         ProverContext context,
         Program program, ProofRun split) : base(options)
       {
-        Contract.Requires(absyIds != null);
-        Contract.Requires(Cce.NonNullElements(blocks));
-        Contract.Requires(callback != null);
-        Contract.Requires(context != null);
-        Contract.Requires(program != null);
+        
+        
+        
+        
+        
         this.absyIds = absyIds;
         this.blocks = blocks;
         this.debugInfos = debugInfos;
@@ -648,8 +648,8 @@ namespace VC
 
     public void PassifyImpl(ImplementationRun run, out ModelViewInfo modelViewInfo)
     {
-      Contract.Requires(run != null);
-      Contract.Requires(program != null);
+      
+      
       Contract.Ensures(Contract.Result<Dictionary<TransferCmd, ReturnCmd>>() != null);
 
       var impl = run.Implementation;
@@ -932,7 +932,7 @@ namespace VC
 
     static bool IsConjunctionOfAssumptionVariables(Expr expr, out HashSet<Variable> variables)
     {
-      Contract.Requires(expr != null);
+      
 
       variables = null;
       var litExpr = expr as LiteralExpr;
@@ -1095,7 +1095,7 @@ namespace VC
       HashSet<string> inlinedProcs,
       Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo)
     {
-      Contract.Requires(currProc != null);
+      
       if (cexInfo.Counterexample == null)
       {
         return cexInfo;
@@ -1226,7 +1226,7 @@ namespace VC
     private Block ProcGetBlock(string procname, Block block,
       Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo)
     {
-      Contract.Requires(procname != null);
+      
 
       if (!extractLoopMappingInfo.ContainsKey(procname))
       {
@@ -1249,11 +1249,11 @@ namespace VC
       ProofRun split,
       Dictionary<TraceLocation, CalleeCounterexampleInfo> calleeCounterexamples)
     {
-      Contract.Requires(b != null);
-      Contract.Requires(traceNodes != null);
-      Contract.Requires(trace != null);
-      Contract.Requires(context != null);
-      Contract.Requires(Cce.NonNullDictionaryAndValues(calleeCounterexamples));
+      
+      
+      
+      
+      
       // After translation, all potential errors come from asserts.
 
       List<object> augmentedTrace = new List<object>();
@@ -1315,10 +1315,10 @@ namespace VC
       List<Block> trace, List<object> augmentedTrace,
       Model errModel, ModelViewInfo mvInfo, ProverContext context, ProofRun split)
     {
-      Contract.Requires(cmd != null);
-      Contract.Requires(transferCmd != null);
-      Contract.Requires(trace != null);
-      Contract.Requires(context != null);
+      
+      
+      
+      
       Contract.Ensures(Contract.Result<Counterexample>() != null);
 
       // See if it is a special assert inserted in translation
@@ -1354,9 +1354,9 @@ namespace VC
       Counterexample cex,
       Block implEntryBlock)
     {
-      Contract.Requires(assert != null);
-      Contract.Requires(cex != null);
-      Contract.Requires(implEntryBlock != null);
+      
+      
+      
       Contract.Ensures(Contract.Result<Counterexample>() != null);
 
       Counterexample cc;
@@ -1485,8 +1485,8 @@ namespace VC
       out int assertionCount,
       bool isPositiveContext = true)
     {
-      Contract.Requires(blocks != null);
-      Contract.Requires(proverCtxt != null);
+      
+      
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       assertionCount = 0;
@@ -1562,10 +1562,10 @@ namespace VC
       ProverContext proverCtxt,
       out int assertionCount)
     {
-      Contract.Requires(block != null);
-      Contract.Requires(absyIds != null);
-      Contract.Requires(blockEquations != null);
-      Contract.Requires(proverCtxt != null);
+      
+      
+      
+      
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       assertionCount = 0;

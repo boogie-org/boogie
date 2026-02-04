@@ -24,7 +24,7 @@ namespace VC
 
     public VCContext(VCGenOptions options, ControlFlowIdMap<Absy> absyIds, ProverContext ctxt, bool isPositiveContext = true)
     {
-      Contract.Requires(ctxt != null);
+      
       Options = options;
       this.absyIds = absyIds;
       this.Ctxt = ctxt;
@@ -34,7 +34,7 @@ namespace VC
     public VCContext(VCGenOptions options, ControlFlowIdMap<Absy> absyIds, ProverContext ctxt, VCExpr controlFlowVariableExpr,
       bool isPositiveContext = true)
     {
-      Contract.Requires(ctxt != null);
+      
       Options = options;
       this.absyIds = absyIds;
       this.Ctxt = ctxt;
@@ -50,9 +50,9 @@ namespace VC
     public static VCExpr Block(Block b, VCExpr N, VCContext ctxt)
       //modifies ctxt.*;
     {
-      Contract.Requires(b != null);
-      Contract.Requires(N != null);
-      Contract.Requires(ctxt != null);
+      
+      
+      
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       VCExpressionGenerator gen = ctxt.Ctxt.ExprGen;
@@ -83,9 +83,9 @@ namespace VC
     /// </summary>
     internal static VCExpr Cmd(Block b, Cmd cmd, VCExpr N, VCContext ctxt)
     {
-      Contract.Requires(cmd != null);
-      Contract.Requires(N != null);
-      Contract.Requires(ctxt != null);
+      
+      
+      
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       VCExpressionGenerator gen = ctxt.Ctxt.ExprGen;
@@ -255,7 +255,7 @@ namespace VC
 
     public static CoreOptions.SubsumptionOption Subsumption(VCGenOptions options, AssertCmd ac)
     {
-      Contract.Requires(ac != null);
+      
       int n = QKeyValue.FindIntAttribute(ac.Attributes, "subsumption", -1);
       switch (n)
       {
@@ -268,9 +268,9 @@ namespace VC
 
     public static VCExpr RegExpr(RE r, VCExpr N, VCContext ctxt)
     {
-      Contract.Requires(r != null);
-      Contract.Requires(N != null);
-      Contract.Requires(ctxt != null);
+      
+      
+      
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       if (r is AtomicRE)

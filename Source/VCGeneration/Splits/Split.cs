@@ -93,7 +93,7 @@ namespace VC
       public Split(VCGenOptions options, Func<IList<Block>> getBlocks,
         VerificationConditionGenerator parent, ImplementationRun run, int? randomSeed = null)
       {
-        Contract.Requires(parent != null);
+        
         this.getBlocks = getBlocks;
         this.parent = parent;
         this.Run = run;
@@ -220,7 +220,7 @@ namespace VC
 
       BlockStats GetBlockStats(Block b)
       {
-        Contract.Requires(b != null);
+        
         Contract.Ensures(Contract.Result<BlockStats>() != null);
 
         if (!stats.TryGetValue(b, out var s))
@@ -239,7 +239,7 @@ namespace VC
 
       void CountAssertions(Block b)
       {
-        Contract.Requires(b != null);
+        
         BlockStats s = GetBlockStats(b);
         if (s.assertionCost >= 0)
         {
@@ -289,7 +289,7 @@ namespace VC
 
       HashSet<Block> ComputeReachableNodes(Block b)
       {
-        Contract.Requires(b != null);
+        
         Contract.Ensures(Cce.NonNull(Contract.Result<HashSet<Block>>()));
         BlockStats s = GetBlockStats(b);
         if (s.reachableBlocks != null)
@@ -432,7 +432,7 @@ namespace VC
 
       void UpdateIncomingPaths(BlockStats s)
       {
-        Contract.Requires(s != null);
+        
         if (s.incomingPaths < 0.0)
         {
           int count = 0;
@@ -464,7 +464,7 @@ namespace VC
 
       void ComputeBlockSetsHelper(Block b, bool allowSmall)
       {
-        Contract.Requires(b != null);
+        
         if (!keepAtAll.Add(b))
         {
           return;
@@ -539,7 +539,7 @@ namespace VC
 
       bool ShouldAssumize(Block b)
       {
-        Contract.Requires(b != null);
+        
         return assertToAssume && !protectedFromAssertToAssume.Contains(b);
       }
 
@@ -584,7 +584,7 @@ namespace VC
 
       List<Cmd> SliceCmds(Block b)
       {
-        Contract.Requires(b != null);
+        
         Contract.Ensures(Contract.Result<List<Cmd>>() != null);
 
         List<Cmd> seq = b.Cmds;
@@ -634,7 +634,7 @@ namespace VC
 
       Block CloneBlock(Block b)
       {
-        Contract.Requires(b != null);
+        
         Contract.Ensures(Contract.Result<Block>() != null);
 
         if (copies.TryGetValue(b, out var res))
@@ -737,7 +737,7 @@ namespace VC
 
       public Counterexample ToCounterexample(ProverContext context)
       {
-        Contract.Requires(context != null);
+        
         Contract.Ensures(Contract.Result<Counterexample>() != null);
 
         List<Block> trace = new List<Block>();
@@ -768,7 +768,7 @@ namespace VC
 
       public static List<Split> DoSplit(Split initial, double splitThreshold, int maxSplits)
       {
-        Contract.Requires(initial != null);
+        
         Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Split>>()));
 
         var run = initial.Run;
@@ -939,8 +939,8 @@ namespace VC
         uint rlimit, CancellationToken cancellationToken)
       {
         PrintSplit();
-        Contract.Requires(checker != null);
-        Contract.Requires(callback != null);
+        
+        
 
         VCExpr vc;
         // Lock impl since we're setting impl.Blocks that is used to generate the VC.
@@ -1001,9 +1001,9 @@ namespace VC
       private void SoundnessCheck(HashSet<List<Block>> cache, Block orig,
         List<Block> copies)
       {
-        Contract.Requires(Cce.NonNull(cache));
-        Contract.Requires(orig != null);
-        Contract.Requires(copies != null);
+        
+        
+        
         {
           var t = new List<Block> { orig };
           foreach (Block b in copies)

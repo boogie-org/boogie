@@ -65,8 +65,8 @@ namespace Microsoft.Boogie.AbstractInterpretation
 
       Node(Variable v, BigInteger? lo, BigInteger? hi, Node next)
       {
-        Contract.Requires(lo != null || hi != null); // don't accept empty constraints
-        Contract.Requires(next == null || StrictlyBefore(v, next.V));
+        
+        
         V = v;
         Lo = lo;
         Hi = hi;
@@ -78,7 +78,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
       /// </summary>
       public Node(Variable v, BigInteger? lo, BigInteger? hi)
       {
-        Contract.Requires(lo != null || hi != null); // don't accept empty constraints
+        
         V = v;
         Lo = lo;
         Hi = hi;
@@ -92,9 +92,9 @@ namespace Microsoft.Boogie.AbstractInterpretation
       /// </summary>
       public static Node Create(Node head, Node tail)
       {
-        Contract.Requires(head != null);
-        Contract.Requires(tail == null || !StrictlyBefore(tail.V, head.V));
-        Contract.Requires(head != tail);
+        
+        
+        
 
         if (head.Next == tail)
         {
@@ -1568,7 +1568,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
 
     public ThresholdFinder(Implementation impl)
     {
-      Contract.Requires(impl != null);
+      
       Impl = impl;
     }
 

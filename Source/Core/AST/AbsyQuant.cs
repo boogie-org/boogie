@@ -78,11 +78,11 @@ namespace Microsoft.Boogie
       List<Variable> dummies, QKeyValue kv, Expr body, bool immutable)
       : base(tok, immutable)
     {
-      Contract.Requires(tok != null);
-      Contract.Requires(typeParameters != null);
-      Contract.Requires(dummies != null);
-      Contract.Requires(body != null);
-      Contract.Requires(dummies.Count + typeParameters.Count > 0);
+      
+      
+      
+      
+      
       TypeParameters = typeParameters;
       Dummies = dummies;
       Attributes = kv;
@@ -179,12 +179,12 @@ namespace Microsoft.Boogie
 
     protected virtual void EmitTypeHint(TokenTextWriter stream)
     {
-      Contract.Requires(stream != null);
+      
     }
 
     protected virtual void EmitTriggers(TokenTextWriter stream)
     {
-      Contract.Requires(stream != null);
+      
     }
 
     public override void Emit(TokenTextWriter stream, int contextBindingStrength, bool fragileContext)
@@ -213,7 +213,7 @@ namespace Microsoft.Boogie
 
     protected virtual void ResolveTriggers(ResolutionContext rc)
     {
-      Contract.Requires(rc != null);
+      
     }
 
     public override void Resolve(ResolutionContext rc)
@@ -267,8 +267,8 @@ namespace Microsoft.Boogie
     public static void ComputeBinderFreeVariables(List<TypeVariable> typeParameters, List<Variable> dummies, Expr body,
       Trigger triggers, QKeyValue attributes, Set freeVars)
     {
-      Contract.Requires(dummies != null);
-      Contract.Requires(body != null);
+      
+      
 
       foreach (var v in dummies)
       {
@@ -343,9 +343,9 @@ namespace Microsoft.Boogie
       }
       set
       {
-        Contract.Requires(value != null);
-        Contract.Requires(value.Count >= 1);
-        Contract.Requires(this.Pos || value.Count == 1);
+        
+        
+        
         this.tr = new List<Expr>(value);
       }
     }
@@ -363,10 +363,10 @@ namespace Microsoft.Boogie
     public Trigger(IToken tok, bool pos, IEnumerable<Expr> tr, Trigger next = null)
       : base(tok)
     {
-      Contract.Requires(tok != null);
-      Contract.Requires(tr != null);
-      Contract.Requires(tr.Count() >= 1);
-      Contract.Requires(pos || tr.Count() == 1);
+      
+      
+      
+      
       this.Pos = pos;
       this.Tr = new List<Expr>(tr);
       this.Next = next;
@@ -374,7 +374,7 @@ namespace Microsoft.Boogie
 
     public void Emit(TokenTextWriter stream)
     {
-      Contract.Requires(stream != null);
+      
       stream.SetToken(this);
       Contract.Assert(this.Tr.Count >= 1);
       string
@@ -416,7 +416,7 @@ namespace Microsoft.Boogie
     /// </summary>
     public void ComputeFreeVariables(Set /*Variable*/ freeVars)
     {
-      Contract.Requires(freeVars != null);
+      
       foreach (Expr e in this.Tr)
       {
         Contract.Assert(e != null);
@@ -484,40 +484,40 @@ namespace Microsoft.Boogie
       List<Variable> dummies, QKeyValue kv, Trigger triggers, Expr body, bool immutable = false)
       : base(tok, typeParams, dummies, kv, triggers, body, immutable)
     {
-      Contract.Requires(tok != null);
-      Contract.Requires(typeParams != null);
-      Contract.Requires(dummies != null);
-      Contract.Requires(body != null);
-      Contract.Requires(dummies.Count + typeParams.Count > 0);
+      
+      
+      
+      
+      
     }
 
     public ForallExpr(IToken tok, List<Variable> dummies, Trigger triggers, Expr body, bool immutable = false)
       : base(tok, new List<TypeVariable>(), dummies, null, triggers, body, immutable)
     {
-      Contract.Requires(body != null);
-      Contract.Requires(dummies != null);
-      Contract.Requires(tok != null);
-      Contract.Requires(dummies.Count > 0);
+      
+      
+      
+      
     }
 
     public ForallExpr(IToken tok, List<Variable> dummies, Expr body, bool immutable = false)
       : base(tok, new List<TypeVariable>(), dummies, null, null, body, immutable)
     {
-      Contract.Requires(body != null);
-      Contract.Requires(dummies != null);
-      Contract.Requires(tok != null);
-      Contract.Requires(dummies.Count > 0);
+      
+      
+      
+      
     }
 
     public ForallExpr(IToken tok, List<TypeVariable> typeParams, List<Variable> dummies, Expr body,
       bool immutable = false)
       : base(tok, typeParams, dummies, null, null, body, immutable)
     {
-      Contract.Requires(body != null);
-      Contract.Requires(dummies != null);
-      Contract.Requires(typeParams != null);
-      Contract.Requires(tok != null);
-      Contract.Requires(dummies.Count + typeParams.Count > 0);
+      
+      
+      
+      
+      
     }
 
     public override Absy StdDispatch(StandardVisitor visitor)
@@ -538,29 +538,29 @@ namespace Microsoft.Boogie
       QKeyValue kv, Trigger triggers, Expr body, bool immutable = false)
       : base(tok, typeParams, dummies, kv, triggers, body, immutable)
     {
-      Contract.Requires(tok != null);
-      Contract.Requires(typeParams != null);
-      Contract.Requires(dummies != null);
-      Contract.Requires(body != null);
-      Contract.Requires(dummies.Count + typeParams.Count > 0);
+      
+      
+      
+      
+      
     }
 
     public ExistsExpr(IToken tok, List<Variable> dummies, Trigger triggers, Expr body, bool immutable = false)
       : base(tok, new List<TypeVariable>(), dummies, null, triggers, body, immutable)
     {
-      Contract.Requires(body != null);
-      Contract.Requires(dummies != null);
-      Contract.Requires(tok != null);
-      Contract.Requires(dummies.Count > 0);
+      
+      
+      
+      
     }
 
     public ExistsExpr(IToken tok, List<Variable> dummies, Expr body, bool immutable = false)
       : base(tok, new List<TypeVariable>(), dummies, null, null, body, immutable)
     {
-      Contract.Requires(body != null);
-      Contract.Requires(dummies != null);
-      Contract.Requires(tok != null);
-      Contract.Requires(dummies.Count > 0);
+      
+      
+      
+      
     }
 
     public override Absy StdDispatch(StandardVisitor visitor)
@@ -592,11 +592,11 @@ namespace Microsoft.Boogie
       List<Variable> dummies, QKeyValue kv, Trigger triggers, Expr body, bool immutable)
       : base(tok, typeParameters, dummies, kv, body, immutable)
     {
-      Contract.Requires(tok != null);
-      Contract.Requires(typeParameters != null);
-      Contract.Requires(dummies != null);
-      Contract.Requires(body != null);
-      Contract.Requires(dummies.Count + typeParameters.Count > 0);
+      
+      
+      
+      
+      
 
       Contract.Assert((this is ForallExpr) || (this is ExistsExpr));
 
@@ -673,7 +673,7 @@ namespace Microsoft.Boogie
 
       public NeverTriggerCollector(QuantifierExpr p)
       {
-        Contract.Requires(p != null);
+        
         parent = p;
       }
 
@@ -867,11 +867,11 @@ namespace Microsoft.Boogie
       List<Variable> dummies, QKeyValue kv, Expr body, bool immutable = false)
       : base(tok, typeParameters, dummies, kv, body, immutable)
     {
-      Contract.Requires(tok != null);
-      Contract.Requires(typeParameters != null);
-      Contract.Requires(dummies != null);
-      Contract.Requires(body != null);
-      Contract.Requires(dummies.Count + typeParameters.Count > 0);
+      
+      
+      
+      
+      
     }
 
     public override BinderKind Kind
@@ -955,12 +955,12 @@ namespace Microsoft.Boogie
     public LetExpr(IToken tok, List<Variable> dummies, List<Expr> rhss, QKeyValue kv, Expr body)
       : base(tok, false)
     {
-      Contract.Requires(tok != null);
-      Contract.Requires(dummies != null);
-      Contract.Requires(rhss != null);
-      Contract.Requires(body != null);
-      Contract.Requires(dummies.Count > 0);
-      Contract.Requires(rhss.Count > 0);
+      
+      
+      
+      
+      
+      
       Dummies = dummies;
       Rhss = rhss;
       Attributes = kv;

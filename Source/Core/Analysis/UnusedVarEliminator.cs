@@ -7,7 +7,7 @@ public class UnusedVarEliminator : VariableCollector
 {
   public static void Eliminate(Program program)
   {
-    Contract.Requires(program != null);
+    
     UnusedVarEliminator elim = new UnusedVarEliminator();
     elim.Visit(program);
   }

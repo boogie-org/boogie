@@ -17,7 +17,7 @@ public class CalleeCounterexampleInfo
 
   public CalleeCounterexampleInfo(Counterexample cex, List<object /*!>!*/> x)
   {
-    Contract.Requires(Cce.NonNullElements(x));
+    
     Counterexample = cex;
     Args = x;
   }

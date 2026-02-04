@@ -102,7 +102,7 @@ namespace Microsoft.Boogie
 
     protected void NextInlinedProcLabel(string procName)
     {
-      Contract.Requires(procName != null);
+      
       if (inlinedProcLblMap.TryGetValue(procName, out var currentId))
       {
         inlinedProcLblMap[procName] = currentId + 1;
@@ -115,15 +115,15 @@ namespace Microsoft.Boogie
 
     protected string GetInlinedProcLabel(string procName)
     {
-      Contract.Requires(procName != null);
+      
       Contract.Ensures(Contract.Result<string>() != null);
       return prefix + procName + "$" + inlinedProcLblMap[procName];
     }
 
     protected string GetProcVarName(string procName, string formalName)
     {
-      Contract.Requires(formalName != null);
-      Contract.Requires(procName != null);
+      
+      
       Contract.Ensures(Contract.Result<string>() != null);
       return GetInlinedProcLabel(procName) + "$" + formalName;
     }
@@ -196,8 +196,8 @@ namespace Microsoft.Boogie
 
     protected void ProcessImplementation(Program program, Implementation impl)
     {
-      Contract.Requires(impl != null);
-      Contract.Requires(impl.Proc != null);
+      
+      
 
       ComputePrefix(program, impl);
 
@@ -229,26 +229,26 @@ namespace Microsoft.Boogie
 
     public static void ProcessImplementationForHoudini(CoreOptions options, Program program, Implementation impl)
     {
-      Contract.Requires(impl != null);
-      Contract.Requires(program != null);
-      Contract.Requires(impl.Proc != null);
+      
+      
+      
       var inliner = new Inliner(program, null, options.InlineDepth, options);
       inliner.ProcessImplementation(program, impl);
     }
 
     public static void ProcessImplementation(CoreOptions options, Program program, Implementation impl)
     {
-      Contract.Requires(impl != null);
-      Contract.Requires(program != null);
-      Contract.Requires(impl.Proc != null);
+      
+      
+      
       var inliner = new Inliner(program, null, -1, options);
       inliner.ProcessImplementation(program, impl);
     }
 
     protected void EmitImpl(Implementation impl)
     {
-      Contract.Requires(impl != null);
-      Contract.Requires(impl.Proc != null);
+      
+      
       options.OutputWriter.WriteLine("after inlining procedure calls");
       impl.Proc.Emit(new TokenTextWriter("<console>", options.OutputWriter, /*pretty=*/ false, options), 0);
       impl.Emit(new TokenTextWriter("<console>", options.OutputWriter, /*pretty=*/ false, options), 0);
@@ -267,7 +267,7 @@ namespace Microsoft.Boogie
 
     protected void ResolveImpl(Implementation impl)
     {
-      Contract.Requires(impl != null);
+      
       Contract.Ensures(impl.Proc != null);
       ResolutionContext rc = new ResolutionContext(new DummyErrorSink(), options);
       foreach (var decl in program.TopLevelDeclarations)
@@ -292,8 +292,8 @@ namespace Microsoft.Boogie
 
     protected int TryDefineCount(CallCmd callCmd, Implementation impl)
     {
-      Contract.Requires(impl != null);
-      Contract.Requires(impl.Proc != null);
+      
+      
 
       // getDepth returns -1 when depth for this impl is not defined
       var depth = depthTracker.GetDepth(impl);
@@ -321,8 +321,8 @@ namespace Microsoft.Boogie
 
     void CheckRecursion(Implementation impl, Stack<Procedure> callStack)
     {
-      Contract.Requires(impl != null);
-      Contract.Requires(Cce.NonNullElements(callStack));
+      
+      
       foreach (Procedure p in callStack)
       {
         Contract.Assert(p != null);
@@ -406,7 +406,7 @@ namespace Microsoft.Boogie
 
     public  virtual List<Block> DoInlineBlocks(IList<Block> blocks, ref bool inlinedSomething)
     {
-      Contract.Requires(Cce.NonNullElements(blocks));
+      
       Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Block>>()));
       List<Block>
         newBlocks = new List<Block>();
@@ -521,9 +521,9 @@ namespace Microsoft.Boogie
 
     protected void BeginInline(Implementation impl)
     {
-      Contract.Requires(impl != null);
-      Contract.Requires(impl.Proc != null);
-      Contract.Requires(newLocalVars != null);
+      
+      
+      
 
       Dictionary<Variable, Expr> substMap = new Dictionary<Variable, Expr>();
       Procedure proc = impl.Proc;
@@ -670,12 +670,12 @@ namespace Microsoft.Boogie
     // result[0] is the entry block
     protected List<Block> CreateInlinedBlocks(CallCmd callCmd, Implementation impl, string nextBlockLabel)
     {
-      Contract.Requires(nextBlockLabel != null);
-      Contract.Requires(impl != null);
-      Contract.Requires(impl.Proc != null);
-      Contract.Requires(callCmd != null);
-      Contract.Requires(codeCopier.substMap != null);
-      Contract.Requires(codeCopier.oldSubstMap != null);
+      
+      
+      
+      
+      
+      
 
       Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Block>>()));
       var implBlocks = Cce.NonNull(impl.OriginalBlocks);
@@ -787,8 +787,8 @@ namespace Microsoft.Boogie
 
     protected TransferCmd CreateInlinedTransferCmd(TransferCmd transferCmd, string procLabel)
     {
-      Contract.Requires(procLabel != null);
-      Contract.Requires(transferCmd != null);
+      
+      
       TransferCmd newTransferCmd;
 
       GotoCmd gotoCmd = transferCmd as GotoCmd;
@@ -814,7 +814,7 @@ namespace Microsoft.Boogie
 
     protected static Implementation FindProcImpl(Program program, Procedure proc)
     {
-      Contract.Requires(program != null);
+      
       foreach (var impl in program.Implementations)
       {
         if (impl.Proc == proc)
@@ -836,8 +836,8 @@ namespace Microsoft.Boogie
 
       public void BeginInline(Dictionary<Variable, Expr> substMap, Dictionary<Variable, Expr> oldSubstMap, string prefix)
       {
-        Contract.Requires(oldSubstMap != null);
-        Contract.Requires(substMap != null);
+        
+        
         this.substMap = substMap;
         this.oldSubstMap = oldSubstMap;
         this.prefix = prefix;
@@ -872,7 +872,7 @@ namespace Microsoft.Boogie
 
       public List<Cmd> CopyCmdSeq(List<Cmd> cmds)
       {
-        Contract.Requires(cmds != null);
+        
         Contract.Ensures(Contract.Result<List<Cmd>>() != null);
         List<Cmd> newCmds = new List<Cmd>();
         foreach (Cmd cmd in cmds)
@@ -886,7 +886,7 @@ namespace Microsoft.Boogie
 
       public TransferCmd CopyTransferCmd(TransferCmd cmd)
       {
-        Contract.Requires(cmd != null);
+        
         Contract.Ensures(Contract.Result<TransferCmd>() != null);
         if (cmd is GotoCmd gotoCmd)
         {

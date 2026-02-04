@@ -22,7 +22,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     private List<VCExprVar> FreeVarsIn(VCExpr expr)
     {
-      Contract.Requires(expr != null);
+      
       Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCExprVar>>()));
       FreeVarCollector.Collect(expr);
       List<VCExprVar>
@@ -33,12 +33,12 @@ namespace Microsoft.Boogie.VCExprAST
 
     public LetBindingSorter(VCExpressionGenerator gen) : base(gen)
     {
-      Contract.Requires(gen != null);
+      
     }
 
     public override VCExpr Visit(VCExprLet node, bool arg)
     {
-      Contract.Requires(node != null);
+      
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       IDictionary<VCExprVar, Binding> boundVars =
         new Dictionary<VCExprVar, Binding>();
@@ -188,9 +188,9 @@ namespace Microsoft.Boogie.VCExprAST
 
       public Binding(VCExprVar v, VCExpr e, List<VCExprVar> freeVars)
       {
-        Contract.Requires(e != null);
-        Contract.Requires(v != null);
-        Contract.Requires(Cce.NonNullElements(freeVars));
+        
+        
+        
         this.V = v;
         this.E = e;
         this.FreeVars = freeVars;

@@ -58,7 +58,7 @@ namespace Microsoft.Boogie
     // The usual thing to override.
     protected virtual bool Parse(string opt)
     {
-      Contract.Requires(opt != null);
+      
       return ParseString(opt, "PROVER_PATH", ref ProverPath) ||
              ParseString(opt, "PROVER_NAME", ref ProverName) ||
              ParseString(opt, "LOG_FILE", ref LogFilename) ||
@@ -100,7 +100,7 @@ The generic options may or may not be used by the prover plugin.
 
     public virtual void Parse(IEnumerable<string> opts)
     {
-      Contract.Requires(Cce.NonNullElements(opts));
+      
       StringBuilder sb = new StringBuilder(stringRepr);
       Contract.Assert(sb != null);
       foreach (string opt in opts)
@@ -157,7 +157,7 @@ The generic options may or may not be used by the prover plugin.
 
     private string ConfirmProverPath(string proverPath)
     {
-      Contract.Requires(proverPath != null);
+      
       Contract.Ensures(confirmedProverPath != null);
       confirmedProverPath = proverPath;
       if (LibOptions.Trace)
@@ -173,14 +173,14 @@ The generic options may or may not be used by the prover plugin.
 
     protected void ReportError(string msg)
     {
-      Contract.Requires(msg != null);
+      
       throw new ProverOptionException(msg);
     }
 
     protected virtual bool ParseString(string opt, string name, ref string field)
     {
-      Contract.Requires(name != null);
-      Contract.Requires(opt != null);
+      
+      
       if (opt.Length >= name.Length && opt.StartsWith(name))
       {
         if (opt.Length == name.Length)
@@ -200,8 +200,8 @@ The generic options may or may not be used by the prover plugin.
 
     protected virtual bool ParseBool(string opt, string name, ref bool field)
     {
-      Contract.Requires(name != null);
-      Contract.Requires(opt != null);
+      
+      
       string tmp = null;
       if (ParseString(opt, name, ref tmp))
       {
@@ -227,8 +227,8 @@ The generic options may or may not be used by the prover plugin.
 
     protected virtual bool ParseInt(string opt, string name, ref int field)
     {
-      Contract.Requires(name != null);
-      Contract.Requires(opt != null);
+      
+      
       string tmp = null;
       if (ParseString(opt, name, ref tmp))
       {
@@ -248,8 +248,8 @@ The generic options may or may not be used by the prover plugin.
 
     protected virtual bool ParseUInt(string opt, string name, ref uint field)
     {
-      Contract.Requires(name != null);
-      Contract.Requires(opt != null);
+      
+      
       string tmp = null;
       if (ParseString(opt, name, ref tmp))
       {
@@ -315,7 +315,7 @@ The generic options may or may not be used by the prover plugin.
 
     public static ProverFactory Load(string proverName)
     {
-      Contract.Requires(proverName != null);
+      
       Contract.Ensures(Contract.Result<ProverFactory>() != null);
       Contract.Ensures(Cce.IsNew(Contract.Result<ProverFactory>()) && Cce.Owner.New(Contract.Result<ProverFactory>()));
       string
@@ -344,7 +344,7 @@ The generic options may or may not be used by the prover plugin.
   {
     public override ProverContext NewProverContext(ProverOptions options)
     {
-      Contract.Requires(options != null);
+      
       Contract.Ensures(Contract.Result<object>() != null);
 
       throw new NotImplementedException();
@@ -364,7 +364,7 @@ The generic options may or may not be used by the prover plugin.
     public ProverOptionException(string msg)
       : base(msg)
     {
-      Contract.Requires(msg != null);
+      
     }
   }
 }

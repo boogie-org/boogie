@@ -52,8 +52,8 @@ public class GenKillWeight
 
   public GenKillWeight(HashSet<Variable> gen, HashSet<Variable> kill)
   {
-    Contract.Requires(Cce.NonNullElements(gen));
-    Contract.Requires(Cce.NonNullElements(kill));
+    
+    
     Contract.Assert(gen != null);
     Contract.Assert(kill != null);
     this.gen = gen;
@@ -75,8 +75,8 @@ public class GenKillWeight
 
   public static GenKillWeight extend(GenKillWeight w1, GenKillWeight w2)
   {
-    Contract.Requires(w2 != null);
-    Contract.Requires(w1 != null);
+    
+    
     Contract.Ensures(Contract.Result<GenKillWeight>() != null);
     if (w1.isZero || w2.isZero)
     {
@@ -95,8 +95,8 @@ public class GenKillWeight
 
   public static GenKillWeight combine(GenKillWeight w1, GenKillWeight w2)
   {
-    Contract.Requires(w2 != null);
-    Contract.Requires(w1 != null);
+    
+    
     Contract.Ensures(Contract.Result<GenKillWeight>() != null);
     if (w1.isZero)
     {
@@ -118,7 +118,7 @@ public class GenKillWeight
 
   public static GenKillWeight projectLocals(GenKillWeight w)
   {
-    Contract.Requires(w != null);
+    
     Contract.Ensures(Contract.Result<GenKillWeight>() != null);
     HashSet<Variable> gen = new HashSet<Variable>();
     foreach (Variable v in w.gen)
@@ -143,8 +143,8 @@ public class GenKillWeight
 
   public static bool isEqual(GenKillWeight w1, GenKillWeight w2)
   {
-    Contract.Requires(w2 != null);
-    Contract.Requires(w1 != null);
+    
+    
     if (w1.isZero)
     {
       return w2.isZero;
@@ -160,7 +160,7 @@ public class GenKillWeight
 
   private static bool isGlobal(Variable v)
   {
-    Contract.Requires(v != null);
+    
     return (v is GlobalVariable);
   }
 
@@ -179,7 +179,7 @@ public class GenKillWeight
 
   public HashSet<Variable> getLiveVars(HashSet<Variable> lv)
   {
-    Contract.Requires(Cce.NonNullElements(lv));
+    
     Contract.Ensures(Cce.NonNullElements(Contract.Result<HashSet<Variable>>()));
     HashSet<Variable> temp = new HashSet<Variable>(lv);
     temp.ExceptWith(kill);

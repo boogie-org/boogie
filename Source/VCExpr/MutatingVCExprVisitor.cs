@@ -18,20 +18,20 @@ public abstract class MutatingVCExprVisitor<Arg>
     
   public MutatingVCExprVisitor(VCExpressionGenerator gen)
   {
-    Contract.Requires(gen != null);
+    
     this.Gen = gen;
   }
 
   public VCExpr Mutate(VCExpr expr, Arg arg)
   {
-    Contract.Requires(expr != null);
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return expr.Accept(this, arg);
   }
 
   public List<VCExpr> MutateSeq(IEnumerable<VCExpr> exprs, Arg arg)
   {
-    Contract.Requires(Cce.NonNullElements(exprs));
+    
     Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCExpr>>()));
     List<VCExpr>
       res = new List<VCExpr>();
@@ -46,7 +46,7 @@ public abstract class MutatingVCExprVisitor<Arg>
 
   private List<VCExpr> MutateList(List<VCExpr> exprs, Arg arg)
   {
-    Contract.Requires(Cce.NonNullElements(exprs));
+    
     Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCExpr>>()));
     bool changed = false;
     List<VCExpr>
@@ -110,7 +110,7 @@ public abstract class MutatingVCExprVisitor<Arg>
 
   private void PushTodo(VCExprNAry exprTodo)
   {
-    Contract.Requires(exprTodo != null);
+    
     NAryExprTodoStack.Push(exprTodo);
     NAryExprTodoStack.Push(CombineResultsMarker);
     for (int i = exprTodo.Arity - 1; i >= 0; --i)
@@ -196,7 +196,7 @@ public abstract class MutatingVCExprVisitor<Arg>
     bool changed,
     Arg arg)
   {
-    Contract.Requires(Cce.NonNullElements(newSubExprs));
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
 
     if (changed)
@@ -220,7 +220,7 @@ public abstract class MutatingVCExprVisitor<Arg>
 
   protected List<VCTrigger> MutateTriggers(List<VCTrigger> triggers, Arg arg)
   {
-    Contract.Requires(Cce.NonNullElements(triggers));
+    
     Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCTrigger>>()));
     List<VCTrigger>
       newTriggers = new List<VCTrigger>();

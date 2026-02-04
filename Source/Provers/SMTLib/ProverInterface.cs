@@ -25,7 +25,7 @@ public abstract class ProverInterface
     string /*?*/ logFilePath, bool appendLogFile, uint timeout,
     int taskID = -1)
   {
-    Contract.Requires(prog != null);
+    
 
     ProverOptions options = Cce.NonNull(libOptions.TheProverFactory).BlankProverOptions(libOptions);
 
@@ -125,18 +125,18 @@ public abstract class ProverInterface
 
     public virtual void OnModel(IList<string> labels, Model model, SolverOutcome proverOutcome)
     {
-      Contract.Requires(Cce.NonNullElements(labels));
+      
     }
 
     public virtual void OnResourceExceeded(string message,
       IEnumerable<Tuple<AssertCmd, TransferCmd>> assertCmds = null)
     {
-      Contract.Requires(message != null);
+      
     }
 
     public virtual void OnProverWarning(string message)
     {
-      Contract.Requires(message != null);
+      
       switch (options.PrintProverWarnings)
       {
         case CoreOptions.ProverWarnings.None:
@@ -161,7 +161,7 @@ public abstract class ProverInterface
 
     public virtual Absy Label2Absy(string label)
     {
-      Contract.Requires(label != null);
+      
       Contract.Ensures(Contract.Result<Absy>() != null);
 
       throw new System.NotImplementedException();
@@ -172,7 +172,7 @@ public abstract class ProverInterface
 
   public virtual void LogComment(string comment)
   {
-    Contract.Requires(comment != null);
+    
   }
 
   public virtual void Close()
@@ -190,13 +190,13 @@ public abstract class ProverInterface
   /// </summary>
   public virtual void PushVCExpression(VCExpr vc)
   {
-    Contract.Requires(vc != null);
+    
     throw new NotImplementedException();
   }
 
   public virtual string VCExpressionToString(VCExpr vc)
   {
-    Contract.Requires(vc != null);
+    
     Contract.Ensures(Contract.Result<string>() != null);
     throw new NotImplementedException();
   }

@@ -48,7 +48,7 @@ public class Buffer {
 
 //  [NotDelayed]
 	public Buffer (Stream s, bool isUserStream) : base() {
-	  Contract.Requires(s != null);
+	  
 		stream = s; this.isUserStream = isUserStream;
 
 		int fl, bl;
@@ -69,7 +69,7 @@ public class Buffer {
 	}
 
 	protected Buffer(Buffer b) { // called in UTF8Buffer constructor
-	  Contract.Requires(b != null);
+	  
 		buf = b.buf;
 		bufStart = b.bufStart;
 		bufLen = b.bufLen;
@@ -244,7 +244,7 @@ public class Scanner {
 			return this._buffer;
 		}
 		set {
-			Contract.Requires(value != null);
+			
 			this._buffer = value;
 		}
 	}
@@ -318,8 +318,8 @@ public class Scanner {
 
 //	[NotDelayed]
 	public Scanner (string fileName, Errors errorHandler, bool useBaseName = false) : base() {
-	  Contract.Requires(fileName != null);
-	  Contract.Requires(errorHandler != null);
+	  
+	  
 		this.errorHandler = errorHandler;
 		pt = tokens = new Token();  // first token is a dummy
 		t = new Token(); // dummy because t is a non-null field
@@ -335,9 +335,9 @@ public class Scanner {
 
 //	[NotDelayed]
 	public Scanner (Stream s, Errors errorHandler, string fileName, bool useBaseName = false) : base() {
-	  Contract.Requires(s != null);
-	  Contract.Requires(errorHandler != null);
-	  Contract.Requires(fileName != null);
+	  
+	  
+	  
 		pt = tokens = new Token();  // first token is a dummy
 		t = new Token(); // dummy because t is a non-null field
 		this._buffer = new Buffer(s, true);

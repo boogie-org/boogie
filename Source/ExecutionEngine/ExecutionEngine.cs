@@ -86,7 +86,7 @@ namespace Microsoft.Boogie
 
     public async Task<bool> ProcessFiles(TextWriter output, IList<string> fileNames, bool lookForSnapshots = true,
       string programId = null, CancellationToken cancellationToken = default) {
-      Contract.Requires(Cce.NonNullElements(fileNames));
+      
 
       if (Options.VerifySeparately && 1 < fileNames.Count) {
         var success = true;
@@ -188,7 +188,7 @@ namespace Microsoft.Boogie
 
     public static IList<IList<string>> LookForSnapshots(IList<string> fileNames)
     {
-      Contract.Requires(fileNames != null);
+      
 
       var result = new List<IList<string>>();
       for (int version = 0; true; version++)
@@ -255,8 +255,8 @@ namespace Microsoft.Boogie
       bool pretty = false)
 
     {
-      Contract.Requires(program != null);
-      Contract.Requires(filename != null);
+      
+      
       bool oldPrintDesugaring = options.PrintDesugarings;
       if (!allowPrintDesugaring)
       {
@@ -287,7 +287,7 @@ namespace Microsoft.Boogie
     /// </summary>
     public Program ParseBoogieProgram(IList<string> fileNames, bool suppressTraceOutput)
     {
-      Contract.Requires(Cce.NonNullElements(fileNames));
+      
 
       Program program = new Program();
       bool okay = true;
@@ -394,8 +394,8 @@ namespace Microsoft.Boogie
     public PipelineOutcome ResolveAndTypecheck(Program program, string bplFileName,
       out CivlTypeChecker civlTypeChecker)
     {
-      Contract.Requires(program != null);
-      Contract.Requires(bplFileName != null);
+      
+      
 
       civlTypeChecker = null;
 
@@ -488,7 +488,7 @@ namespace Microsoft.Boogie
 
     public void Inline(Program program)
     {
-      Contract.Requires(program != null);
+      
 
       if (Options.Trace)
       {
@@ -559,8 +559,8 @@ namespace Microsoft.Boogie
       ErrorReporterDelegate er = null, string requestId = null, 
       CancellationToken cancellationToken = default)
     {
-      Contract.Requires(program != null);
-      Contract.Requires(stats != null);
+      
+      
       Contract.Ensures(0 <= Contract.ValueAtReturn(out stats.InconclusiveCount) &&
                        0 <= Contract.ValueAtReturn(out stats.TimeoutCount));
 
@@ -1044,7 +1044,7 @@ namespace Microsoft.Boogie
     private async Task<PipelineOutcome> RunHoudini(Program program, PipelineStatistics stats, ErrorReporterDelegate er,
       CancellationToken cancellationToken)
     {
-      Contract.Requires(stats != null);
+      
       
       if (Options.StagedHoudini != null)
       {
@@ -1154,7 +1154,7 @@ namespace Microsoft.Boogie
       PipelineStatistics stats, TextWriter tw, uint timeLimit, ErrorReporterDelegate er = null, string implName = null,
       IToken implTok = null, string msgIfVerifies = null)
     {
-      Contract.Requires(stats != null);
+      
 
       UpdateStatistics(stats, vcOutcome, errors);
 
@@ -1307,7 +1307,7 @@ namespace Microsoft.Boogie
 
     private static void UpdateStatistics(PipelineStatistics stats, VcOutcome vcOutcome, List<Counterexample> errors)
     {
-      Contract.Requires(stats != null);
+      
 
       switch (vcOutcome)
       {
@@ -1340,7 +1340,7 @@ namespace Microsoft.Boogie
     }
 
     private static void UpdateCachedStatistics(PipelineStatistics stats, VcOutcome vcOutcome, List<Counterexample> errors) {
-      Contract.Requires(stats != null);
+      
 
       switch (vcOutcome)
       {

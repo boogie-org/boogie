@@ -15,13 +15,13 @@ public class FunctionCall : IAppliable
 
   public FunctionCall(IdentifierExpr name)
   {
-    Contract.Requires(name != null);
+    
     this.name = name;
   }
 
   public FunctionCall(Function f)
   {
-    Contract.Requires(f != null);
+    
     this.Func = f;
     this.name = new IdentifierExpr(Token.NoToken, f.Name);
 

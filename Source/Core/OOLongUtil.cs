@@ -22,8 +22,8 @@ namespace Boogie.Util
 
     public TeeWriter(TextWriter a, TextWriter b)
     {
-      Contract.Requires(b != null);
-      Contract.Requires(a != null);
+      
+      
       this.a = a;
       this.b = b;
     }
@@ -86,7 +86,7 @@ namespace Boogie.Util
 
     public LineReader([Captured] TextReader reader)
     {
-      Contract.Requires(reader != null);
+      
       this.reader = reader;
     }
 
@@ -189,8 +189,8 @@ namespace Boogie.Util
     public IfdefReader([Captured] TextReader reader, [Captured] List<string> defines)
       : base(reader)
     {
-      Contract.Requires(reader != null);
-      Contract.Requires(Cce.NonNullElements(defines));
+      
+      
       this.defines = defines;
     }
 

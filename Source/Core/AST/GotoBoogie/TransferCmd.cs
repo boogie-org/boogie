@@ -10,7 +10,7 @@ public abstract class TransferCmd : Absy
   internal TransferCmd(IToken tok)
     : base(tok)
   {
-    Contract.Requires(tok != null);
+    
   }
 
   public abstract void Emit(TokenTextWriter stream, int level);

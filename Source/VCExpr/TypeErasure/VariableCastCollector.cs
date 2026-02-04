@@ -20,9 +20,9 @@ internal class VariableCastCollector : TraversingVCExprVisitor<bool, bool>
   public static List<VCExprVar> FindCastVariables(VCExprQuantifier oldNode, VCExprQuantifier newNode,
     TypeAxiomBuilderIntBoolU axBuilder)
   {
-    Contract.Requires((axBuilder != null));
-    Contract.Requires((newNode != null));
-    Contract.Requires((oldNode != null));
+    
+    
+    
     Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCExprVar>>()));
     VariableCastCollector
       collector = new VariableCastCollector(axBuilder);
@@ -66,7 +66,7 @@ internal class VariableCastCollector : TraversingVCExprVisitor<bool, bool>
 
   public VariableCastCollector(TypeAxiomBuilderIntBoolU axBuilder)
   {
-    Contract.Requires(axBuilder != null);
+    
     this.AxBuilder = axBuilder;
   }
 
@@ -95,7 +95,7 @@ internal class VariableCastCollector : TraversingVCExprVisitor<bool, bool>
 
   public override bool Visit(VCExprNAry node, bool arg)
   {
-    Contract.Requires(node != null);
+    
     if (node.Op is VCExprBoogieFunctionOp)
     {
       Function func = ((VCExprBoogieFunctionOp) node.Op).Func;
@@ -147,7 +147,7 @@ internal class VariableCastCollector : TraversingVCExprVisitor<bool, bool>
 
   public override bool Visit(VCExprVar node, bool arg)
   {
-    Contract.Requires(node != null);
+    
     if (!varsOutsideCasts.ContainsKey(node))
     {
       varsOutsideCasts.Add(node, null);

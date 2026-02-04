@@ -23,9 +23,9 @@ public class WhileCmd : StructuredCmd
   public WhileCmd(IToken tok, [Captured] Expr guard, List<PredicateCmd> invariants, List<CallCmd> yields, StmtList body)
     : base(tok)
   {
-    Contract.Requires(Cce.NonNullElements(invariants));
-    Contract.Requires(body != null);
-    Contract.Requires(tok != null);
+    
+    
+    
     this.Guard = guard;
     this.Invariants = invariants;
     this.Yields = yields;

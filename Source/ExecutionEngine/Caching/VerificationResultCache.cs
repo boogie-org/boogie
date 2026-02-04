@@ -21,7 +21,7 @@ namespace Microsoft.Boogie
 
     public void Insert(Implementation impl, ImplementationRunResult result)
     {
-      Contract.Requires(result != null);
+      
       Cache.Set(impl.Id, result, Policy);
     }
 

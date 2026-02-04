@@ -664,7 +664,7 @@ namespace Microsoft.Boogie
     public static Substitution SubstitutionFromDictionary(Dictionary<Variable, Expr> map, bool fallBackOnName = false,
       Procedure proc = null)
     {
-      Contract.Requires(map != null);
+      
       Contract.Ensures(Contract.Result<Substitution>() != null);
       // TODO: With Whidbey, could use anonymous functions.
       return new Substitution(new CreateSubstitutionClosure(map, fallBackOnName, proc).Method);
@@ -702,7 +702,7 @@ namespace Microsoft.Boogie
         Procedure proc = null)
         : base()
       {
-        Contract.Requires(map != null);
+        
         this.map = map;
         this.proc = proc;
         if (fallBackOnName && proc != null)
@@ -713,7 +713,7 @@ namespace Microsoft.Boogie
 
       public Expr /*?*/ Method(Variable v)
       {
-        Contract.Requires(v != null);
+        
         if (map.ContainsKey(v))
         {
           return map[v];
@@ -737,8 +737,8 @@ namespace Microsoft.Boogie
     /// </summary>
     public static Expr Apply(Substitution subst, Expr expr)
     {
-      Contract.Requires(subst != null);
-      Contract.Requires(expr != null);
+      
+      
       Contract.Ensures(Contract.Result<Expr>() != null);
       return (Expr) new NormalSubstituter(subst).Visit(expr);
     }
@@ -752,9 +752,9 @@ namespace Microsoft.Boogie
     /// </summary>
     public static Expr Apply(Substitution always, Substitution forold, Expr expr)
     {
-      Contract.Requires(always != null);
-      Contract.Requires(forold != null);
-      Contract.Requires(expr != null);
+      
+      
+      
       Contract.Ensures(Contract.Result<Expr>() != null);
       return (Expr) new NormalSubstituter(always, forold).Visit(expr);
     }
@@ -768,9 +768,9 @@ namespace Microsoft.Boogie
     /// </summary>    
     public static Expr ApplyReplacingOldExprs(Substitution always, Substitution forOld, Expr expr)
     {
-      Contract.Requires(always != null);
-      Contract.Requires(forOld != null);
-      Contract.Requires(expr != null);
+      
+      
+      
       Contract.Ensures(Contract.Result<Expr>() != null);
       return (Expr) new ReplacingOldSubstituter(always, forOld).Visit(expr);
     }
@@ -778,9 +778,9 @@ namespace Microsoft.Boogie
     public static Expr FunctionCallReresolvingApplyReplacingOldExprs(Substitution always, Substitution forOld,
       Expr expr, Program program)
     {
-      Contract.Requires(always != null);
-      Contract.Requires(forOld != null);
-      Contract.Requires(expr != null);
+      
+      
+      
       Contract.Ensures(Contract.Result<Expr>() != null);
       return (Expr) new FunctionCallReresolvingReplacingOldSubstituter(program, always, forOld).Visit(expr);
     }
@@ -788,9 +788,9 @@ namespace Microsoft.Boogie
     public static Expr FunctionCallReresolvingApply(Substitution always, Substitution forOld, Expr expr,
       Program program)
     {
-      Contract.Requires(always != null);
-      Contract.Requires(forOld != null);
-      Contract.Requires(expr != null);
+      
+      
+      
       Contract.Ensures(Contract.Result<Expr>() != null);
       return (Expr) new FunctionCallReresolvingNormalSubstituter(program, always, forOld).Visit(expr);
     }
@@ -804,8 +804,8 @@ namespace Microsoft.Boogie
     /// </summary>
     public static Cmd Apply(Substitution subst, Cmd cmd)
     {
-      Contract.Requires(subst != null);
-      Contract.Requires(cmd != null);
+      
+      
       Contract.Ensures(Contract.Result<Cmd>() != null);
       return (Cmd) new NormalSubstituter(subst).Visit(cmd);
     }
@@ -819,9 +819,9 @@ namespace Microsoft.Boogie
     /// </summary>
     public static Cmd Apply(Substitution always, Substitution forOld, Cmd cmd)
     {
-      Contract.Requires(always != null);
-      Contract.Requires(forOld != null);
-      Contract.Requires(cmd != null);
+      
+      
+      
       Contract.Ensures(Contract.Result<Cmd>() != null);
       return (Cmd) new NormalSubstituter(always, forOld).Visit(cmd);
     }
@@ -835,9 +835,9 @@ namespace Microsoft.Boogie
     /// </summary>    
     public static Cmd ApplyReplacingOldExprs(Substitution always, Substitution forOld, Cmd cmd)
     {
-      Contract.Requires(always != null);
-      Contract.Requires(forOld != null);
-      Contract.Requires(cmd != null);
+      
+      
+      
       Contract.Ensures(Contract.Result<Cmd>() != null);
       return (Cmd) new ReplacingOldSubstituter(always, forOld).Visit(cmd);
     }
@@ -851,8 +851,8 @@ namespace Microsoft.Boogie
     /// </summary>
     public static List<Cmd> Apply(Substitution subst, List<Cmd> cmdSeq)
     {
-      Contract.Requires(subst != null);
-      Contract.Requires(cmdSeq != null);
+      
+      
       Contract.Ensures(Contract.Result<Cmd>() != null);
       return new NormalSubstituter(subst).VisitCmdSeq(cmdSeq);
     }
@@ -866,9 +866,9 @@ namespace Microsoft.Boogie
     /// </summary>
     public static List<Cmd> Apply(Substitution always, Substitution forOld, List<Cmd> cmdSeq)
     {
-      Contract.Requires(always != null);
-      Contract.Requires(forOld != null);
-      Contract.Requires(cmdSeq != null);
+      
+      
+      
       Contract.Ensures(Contract.Result<Cmd>() != null);
       return new NormalSubstituter(always, forOld).VisitCmdSeq(cmdSeq);
     }
@@ -882,9 +882,9 @@ namespace Microsoft.Boogie
     /// </summary>    
     public static List<Cmd> ApplyReplacingOldExprs(Substitution always, Substitution forOld, List<Cmd> cmdSeq)
     {
-      Contract.Requires(always != null);
-      Contract.Requires(forOld != null);
-      Contract.Requires(cmdSeq != null);
+      
+      
+      
       Contract.Ensures(Contract.Result<Cmd>() != null);
       return new ReplacingOldSubstituter(always, forOld).VisitCmdSeq(cmdSeq);
     }
@@ -898,7 +898,7 @@ namespace Microsoft.Boogie
     /// </summary>
     public static QKeyValue Apply(Substitution subst, QKeyValue kv)
     {
-      Contract.Requires(subst != null);
+      
       if (kv == null)
       {
         return null;
@@ -915,8 +915,8 @@ namespace Microsoft.Boogie
     /// </summary>    
     public static QKeyValue ApplyReplacingOldExprs(Substitution always, Substitution forOld, QKeyValue kv)
     {
-      Contract.Requires(always != null);
-      Contract.Requires(forOld != null);
+      
+      
       if (kv == null)
       {
         return null;
@@ -947,7 +947,7 @@ namespace Microsoft.Boogie
       public NormalSubstituter(Substitution subst)
         : base()
       {
-        Contract.Requires(subst != null);
+        
         this.always = subst;
         this.forold = Substituter.SubstitutionFromDictionary(new Dictionary<Variable, Expr>());
       }
@@ -955,7 +955,7 @@ namespace Microsoft.Boogie
       public NormalSubstituter(Substitution subst, Substitution forold)
         : base()
       {
-        Contract.Requires(subst != null);
+        
         this.always = subst;
         this.forold = forold;
       }
@@ -1065,8 +1065,8 @@ namespace Microsoft.Boogie
       public ReplacingOldSubstituter(Substitution always, Substitution forold)
         : base()
       {
-        Contract.Requires(forold != null);
-        Contract.Requires(always != null);
+        
+        
         this.always = always;
         this.forold = forold;
       }

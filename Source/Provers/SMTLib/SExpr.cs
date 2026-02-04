@@ -50,15 +50,15 @@ namespace Microsoft.Boogie
     public SExpr(string name, params SExpr[] args)
       : this(name, (IEnumerable<SExpr>) args)
     {
-      Contract.Requires(name != null);
-      Contract.Requires(args != null);
-      Contract.Requires(Contract.ForAll(args, x => x != null));
+      
+      
+      
     }
 
     public SExpr(string name, IEnumerable<SExpr> args)
     {
-      Contract.Requires(name != null);
-      Contract.Requires(args != null);
+      
+      
       // We don't want to evaluate args twice!
       Name = name;
       arguments = args.ToArray();
@@ -67,14 +67,14 @@ namespace Microsoft.Boogie
     public SExpr(string name)
       : this(name, EmptyArgs)
     {
-      Contract.Requires(name != null);
+      
     }
 
     #region pretty-printing
 
     void WriteTo(StringBuilder sb)
     {
-      Contract.Requires(sb != null);
+      
 
       if (Arguments.Length > 0)
       {

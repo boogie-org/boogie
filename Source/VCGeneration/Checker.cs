@@ -55,14 +55,14 @@ namespace Microsoft.Boogie
 
     public void GetReady()
     {
-      Contract.Requires(IsIdle);
+      
 
       status = CheckerStatus.Ready;
     }
 
     public async Task GoBackToIdle()
     {
-      Contract.Requires(IsBusy);
+      
 
       status = CheckerStatus.Idle;
       try {
@@ -224,7 +224,7 @@ namespace Microsoft.Boogie
     /// </summary>
     public void PushVCExpr(VCExpr vc)
     {
-      Contract.Requires(vc != null);
+      
       //thmProver.Context.AddAxiom(vc);
       thmProver.PushVCExpression(vc);
     }
@@ -320,10 +320,10 @@ namespace Microsoft.Boogie
 
     public async Task BeginCheck(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler, uint timeout, uint rlimit, CancellationToken cancellationToken)
     {
-      Contract.Requires(descriptiveName != null);
-      Contract.Requires(vc != null);
-      Contract.Requires(handler != null);
-      Contract.Requires(IsReady);
+      
+      
+      
+      
 
       status = CheckerStatus.Busy;
       hasOutput = false;
@@ -341,8 +341,8 @@ namespace Microsoft.Boogie
 
     public SolverOutcome ReadOutcome()
     {
-      Contract.Requires(IsBusy);
-      Contract.Requires(HasOutput);
+      
+      
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
       hasOutput = false;

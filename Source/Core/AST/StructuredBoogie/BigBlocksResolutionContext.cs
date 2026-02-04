@@ -77,8 +77,8 @@ class BigBlocksResolutionContext
 
   public BigBlocksResolutionContext(StmtList stmtList, Errors errorHandler)
   {
-    Contract.Requires(errorHandler != null);
-    Contract.Requires(stmtList != null);
+    
+    
     this.stmtList = stmtList;
     // Inject an empty big block at the end of the body of a while loop if its current end is another while loop.
     // This transformation creates a suitable jump target for break statements inside the nested while loop.
@@ -155,9 +155,9 @@ class BigBlocksResolutionContext
 
   void CheckLegalLabels(StmtList stmtList, StmtList parentContext, BigBlock parentBigBlock)
   {
-    Contract.Requires(stmtList != null);
-    Contract.Requires((parentContext == null) == (parentBigBlock == null));
-    Contract.Requires(stmtList.ParentContext == null); // it hasn't been set yet
+    
+    
+    
     //modifies stmtList.*;
     Contract.Ensures(stmtList.ParentContext == parentContext);
     stmtList.ParentContext = parentContext;
@@ -290,7 +290,7 @@ class BigBlocksResolutionContext
 
   private void NameAnonymousBlocks(StmtList stmtList)
   {
-    Contract.Requires(stmtList != null);
+    
     foreach (var bigBlock in stmtList.BigBlocks)
     {
       bigBlock.LabelName ??= FreshPrefix();
@@ -315,7 +315,7 @@ class BigBlocksResolutionContext
 
   private static void AssignSuccessors(StmtList stmtList, BigBlock next)
   {
-    Contract.Requires(stmtList != null);
+    
     for (int i = stmtList.BigBlocks.Count; 0 <= --i;)
     {
       var current = stmtList.BigBlocks[i];
@@ -346,8 +346,8 @@ class BigBlocksResolutionContext
   // otherwise, it is null.
   private void CreateBlocks(StmtList stmtList, string runOffTheEndLabel)
   {
-    Contract.Requires(stmtList != null);
-    Contract.Requires(blocks != null);
+    
+    
     var cmdPrefixToApply = stmtList.PrefixCommands;
 
     int remainingBigBlocks = stmtList.BigBlocks.Count;
@@ -593,8 +593,8 @@ class BigBlocksResolutionContext
 
   private static TransferCmd GotoSuccessor(IToken tok, BigBlock b)
   {
-    Contract.Requires(b != null);
-    Contract.Requires(tok != null);
+    
+    
     Contract.Ensures(Contract.Result<TransferCmd>() != null);
     if (b.SuccessorBigBlock != null)
     {

@@ -52,9 +52,9 @@ public class StmtList
 
   public StmtList(IList<BigBlock> bigblocks, IToken endCurly)
   {
-    Contract.Requires(endCurly != null);
-    Contract.Requires(Cce.NonNullElements(bigblocks));
-    Contract.Requires(bigblocks.Count > 0);
+    
+    
+    
     this.bigBlocks = new List<BigBlock>(bigblocks);
     this.EndCurly = endCurly;
   }
@@ -62,7 +62,7 @@ public class StmtList
   // prints the list of statements, not the surrounding curly braces
   public void Emit(TokenTextWriter stream, int level)
   {
-    Contract.Requires(stream != null);
+    
     bool needSeperator = false;
     foreach (BigBlock b in BigBlocks)
     {
@@ -91,8 +91,8 @@ public class StmtList
   /// </summary>
   public bool PrefixFirstBlock([Captured] List<Cmd> prefixCmds, ref string suggestedLabel)
   {
-    Contract.Requires(suggestedLabel != null);
-    Contract.Requires(prefixCmds != null);
+    
+    
     Contract.Ensures(Contract.Result<bool>() ||
                      Cce.Owner.None(prefixCmds)); // "prefixCmds" is captured only on success
     Contract.Assume(PrefixCommands == null); // prefix has not been used

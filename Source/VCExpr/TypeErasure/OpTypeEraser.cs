@@ -28,9 +28,9 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
   public OpTypeEraser(TypeEraser eraser, TypeAxiomBuilderIntBoolU axBuilder,
     VCExpressionGenerator gen)
   {
-    Contract.Requires(eraser != null);
-    Contract.Requires(axBuilder != null);
-    Contract.Requires(gen != null);
+    
+    
+    
     this.AxBuilder = axBuilder;
     this.Eraser = eraser;
     this.Gen = gen;
@@ -46,8 +46,8 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
 
   private List<VCExpr> MutateSeq(VCExprNAry node, VariableBindings bindings, int newPolarity)
   {
-    Contract.Requires((bindings != null));
-    Contract.Requires((node != null));
+    
+    
     Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCExpr>>()));
     int oldPolarity = Eraser.Polarity;
     Eraser.Polarity = newPolarity;
@@ -59,9 +59,9 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
 
   private VCExpr CastArguments(VCExprNAry node, Type argType, VariableBindings bindings, int newPolarity)
   {
-    Contract.Requires(bindings != null);
-    Contract.Requires(argType != null);
-    Contract.Requires(node != null);
+    
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return Gen.Function(node.Op,
       AxBuilder.CastSeq(MutateSeq(node, bindings, newPolarity),
@@ -72,9 +72,9 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
   // their new type (int, real, bool, or U)
   private VCExpr CastArgumentsToOldType(VCExprNAry node, VariableBindings bindings, int newPolarity)
   {
-    Contract.Requires(bindings != null);
-    Contract.Requires(node != null);
-    Contract.Requires((node.Arity > 0));
+    
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
 
     List<VCExpr>
@@ -96,32 +96,32 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
 
   public override VCExpr VisitNotOp(VCExprNAry node, VariableBindings bindings)
   {
-    Contract.Requires((bindings != null));
-    Contract.Requires((node != null));
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArguments(node, Type.Bool, bindings, -Eraser.Polarity);
   }
 
   public override VCExpr VisitEqOp(VCExprNAry node, VariableBindings bindings)
   {
-    Contract.Requires((bindings != null));
-    Contract.Requires((node != null));
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
   public override VCExpr VisitNeqOp(VCExprNAry node, VariableBindings bindings)
   {
-    Contract.Requires((bindings != null));
-    Contract.Requires((node != null));
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
   public override VCExpr VisitImpliesOp(VCExprNAry node, VariableBindings bindings)
   {
-    Contract.Requires((bindings != null));
-    Contract.Requires((node != null));
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     // UGLY: the code for tracking polarities should be factored out
     List<VCExpr>
@@ -135,16 +135,16 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
 
   public override VCExpr VisitDistinctOp(VCExprNAry node, VariableBindings bindings)
   {
-    Contract.Requires((bindings != null));
-    Contract.Requires((node != null));
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
   public override VCExpr VisitIfThenElseOp(VCExprNAry node, VariableBindings bindings)
   {
-    Contract.Requires((bindings != null));
-    Contract.Requires((node != null));
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     List<VCExpr>
       newArgs = MutateSeq(node, bindings, 0);
@@ -162,8 +162,8 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
 
   public override VCExpr VisitCustomOp(VCExprNAry node, VariableBindings bindings)
   {
-    Contract.Requires(node != null);
-    Contract.Requires(bindings != null);
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
 
     List<VCExpr>
@@ -173,223 +173,223 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
 
   public override VCExpr VisitAddOp(VCExprNAry node, VariableBindings bindings)
   {
-    Contract.Requires((bindings != null));
-    Contract.Requires((node != null));
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArguments(node, node.Type, bindings, 0);
   }
 
   public override VCExpr VisitSubOp(VCExprNAry node, VariableBindings bindings)
   {
-    Contract.Requires((bindings != null));
-    Contract.Requires((node != null));
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArguments(node, node.Type, bindings, 0);
   }
 
   public override VCExpr VisitMulOp(VCExprNAry node, VariableBindings bindings)
   {
-    Contract.Requires((bindings != null));
-    Contract.Requires((node != null));
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArguments(node, node.Type, bindings, 0);
   }
 
   public override VCExpr VisitDivOp(VCExprNAry node, VariableBindings bindings)
   {
-    Contract.Requires((bindings != null));
-    Contract.Requires((node != null));
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArguments(node, Type.Int, bindings, 0);
   }
 
   public override VCExpr VisitModOp(VCExprNAry node, VariableBindings bindings)
   {
-    Contract.Requires((bindings != null));
-    Contract.Requires((node != null));
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArguments(node, Type.Int, bindings, 0);
   }
 
   public override VCExpr VisitRealDivOp(VCExprNAry node, VariableBindings bindings)
   {
-    Contract.Requires((bindings != null));
-    Contract.Requires((node != null));
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArguments(node, Type.Real, bindings, 0);
   }
 
   /*public override VCExpr VisitFloatDivOp(VCExprNAry node, VariableBindings bindings)
     {
-      Contract.Requires((bindings != null));
-      Contract.Requires((node != null));
+      
+      
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       return CastArguments(node, Type.Float, bindings, 0);
     }*/
   public override VCExpr VisitPowOp(VCExprNAry node, VariableBindings bindings)
   {
-    Contract.Requires((bindings != null));
-    Contract.Requires((node != null));
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArguments(node, Type.Real, bindings, 0);
   }
 
   public override VCExpr VisitLtOp(VCExprNAry node, VariableBindings bindings)
   {
-    Contract.Requires((bindings != null));
-    Contract.Requires((node != null));
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
   public override VCExpr VisitLeOp(VCExprNAry node, VariableBindings bindings)
   {
-    Contract.Requires((bindings != null));
-    Contract.Requires((node != null));
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
   public override VCExpr VisitGtOp(VCExprNAry node, VariableBindings bindings)
   {
-    Contract.Requires((bindings != null));
-    Contract.Requires((node != null));
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
   public override VCExpr VisitGeOp(VCExprNAry node, VariableBindings bindings)
   {
-    Contract.Requires((bindings != null));
-    Contract.Requires((node != null));
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
   public override VCExpr VisitSubtypeOp(VCExprNAry node, VariableBindings bindings)
   {
-    Contract.Requires((bindings != null));
-    Contract.Requires((node != null));
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArguments(node, AxBuilder.U, bindings, 0);
   }
 
   public override VCExpr VisitToIntOp(VCExprNAry node, VariableBindings bindings)
   {
-    Contract.Requires((bindings != null));
-    Contract.Requires((node != null));
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
   public override VCExpr VisitToRealOp(VCExprNAry node, VariableBindings bindings)
   {
-    Contract.Requires((bindings != null));
-    Contract.Requires((node != null));
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
   public override VCExpr VisitFloatAddOp(VCExprNAry node, VariableBindings bindings)
   {
-    Contract.Requires((bindings != null));
-    Contract.Requires((node != null));
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
   public override VCExpr VisitFloatSubOp(VCExprNAry node, VariableBindings bindings)
   {
-    Contract.Requires((bindings != null));
-    Contract.Requires((node != null));
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
   public override VCExpr VisitFloatMulOp(VCExprNAry node, VariableBindings bindings)
   {
-    Contract.Requires((bindings != null));
-    Contract.Requires((node != null));
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
   public override VCExpr VisitFloatDivOp(VCExprNAry node, VariableBindings bindings)
   {
-    Contract.Requires((bindings != null));
-    Contract.Requires((node != null));
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
   public override VCExpr VisitFloatLeqOp(VCExprNAry node, VariableBindings bindings)
   {
-    Contract.Requires((bindings != null));
-    Contract.Requires((node != null));
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
   public override VCExpr VisitFloatLtOp(VCExprNAry node, VariableBindings bindings)
   {
-    Contract.Requires((bindings != null));
-    Contract.Requires((node != null));
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
   public override VCExpr VisitFloatGeqOp(VCExprNAry node, VariableBindings bindings)
   {
-    Contract.Requires((bindings != null));
-    Contract.Requires((node != null));
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
   public override VCExpr VisitFloatGtOp(VCExprNAry node, VariableBindings bindings)
   {
-    Contract.Requires((bindings != null));
-    Contract.Requires((node != null));
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
   public override VCExpr VisitFloatEqOp(VCExprNAry node, VariableBindings bindings)
   {
-    Contract.Requires((bindings != null));
-    Contract.Requires((node != null));
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
   public override VCExpr VisitFloatNeqOp(VCExprNAry node, VariableBindings bindings)
   {
-    Contract.Requires((bindings != null));
-    Contract.Requires((node != null));
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
   public override VCExpr VisitBvOp(VCExprNAry node, VariableBindings bindings)
   {
-    Contract.Requires((bindings != null));
-    Contract.Requires((node != null));
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
   public override VCExpr VisitBvExtractOp(VCExprNAry node, VariableBindings bindings)
   {
-    Contract.Requires(bindings != null);
-    Contract.Requires(node != null);
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
   public override VCExpr VisitBvConcatOp(VCExprNAry node, VariableBindings bindings)
   {
-    Contract.Requires((bindings != null));
-    Contract.Requires((node != null));
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     List<VCExpr>
       newArgs = MutateSeq(node, bindings, 0);

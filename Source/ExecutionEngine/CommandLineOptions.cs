@@ -34,10 +34,10 @@ namespace Microsoft.Boogie
     protected CommandLineOptions(TextWriter outputWriter, string toolName, string descriptiveName, OutputPrinter printer)
       : base(toolName, descriptiveName, outputWriter)
     {
-      Contract.Requires(outputWriter != null);
-      Contract.Requires(toolName != null);
-      Contract.Requires(descriptiveName != null);
-      Contract.Requires(printer.Options == null);
+      
+      
+      
+      
       Printer = printer;
       printer.Options = this;
     }
@@ -347,7 +347,7 @@ namespace Microsoft.Boogie
       }
       set
       {
-        Contract.Requires(value != null);
+        
         this._logPrefix = value;
       }
     }
@@ -477,7 +477,7 @@ namespace Microsoft.Boogie
       }
       set
       {
-        Contract.Requires(-1 <= value && value <= 1);
+        
         this.bracketIdsInVC = value;
       }
     }
@@ -1498,8 +1498,8 @@ namespace Microsoft.Boogie
 
     public int GetArgumentSeparatorIndex(string argList, int startIndex)
     {
-      Contract.Requires(argList != null);
-      Contract.Requires(0 <= startIndex && startIndex <= argList.Length);
+      
+      
       Contract.Ensures(Contract.Result<int>() < argList.Length);
       int commaIndex = argList.IndexOf(",", startIndex);
       int semicolonIndex = argList.IndexOf(";", startIndex);

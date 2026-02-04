@@ -39,7 +39,7 @@ sealed class CachedVerificationResultInjector : StandardVisitor
 
   public Implementation Inject(Implementation implementation, Program programInCachedSnapshot)
   {
-    Contract.Requires(implementation != null && programInCachedSnapshot != null);
+    
 
     this.programInCachedSnapshot = programInCachedSnapshot;
     assumptionVariableCount = 0;

@@ -14,7 +14,7 @@ namespace Microsoft.Boogie.VCExprAST
     public BigLiteralAbstracter(VCExpressionGenerator gen)
       : base(gen)
     {
-      Contract.Requires(gen != null);
+      
       DummyVar = gen.Variable("x", Type.Int);
       IncAxioms = new List<VCExpr>();
       Literals = new List<KeyValuePair<BigNum, VCExprVar>>();
@@ -23,7 +23,7 @@ namespace Microsoft.Boogie.VCExprAST
     private BigLiteralAbstracter(BigLiteralAbstracter abstracter)
       : base(abstracter.Gen)
     {
-      Contract.Requires(abstracter != null);
+      
       DummyVar = abstracter.DummyVar;
       IncAxioms = new List<VCExpr>(abstracter.IncAxioms);
       Literals = new List<KeyValuePair<BigNum, VCExprVar>>(abstracter.Literals);
@@ -46,7 +46,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     public VCExpr Abstract(VCExpr expr)
     {
-      Contract.Requires(expr != null);
+      
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       return Mutate(expr, true);
@@ -66,7 +66,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     private void AddAxiom(VCExpr axiom)
     {
-      Contract.Requires(axiom != null);
+      
       IncAxioms.Add(axiom);
     }
 
@@ -124,7 +124,7 @@ namespace Microsoft.Boogie.VCExprAST
     // literal. Constants are defined and axiomatised if necessary
     private VCExpr Represent(BigNum lit)
     {
-      Contract.Requires((NegConstantDistance > lit || lit > ConstantDistance));
+      
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       if (lit.IsNegative)
@@ -140,7 +140,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     private VCExpr RepresentPos(BigNum lit)
     {
-      Contract.Requires((lit > ConstantDistance));
+      
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       int index = GetIndexFor(lit);
@@ -189,7 +189,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     private VCExpr AddConstantFor(BigNum lit)
     {
-      Contract.Requires((lit > ConstantDistance));
+      
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       VCExprVar res = Gen.Variable("int#" + lit, Type.Int);
@@ -222,9 +222,9 @@ namespace Microsoft.Boogie.VCExprAST
     private void DefineRelationship(VCExpr aExpr, BigNum aValue,
       VCExpr bExpr, BigNum bValue)
     {
-      Contract.Requires(aValue < bValue);
-      Contract.Requires(aExpr != null);
-      Contract.Requires(bExpr != null);
+      
+      
+      
 
       BigNum dist = bValue - aValue;
       VCExpr distExpr = Gen.Function(VCExpressionGenerator.SubIOp, bExpr, aExpr);
@@ -252,7 +252,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override VCExpr Visit(VCExprLiteral node, bool arg)
     {
-      Contract.Requires(node != null);
+      
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       VCExprIntLit intLit = node as VCExprIntLit;
       if (intLit != null)

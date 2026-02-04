@@ -12,7 +12,7 @@ public class ConsolePrinter : OutputPrinter
 
   public virtual void ErrorWriteLine(TextWriter tw, string s)
   {
-    Contract.Requires(s != null);
+    
     if (Options.Verbosity == CoreOptions.VerbosityLevel.Silent) {
       return;
     }
@@ -51,7 +51,7 @@ public class ConsolePrinter : OutputPrinter
 
   public virtual void ErrorWriteLine(TextWriter tw, string format, params object[] args)
   {
-    Contract.Requires(format != null);
+    
     if (Options.Verbosity == CoreOptions.VerbosityLevel.Silent) {
       return;
     }
@@ -63,7 +63,7 @@ public class ConsolePrinter : OutputPrinter
 
   public virtual void AdvisoryWriteLine(TextWriter output, string format, params object[] args)
   {
-    Contract.Requires(format != null);
+    
     if (Options.Verbosity == CoreOptions.VerbosityLevel.Silent) {
       return;
     }
@@ -90,7 +90,7 @@ public class ConsolePrinter : OutputPrinter
 
   public virtual void WriteTrailer(TextWriter textWriter, PipelineStatistics stats)
   {
-    Contract.Requires(stats != null);
+    
     Contract.Requires(0 <= stats.VerifiedCount && 0 <= stats.ErrorCount && 0 <= stats.InconclusiveCount &&
                       0 <= stats.TimeoutCount && 0 <= stats.OutOfMemoryCount);
 
@@ -142,7 +142,7 @@ public class ConsolePrinter : OutputPrinter
 
   public virtual void WriteErrorInformation(ErrorInformation errorInfo, TextWriter tw, bool skipExecutionTrace = true)
   {
-    Contract.Requires(errorInfo != null);
+    
 
     if (Options.Verbosity == CoreOptions.VerbosityLevel.Silent) {
       return;
@@ -166,7 +166,7 @@ public class ConsolePrinter : OutputPrinter
 
   public virtual void ReportBplError(IToken tok, string message, bool error, TextWriter tw, string category = null)
   {
-    Contract.Requires(message != null);
+    
 
     if (Options.Verbosity == CoreOptions.VerbosityLevel.Silent) {
       return;

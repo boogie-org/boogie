@@ -17,7 +17,7 @@ namespace Microsoft.Boogie
     /// </summary>
     public static void Compute(Program program)
     {
-      Contract.Requires(program != null);
+      
       Cce.BeginExpose(program);
 
       foreach (var impl in program.Implementations)
@@ -48,7 +48,7 @@ namespace Microsoft.Boogie
 
     static void Visit(Block b)
     {
-      Contract.Requires(b != null);
+      
       Contract.Assume(Cce.IsExposable(b));
       if (b.TraversingStatus == Block.VisitState.BeingVisited)
       {
@@ -111,8 +111,8 @@ namespace Microsoft.Boogie
     /// </summary>
     public static List<Block> ComputeLoopBodyFrom(Block block)
     {
-      Contract.Requires(block.WidenBlock);
-      Contract.Requires(block != null);
+      
+      
       Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Block>>()));
 
       Contract.Assert(rootBlock == null);
@@ -140,9 +140,9 @@ namespace Microsoft.Boogie
     /// </summary>
     private static void DoDFSVisit(Block block, List<Block> path, List<Block> blocksInPath)
     {
-      Contract.Requires(block != null);
-      Contract.Requires(Cce.NonNullElements(path));
-      Contract.Requires(Cce.NonNullElements(path));
+      
+      
+      
 
       #region case 1. We visit the root => We are done, "path" is a path inside the loop
 

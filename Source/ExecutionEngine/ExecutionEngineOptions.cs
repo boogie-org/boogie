@@ -50,7 +50,7 @@ public interface ExecutionEngineOptions : HoudiniOptions, ConcurrencyOptions
 
   public bool UserWantsToCheckRoutine(string methodFullname)
   {
-    Contract.Requires(methodFullname != null);
+    
     Func<string, bool> match = s => Regex.IsMatch(methodFullname, "^" + Regex.Escape(s).Replace(@"\*", ".*") + "$");
     return (ProcsToCheck.Count == 0 || ProcsToCheck.Any(match)) && !ProcsToIgnore.Any(match);
   }

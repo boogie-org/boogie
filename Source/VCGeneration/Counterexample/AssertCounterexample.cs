@@ -16,9 +16,9 @@ public class AssertCounterexample : Counterexample
     ProverContext context, ProofRun proofRun)
     : base(options, trace, augmentedTrace, model, mvInfo, context, proofRun, failingAssert)
   {
-    Contract.Requires(trace != null);
-    Contract.Requires(failingAssert != null);
-    Contract.Requires(context != null);
+    
+    
+    
   }
 
   protected override Cmd ModelFailingCommand => FailingAssert;

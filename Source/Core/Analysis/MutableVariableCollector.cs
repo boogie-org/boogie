@@ -9,7 +9,7 @@ public class MutableVariableCollector : ReadOnlyVisitor
 
   public void AddUsedVariables(HashSet<Variable> usedVariables)
   {
-    Contract.Requires(usedVariables != null);
+    
 
     foreach (var v in usedVariables)
     {

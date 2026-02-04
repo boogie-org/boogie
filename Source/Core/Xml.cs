@@ -25,7 +25,7 @@ namespace Microsoft.Boogie
 
     public XmlSink(CoreOptions options, string filename)
     {
-      Contract.Requires(filename != null);
+      
       this.filename = filename;
       this.options = options;
     }
@@ -74,8 +74,8 @@ namespace Microsoft.Boogie
 
     public void WriteStartMethod(string methodName, DateTime startTime)
     {
-      Contract.Requires(methodName != null);
-      Contract.Requires(IsOpen);
+      
+      
       //modifies this.*;
       Contract.Ensures(IsOpen);
       Contract.Assert(wr != null);
@@ -88,8 +88,8 @@ namespace Microsoft.Boogie
 
     public void WriteEndMethod(string outcome, DateTime endTime, TimeSpan elapsed, int? resourceCount)
     {
-      Contract.Requires(outcome != null);
-      Contract.Requires(IsOpen);
+      
+      
       //modifies this.*;
       Contract.Ensures(IsOpen);
       Contract.Assert(wr != null);
@@ -114,9 +114,9 @@ namespace Microsoft.Boogie
     public void WriteSplit(int splitNum, int iteration, IEnumerable<AssertCmd> asserts, DateTime startTime,
                            string outcome, TimeSpan elapsed, int? resourceCount)
     {
-      Contract.Requires(splitNum > 0);
-      Contract.Requires(outcome != null);
-      Contract.Requires(IsOpen);
+      
+      
+      
       //modifies this.*;
       Contract.Ensures(IsOpen);
       Contract.Assert(wr != null);
@@ -154,9 +154,9 @@ namespace Microsoft.Boogie
     
     public void WriteError(string message, IToken errorToken, IToken relatedToken, List<Block> trace)
     {
-      Contract.Requires(errorToken != null);
-      Contract.Requires(message != null);
-      Contract.Requires(IsOpen && (trace == null || Cce.Owner.Different(this, trace)));
+      
+      
+      
       //modifies this.*, errorToken.*, relatedToken.*, trace.*;
       Contract.Ensures(IsOpen);
       Contract.Assert(wr != null);
@@ -200,10 +200,10 @@ namespace Microsoft.Boogie
 
 #if CCI
     public void WriteError(string message, Cci.Node offendingNode, List<Block> trace) {
-      Contract.Requires(offendingNode != null);
-      Contract.Requires(message != null);
-      Contract.Requires(IsOpen && cce.Owner.Different(this, offendingNode));
-      Contract.Requires(trace == null || cce.Owner.Different(this, trace));
+      
+      
+      
+      
       //modifies this.*, offendingNode.*, trace.*;
       Contract.Ensures(IsOpen);
       Contract.Assert(wr != null);
@@ -238,7 +238,7 @@ namespace Microsoft.Boogie
     [Inside]
     private void WriteTokenAttributes(IToken tok)
     {
-      Contract.Requires(wr != null && Cce.IsPeerConsistent(wr));
+      
       //modifies this.0, wr.*;
       if (tok != null && tok.filename != null)
       {
@@ -251,8 +251,8 @@ namespace Microsoft.Boogie
 #if CCI
     [Inside]
     private void WriteTokenAttributes(Cci.Node node) {
-      Contract.Requires(node != null);
-      Contract.Requires(wr != null && cce.IsPeerConsistent(wr));
+      
+      
       //modifies this.0, wr.*;
       Contract.Assert(wr != null);
       if (node.SourceContext.Document != null) {
@@ -265,8 +265,8 @@ namespace Microsoft.Boogie
 
     public void WriteStartInference(string inferenceName)
     {
-      Contract.Requires(inferenceName != null);
-      Contract.Requires(IsOpen);
+      
+      
       //modifies this.*;
       Contract.Ensures(IsOpen);
       Contract.Assert(wr != null);
@@ -280,7 +280,7 @@ namespace Microsoft.Boogie
 
     public void WriteEndInference()
     {
-      Contract.Requires(IsOpen);
+      
       //modifies this.*;
       Contract.Ensures(IsOpen);
       Contract.Assert(wr != null);
@@ -293,8 +293,8 @@ namespace Microsoft.Boogie
 
     public void WriteContractParaAssignment(string varName, string val)
     {
-      Contract.Requires(varName != null);
-      Contract.Requires(IsOpen);
+      
+      
       //modifies this.*;
       Contract.Ensures(IsOpen);
       Contract.Assert(wr != null);
@@ -310,8 +310,8 @@ namespace Microsoft.Boogie
 
     public void WriteStartFile(string filename)
     {
-      Contract.Requires(filename != null);
-      Contract.Requires(IsOpen);
+      
+      
       //modifies this.*;
       Contract.Ensures(IsOpen);
       Contract.Assert(wr != null);
@@ -325,7 +325,7 @@ namespace Microsoft.Boogie
 
     public void WriteEndFile()
     {
-      Contract.Requires(IsOpen);
+      
       //modifies this.*;
       Contract.Ensures(IsOpen);
       Contract.Assert(wr != null);
@@ -338,8 +338,8 @@ namespace Microsoft.Boogie
 
     public void WriteFileFragment(string fragment)
     {
-      Contract.Requires(fragment != null);
-      Contract.Requires(IsOpen);
+      
+      
       //modifies this.*;
       Contract.Ensures(IsOpen);
       Contract.Assert(wr != null);
@@ -360,8 +360,8 @@ namespace Microsoft.Boogie
     [Captured]
     public XmlFileScope(XmlSink sink, string filename)
     {
-      Contract.Requires(filename != null);
-      Contract.Requires(sink == null || sink.IsOpen);
+      
+      
       //modifies sink.*;
       if (sink != null)
       {

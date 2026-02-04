@@ -32,8 +32,8 @@ namespace Microsoft.Boogie
 
     private GSet(Dictionary<T, int> ht, List<T> arr)
     {
-      Contract.Requires(ht != null);
-      Contract.Requires(arr != null);
+      
+      
       this.ht = ht;
       this.arr = arr;
       //:base();
@@ -105,7 +105,7 @@ namespace Microsoft.Boogie
     /// </summary>
     public void RemoveRange(IEnumerable<T> s)
     {
-      Contract.Requires(s != null);
+      
       if (s == this)
       {
         ht.Clear();
@@ -125,7 +125,7 @@ namespace Microsoft.Boogie
     /// </summary>
     public T Choose()
     {
-      Contract.Requires((Count > 0));
+      
       foreach (var e in this)
       {
         return e;
@@ -139,7 +139,7 @@ namespace Microsoft.Boogie
     /// </summary>
     public T Take()
     {
-      Contract.Requires((Count > 0));
+      
       Contract.Ensures(Count == Contract.OldValue(Count) - 1);
       T r = Choose();
       Remove(r);
@@ -148,7 +148,7 @@ namespace Microsoft.Boogie
 
     public void Intersect(GSet<T> s)
     {
-      Contract.Requires(s != null);
+      
       if (s == this)
       {
         return;
@@ -207,7 +207,7 @@ namespace Microsoft.Boogie
     /// <returns></returns>
     public bool ContainsRange(IEnumerable<T> s)
     {
-      Contract.Requires(s != null);
+      
       if (s != this)
       {
         foreach (T key in s)
@@ -268,8 +268,8 @@ namespace Microsoft.Boogie
     // Functional Intersect
     public static GSet<T> Intersect(GSet<T> a, GSet<T> b)
     {
-      Contract.Requires(b != null);
-      Contract.Requires(a != null);
+      
+      
       Contract.Ensures(Contract.Result<GSet<T>>() != null);
       GSet<T>
         res = (GSet<T>) Cce.NonNull(a.Clone());
@@ -280,8 +280,8 @@ namespace Microsoft.Boogie
     // Functional Union
     public static GSet<T> Union(GSet<T> a, GSet<T> b)
     {
-      Contract.Requires(a != null);
-      Contract.Requires(b != null);
+      
+      
       Contract.Ensures(Contract.Result<GSet<T>>() != null);
       //  Contract.Ensures(Contract.ForAll(result, x => a[x] || b[x] ));
       GSet<T>
@@ -294,8 +294,8 @@ namespace Microsoft.Boogie
 
     public static GSet<T> Filter(GSet<T> a, Func<T, bool> filter)
     {
-      Contract.Requires(filter != null);
-      Contract.Requires(a != null);
+      
+      
       Contract.Ensures(Contract.Result<GSet<T>>() != null);
       GSet<T> inter = new GSet<T>();
 

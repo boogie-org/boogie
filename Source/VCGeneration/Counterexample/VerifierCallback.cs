@@ -17,23 +17,23 @@ public class VerifierCallback
   // other reason means it's time out/memory out/crash
   public virtual void OnCounterexample(Counterexample ce, string /*?*/ reason)
   {
-    Contract.Requires(ce != null);
+    
   }
 
   // called in case resource is exceeded and we don't have counterexample
   public virtual void OnTimeout(string reason)
   {
-    Contract.Requires(reason != null);
+    
   }
 
   public virtual void OnOutOfMemory(string reason)
   {
-    Contract.Requires(reason != null);
+    
   }
 
   public virtual void OnOutOfResource(string reason)
   {
-    Contract.Requires(reason != null);
+    
   }
 
   public delegate void ProgressDelegate(string phase, int step, int totalSteps, double progressEstimate);
@@ -42,12 +42,12 @@ public class VerifierCallback
 
   public virtual void OnUnreachableCode(ImplementationRun run)
   {
-    Contract.Requires(run != null);
+    
   }
 
   public virtual void OnWarning(CoreOptions options, string msg)
   {
-    Contract.Requires(msg != null);
+    
     switch (printProverWarnings)
     {
       case CoreOptions.ProverWarnings.None:
@@ -66,6 +66,6 @@ public class VerifierCallback
 
   public virtual void OnVCResult(VerificationRunResult result)
   {
-    Contract.Requires(result != null);
+    
   }
 }

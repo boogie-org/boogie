@@ -79,7 +79,7 @@ namespace Microsoft.Boogie
 
     public Expr GetReplacement()
     {
-      Contract.Requires(llReplacements.Count == 1);
+      
       return llReplacements[0];
     }
 

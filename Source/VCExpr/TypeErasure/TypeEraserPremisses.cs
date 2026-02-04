@@ -36,8 +36,8 @@ public class TypeEraserPremisses : TypeEraser
   public TypeEraserPremisses(TypeAxiomBuilderPremisses axBuilder, VCExpressionGenerator gen)
     : base(axBuilder, gen)
   {
-    Contract.Requires(gen != null);
-    Contract.Requires(axBuilder != null);
+    
+    
 
     this.AxBuilderPremisses = axBuilder;
   }
@@ -46,8 +46,8 @@ public class TypeEraserPremisses : TypeEraser
 
   public override VCExpr Visit(VCExprQuantifier node, VariableBindings oldBindings)
   {
-    Contract.Requires(oldBindings != null);
-    Contract.Requires(node != null);
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     VariableBindings bindings = oldBindings.Clone();
 
@@ -114,10 +114,10 @@ public class TypeEraserPremisses : TypeEraser
     List<VCExprLetBinding> typeVarBindings,
     out List<VCTrigger> triggers)
   {
-    Contract.Requires(Cce.NonNullElements(oldBoundVars));
-    Contract.Requires(Cce.NonNullElements(newBoundVars));
-    Contract.Requires(Cce.NonNullDictionaryAndValues(typeVarTranslation));
-    Contract.Requires(Cce.NonNullElements(typeVarBindings));
+    
+    
+    
+    
     Contract.Ensures(Cce.NonNullElements(Contract.ValueAtReturn(out triggers)));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
 
@@ -174,7 +174,7 @@ public class TypeEraserPremisses : TypeEraser
   // visitor (peep-hole optimisations)
   private bool IsTriviallyTrue(VCExpr expr)
   {
-    Contract.Requires(expr != null);
+    
     if (expr.Equals(VCExpressionGenerator.True))
     {
       return true;
@@ -198,10 +198,10 @@ public class TypeEraserPremisses : TypeEraser
   private VCExpr HandleQuantifier(VCExprQuantifier node, List<VCExprVar> occurringVars,
     List<VCExprVar> newBoundVars, VariableBindings bindings)
   {
-    Contract.Requires(bindings != null);
-    Contract.Requires(node != null);
-    Contract.Requires(Cce.NonNullElements(occurringVars));
-    Contract.Requires(Cce.NonNullElements(newBoundVars));
+    
+    
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     List<VCExprLetBinding>
       typeVarBindings =
@@ -291,8 +291,8 @@ public class TypeEraserPremisses : TypeEraser
   private List<VCTrigger> AddLets2Triggers(List<VCTrigger> triggers,
     List<VCExprLetBinding> typeVarBindings)
   {
-    Contract.Requires(Cce.NonNullElements(triggers));
-    Contract.Requires(Cce.NonNullElements(typeVarBindings));
+    
+    
     Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCTrigger>>()));
     List<VCTrigger>
       triggersWithLets = new List<VCTrigger>(triggers.Count);

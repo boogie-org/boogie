@@ -18,8 +18,8 @@ namespace Microsoft.Boogie
 
     public void Error(IToken tok, string msg)
     {
-      Contract.Requires(tok != null);
-      Contract.Requires(msg != null);
+      
+      
       throw new NotImplementedException();
     }
 
@@ -47,16 +47,16 @@ namespace Microsoft.Boogie
 
     public void Error(Absy subject, string msg, params object[] args)
     {
-      Contract.Requires(args != null);
-      Contract.Requires(msg != null);
-      Contract.Requires(subject != null);
+      
+      
+      
       Error(subject.tok, msg, args);
     }
 
     public virtual void Error(IToken tok, string msg)
     {
-      Contract.Requires(msg != null);
-      Contract.Requires(tok != null);
+      
+      
       errors++;
       if (errorSink == null)
       {
@@ -75,30 +75,30 @@ namespace Microsoft.Boogie
 
     private string Format(string msg, params object[] args)
     {
-      Contract.Requires(msg != null);
+      
       Contract.Ensures(Contract.Result<string>() != null);
       return string.Format(msg, args);
     }
 
     public void Error(IToken tok, string msg, params object[] args)
     {
-      Contract.Requires(msg != null);
-      Contract.Requires(tok != null);
+      
+      
       Error(tok, Format(msg, args));
     }
 
     public void Warning(Absy subject, string msg, params object[] args)
     {
-      Contract.Requires(args != null);
-      Contract.Requires(msg != null);
-      Contract.Requires(subject != null);
+      
+      
+      
       Warning(subject.tok, msg, args);
     }
 
     public virtual void Warning(IToken tok, string msg)
     {
-      Contract.Requires(msg != null);
-      Contract.Requires(tok != null);
+      
+      
       // warnings are currently always written to the console
       ConsoleColor col = Console.ForegroundColor;
       Console.ForegroundColor = ConsoleColor.DarkYellow;
@@ -110,8 +110,8 @@ namespace Microsoft.Boogie
 
     public void Warning(IToken tok, string msg, params object[] args)
     {
-      Contract.Requires(msg != null);
-      Contract.Requires(tok != null);
+      
+      
       Warning(tok, Format(msg, args));
     }
   }
@@ -146,8 +146,8 @@ namespace Microsoft.Boogie
     /// </summary>
     private bool CheckBvNameClashes(Absy absy, string name)
     {
-      Contract.Requires(name != null);
-      Contract.Requires(absy != null);
+      
+      
       if (name.StartsWith("bv") && name.Length > 2)
       {
         for (int i = 2; i < name.Length; ++i)
@@ -167,9 +167,9 @@ namespace Microsoft.Boogie
 
     public void AddType(NamedDeclaration td)
     {
-      Contract.Requires(td != null);
-      Contract.Requires((td is TypeCtorDecl) || (td is TypeSynonymDecl));
-      Contract.Requires(td.Name != null);
+      
+      
+      
 
       string name = td.Name;
       if (CheckBvNameClashes(td, name))
@@ -206,14 +206,14 @@ namespace Microsoft.Boogie
     /// <returns></returns>
     public TypeCtorDecl LookUpType(string name)
     {
-      Contract.Requires(name != null);
+      
       var type = types.GetValueOrDefault(name, null);
       return type as TypeCtorDecl;
     }
 
     public TypeSynonymDecl LookUpTypeSynonym(string name)
     {
-      Contract.Requires(name != null);
+      
       var type = types.GetValueOrDefault(name, null);
       return type as TypeSynonymDecl;
     }
@@ -223,7 +223,7 @@ namespace Microsoft.Boogie
 
     public void AddTypeBinder(TypeVariable td)
     {
-      Contract.Requires(td != null);
+      
       if (CheckBvNameClashes(td, td.Name))
       {
         return;
@@ -259,7 +259,7 @@ namespace Microsoft.Boogie
     /// </summary>
     public TypeVariable LookUpTypeBinder(string name)
     {
-      Contract.Requires(name != null);
+      
       foreach (var td in typeBinders)
       {
         Contract.Assert(td != null);
@@ -290,7 +290,7 @@ namespace Microsoft.Boogie
 
       public bool HasVariableBeenAssigned(string name)
       {
-        Contract.Requires(name != null);
+        
 
         if (assignedAssumptionVariables.Contains(name))
         {
@@ -308,7 +308,7 @@ namespace Microsoft.Boogie
 
       public bool MarkVariableAsAssigned(string name)
       {
-        Contract.Requires(name != null);
+        
 
         if (VarSymbols.ContainsKey(name))
         {
@@ -381,7 +381,7 @@ namespace Microsoft.Boogie
 
     public void AddVariable(Variable var)
     {
-      Contract.Requires(var != null);
+      
       var previous = FindVariable(Cce.NonNull(var.Name), true);
       if (previous == null)
       {
@@ -409,13 +409,13 @@ namespace Microsoft.Boogie
     /// <returns></returns>
     public Variable LookUpVariable(string name)
     {
-      Contract.Requires(name != null);
+      
       return FindVariable(name, false);
     }
 
     Variable FindVariable(string name, bool lookInCurrentScopeOnly)
     {
-      Contract.Requires(name != null);
+      
       VarContextNode c = varContext;
       bool lookOnlyForConstants = false;
       do
@@ -447,14 +447,14 @@ namespace Microsoft.Boogie
 
     public bool HasVariableBeenAssigned(string name)
     {
-      Contract.Requires(name != null);
+      
 
       return varContext.HasVariableBeenAssigned(name);
     }
 
     public void MarkVariableAsAssigned(string name)
     {
-      Contract.Requires(name != null);
+      
 
       var success = varContext.MarkVariableAsAssigned(name);
       Contract.Assume(success);
@@ -495,8 +495,8 @@ namespace Microsoft.Boogie
     private Dictionary<string, Function> functions = new Dictionary<string, Function>();
     public void AddFunction(Function func)
     {
-      Contract.Requires(func != null);
-      Contract.Requires(func.Name != null);
+      
+      
 
       string name = func.Name;
       if (!functions.ContainsKey(name))
@@ -522,8 +522,8 @@ namespace Microsoft.Boogie
     private Dictionary<string, Procedure> procedures = new Dictionary<string, Procedure>();
     public void AddProcedure(Procedure proc)
     {
-      Contract.Requires(proc != null);
-      Contract.Requires(proc.Name != null);
+      
+      
 
       string name = proc.Name;
       if (!procedures.ContainsKey(name))
@@ -554,8 +554,8 @@ namespace Microsoft.Boogie
     /// </summary>
     T SelectNonExtern<T>(T a, T b) where T : Declaration 
     {
-      Contract.Requires(a != null);
-      Contract.Requires(b != null);
+      
+      
       Contract.Ensures(Contract.Result<T>() == null || Contract.Result<T>() == a ||
                        Contract.Result<T>() == b);
 
@@ -588,7 +588,7 @@ namespace Microsoft.Boogie
     /// <returns></returns>
     public Function LookUpFunction(string name)
     {
-      Contract.Requires(name != null);
+      
       return functions.GetValueOrDefault(name, null);
     }
 
@@ -600,7 +600,7 @@ namespace Microsoft.Boogie
     /// <returns></returns>
     public Procedure LookUpProcedure(string name)
     {
-      Contract.Requires(name != null);
+      
       return procedures.GetValueOrDefault(name, null);
     }
     
@@ -647,7 +647,7 @@ namespace Microsoft.Boogie
     /// </summary>
     public void PopProcedureContext()
     {
-      Contract.Requires(HasProcedureContext);
+      
       Contract.Assert(procedureContext != null); // follows from precondition
       procedureContext = procedureContext.Next;
     }
@@ -658,8 +658,8 @@ namespace Microsoft.Boogie
     /// <param name="block"></param>
     public void AddBlock(Block block)
     {
-      Contract.Requires(block != null);
-      Contract.Requires(HasProcedureContext);
+      
+      
       Contract.Assert(procedureContext != null); // follows from precondition
       var blocks = procedureContext.Blocks;
       Contract.Assert(blocks != null);
@@ -682,8 +682,8 @@ namespace Microsoft.Boogie
     /// <returns></returns>
     public Block LookUpBlock(string name)
     {
-      Contract.Requires(name != null);
-      Contract.Requires(HasProcedureContext);
+      
+      
       Contract.Assert(procedureContext != null); // follows from precondition
       Contract.Assert(procedureContext.Blocks != null);
       return procedureContext.Blocks.GetValueOrDefault(name, null);

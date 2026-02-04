@@ -24,7 +24,7 @@ public class StmtListBuilder
 
   void Dump(IToken token, StructuredCmd scmd, TransferCmd tcmd)
   {
-    Contract.Requires(scmd == null || tcmd == null);
+    
     Contract.Ensures(label == null && simpleCmds == null);
     if (label == null && simpleCmds == null && scmd == null && tcmd == null)
     {
@@ -49,7 +49,7 @@ public class StmtListBuilder
   /// </summary>
   public StmtList Collect(IToken endCurlyBrace)
   {
-    Contract.Requires(endCurlyBrace != null);
+    
     Contract.Ensures(Contract.Result<StmtList>() != null);
     Dump(endCurlyBrace, null, null);
     if (bigBlocks.Count == 0)
@@ -63,7 +63,7 @@ public class StmtListBuilder
 
   public void Add(Cmd cmd)
   {
-    Contract.Requires(cmd != null);
+    
     if (simpleCmds == null)
     {
       simpleCmds = new List<Cmd>();
@@ -74,26 +74,26 @@ public class StmtListBuilder
 
   public void Add(StructuredCmd scmd)
   {
-    Contract.Requires(scmd != null);
+    
     Dump(scmd.tok, scmd, null);
   }
 
   public void Add(TransferCmd tcmd)
   {
-    Contract.Requires(tcmd != null);
+    
     Dump(tcmd.tok, null, tcmd);
   }
 
   public void AddLabelCmd(IToken token, string label)
   {
-    Contract.Requires(label != null);
+    
     Dump(token, null, null);
     this.label = label;
   }
 
   public void AddLocalVariable(string name)
   {
-    Contract.Requires(name != null);
+    
     // TODO
   }
 }

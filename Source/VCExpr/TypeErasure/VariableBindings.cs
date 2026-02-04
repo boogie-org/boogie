@@ -23,8 +23,8 @@ public class VariableBindings
   public VariableBindings(IDictionary<VCExprVar, VCExprVar> vcExprVarBindings,
     IDictionary<TypeVariable, VCExpr> typeVariableBindings)
   {
-    Contract.Requires(Cce.NonNullDictionaryAndValues(vcExprVarBindings));
-    Contract.Requires(Cce.NonNullDictionaryAndValues(typeVariableBindings));
+    
+    
     this.VCExprVarBindings = vcExprVarBindings;
     this.TypeVariableBindings = typeVariableBindings;
   }

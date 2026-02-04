@@ -38,8 +38,8 @@ namespace Microsoft.Boogie
     internal Counterexample(VCGenOptions options, List<Block> trace, List<object> augmentedTrace, Model model,
       VC.ModelViewInfo mvInfo, ProverContext context, ProofRun proofRun, AssertCmd failingAssert)
     {
-      Contract.Requires(trace != null);
-      Contract.Requires(context != null);
+      
+      
       this.Options = options;
       this.Trace = trace;
       this.Model = model;
@@ -61,19 +61,19 @@ namespace Microsoft.Boogie
 
     public void AddCalleeCounterexample(TraceLocation loc, CalleeCounterexampleInfo cex)
     {
-      Contract.Requires(cex != null);
+      
       CalleeCounterexamples[loc] = cex;
     }
 
     public void AddCalleeCounterexample(int numBlock, int numInstr, CalleeCounterexampleInfo cex)
     {
-      Contract.Requires(cex != null);
+      
       CalleeCounterexamples[new TraceLocation(numBlock, numInstr)] = cex;
     }
 
     public void AddCalleeCounterexample(Dictionary<TraceLocation, CalleeCounterexampleInfo> cs)
     {
-      Contract.Requires(Cce.NonNullDictionaryAndValues(cs));
+      
       foreach (TraceLocation loc in cs.Keys)
       {
         AddCalleeCounterexample(loc, cs[loc]);
@@ -161,7 +161,7 @@ namespace Microsoft.Boogie
 
     public void PrintModel(TextWriter tw, Counterexample counterexample)
     {
-      Contract.Requires(counterexample != null);
+      
 
       var filenameTemplate = Options.ModelViewFile;
       if (Model == null || filenameTemplate == null || Options.StratifiedInlining > 0)
@@ -215,8 +215,8 @@ namespace Microsoft.Boogie
 
     public void PopulateModelWithStates(List<Block> trace, Cmd/*?*/ failingCmd)
     {
-      Contract.Requires(Model != null);
-      Contract.Requires(trace != null);
+      
+      
 
       Model m = Model;
       ApplyRedirections();

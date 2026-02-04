@@ -9,7 +9,7 @@ public class ReturnCmd : TransferCmd
   public ReturnCmd(IToken tok)
     : base(tok)
   {
-    Contract.Requires(tok != null);
+    
   }
 
   public override void Emit(TokenTextWriter stream, int level)

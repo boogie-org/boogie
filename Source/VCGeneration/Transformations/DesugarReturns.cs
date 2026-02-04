@@ -10,7 +10,7 @@ namespace VCGeneration.Transformations;
 public static class DesugarReturns {
   public static Block GenerateUnifiedExit(Implementation impl)
   {
-    Contract.Requires(impl != null);
+    
     Contract.Ensures(Contract.Result<Block>() != null);
 
     Contract.Ensures(Contract.Result<Block>().TransferCmd is ReturnCmd);
@@ -63,10 +63,10 @@ public static class DesugarReturns {
   public static void InjectPostConditions(VCGenOptions options, ImplementationRun run, Block unifiedExitBlock)
   {
     var impl = run.Implementation;
-    Contract.Requires(impl != null);
-    Contract.Requires(unifiedExitBlock != null);
-    Contract.Requires(impl.Proc != null);
-    Contract.Requires(unifiedExitBlock.TransferCmd is ReturnCmd);
+    
+    
+    
+    
 
     TokenTextWriter debugWriter = null;
     if (options.PrintWithUniqueASTIds)

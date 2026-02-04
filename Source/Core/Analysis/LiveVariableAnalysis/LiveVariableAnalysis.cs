@@ -16,7 +16,7 @@ public class LiveVariableAnalysis
 
   public static void ClearLiveVariables(Implementation impl)
   {
-    Contract.Requires(impl != null);
+    
     foreach (Block block in impl.Blocks)
     {
       Contract.Assert(block != null);
@@ -26,7 +26,7 @@ public class LiveVariableAnalysis
 
   public void ComputeLiveVariables(Implementation impl)
   {
-    Contract.Requires(impl != null);
+    
     Microsoft.Boogie.Helpers.ExtraTraceInformation(options, "Starting live variable analysis");
     Graph<Block> dag = Program.GraphFromBlocks(impl.Blocks, false);
     IEnumerable<Block> sortedNodes;
@@ -91,8 +91,8 @@ public class LiveVariableAnalysis
   // perform in place update of liveSet
   public void Propagate(Cmd cmd, HashSet<Variable> liveSet)
   {
-    Contract.Requires(cmd != null);
-    Contract.Requires(Cce.NonNullElements(liveSet));
+    
+    
     if (cmd is AssignCmd)
     {
       AssignCmd

@@ -20,19 +20,19 @@ public class OpTypeEraserPremisses : OpTypeEraser
     VCExpressionGenerator gen)
     : base(eraser, axBuilder, gen)
   {
-    Contract.Requires(gen != null);
-    Contract.Requires(axBuilder != null);
-    Contract.Requires(eraser != null);
+    
+    
+    
     this.AxBuilderPremisses = axBuilder;
   }
 
   private VCExpr HandleFunctionOp(Function newFun, List<Type> typeArgs,
     IEnumerable<VCExpr> oldArgs, VariableBindings bindings)
   {
-    Contract.Requires(bindings != null);
-    Contract.Requires(newFun != null);
-    Contract.Requires(Cce.NonNullElements(typeArgs));
-    Contract.Requires(Cce.NonNullElements(oldArgs));
+    
+    
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     // UGLY: the code for tracking polarities should be factored out
     int oldPolarity = Eraser.Polarity;
@@ -64,8 +64,8 @@ public class OpTypeEraserPremisses : OpTypeEraser
   public override VCExpr VisitSelectOp(VCExprNAry node,
     VariableBindings bindings)
   {
-    Contract.Requires(node != null);
-    Contract.Requires(bindings != null);
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
 
     MapType
@@ -94,8 +94,8 @@ public class OpTypeEraserPremisses : OpTypeEraser
 
   public override VCExpr VisitStoreOp(VCExprNAry node, VariableBindings bindings)
   {
-    Contract.Requires(bindings != null);
-    Contract.Requires(node != null);
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     Function
       store =
@@ -110,8 +110,8 @@ public class OpTypeEraserPremisses : OpTypeEraser
 
   public override VCExpr VisitBoogieFunctionOp(VCExprNAry node, VariableBindings bindings)
   {
-    Contract.Requires(bindings != null);
-    Contract.Requires(node != null);
+    
+    
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     Function
       oriFun = ((VCExprBoogieFunctionOp) node.Op).Func;
@@ -130,9 +130,9 @@ public class OpTypeEraserPremisses : OpTypeEraser
   private List<Type> ExtractTypeArgs(VCExprNAry node, List<TypeVariable> allTypeParams,
     List<TypeVariable> explicitTypeParams)
   {
-    Contract.Requires(allTypeParams != null);
-    Contract.Requires(node != null);
-    Contract.Requires(Cce.NonNullElements(explicitTypeParams));
+    
+    
+    
     Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Type>>()));
     List<Type>
       res = new List<Type>(explicitTypeParams.Count);

@@ -39,10 +39,10 @@ public class CallCmd : CallCommonality
   public CallCmd(IToken tok, string callee, List<Expr> ins, List<IdentifierExpr> outs)
     : base(tok, null)
   {
-    Contract.Requires(outs != null);
-    Contract.Requires(ins != null);
-    Contract.Requires(callee != null);
-    Contract.Requires(tok != null);
+    
+    
+    
+    
     this.callee = callee;
     this.Ins = ins;
     this.Outs = outs;
@@ -51,10 +51,10 @@ public class CallCmd : CallCommonality
   public CallCmd(IToken tok, string callee, List<Expr> ins, List<IdentifierExpr> outs, QKeyValue kv)
     : base(tok, kv)
   {
-    Contract.Requires(outs != null);
-    Contract.Requires(ins != null);
-    Contract.Requires(callee != null);
-    Contract.Requires(tok != null);
+    
+    
+    
+    
     this.callee = callee;
     this.Ins = ins;
     this.Outs = outs;
@@ -63,10 +63,10 @@ public class CallCmd : CallCommonality
   public CallCmd(IToken tok, string callee, List<Expr> ins, List<IdentifierExpr> outs, QKeyValue kv, bool IsAsync)
     : base(tok, kv)
   {
-    Contract.Requires(outs != null);
-    Contract.Requires(ins != null);
-    Contract.Requires(callee != null);
-    Contract.Requires(tok != null);
+    
+    
+    
+    
     this.callee = callee;
     this.Ins = ins;
     this.Outs = outs;
@@ -1038,7 +1038,7 @@ public class CallCmd : CallCommonality
 
   public IEnumerable<IdentifierExpr> UnmodifiedBefore(Procedure oldProcedure)
   {
-    Contract.Requires(oldProcedure != null);
+    
 
     return Proc.Modifies.Except(oldProcedure.Modifies, comparer)
       .Select(e => new IdentifierExpr(Token.NoToken, e.Decl));
@@ -1046,7 +1046,7 @@ public class CallCmd : CallCommonality
 
   public IEnumerable<IdentifierExpr> ModifiedBefore(Procedure oldProcedure)
   {
-    Contract.Requires(oldProcedure != null);
+    
 
     return oldProcedure.Modifies.Except(Proc.Modifies, comparer)
       .Select(e => new IdentifierExpr(Token.NoToken, e.Decl));

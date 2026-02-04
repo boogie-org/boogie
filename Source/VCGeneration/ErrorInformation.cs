@@ -54,9 +54,9 @@ public class ErrorInformation
 
   protected ErrorInformation(IToken tok, string msg)
   {
-    Contract.Requires(tok != null);
-    Contract.Requires(1 <= tok.line && 1 <= tok.col);
-    Contract.Requires(msg != null);
+    
+    
+    
 
     Tok = tok;
     Msg = CleanUp(msg);
@@ -72,9 +72,9 @@ public class ErrorInformation
 
   public virtual void AddAuxInfo(IToken tok, string msg, string category = null)
   {
-    Contract.Requires(tok != null);
-    Contract.Requires(1 <= tok.line && 1 <= tok.col);
-    Contract.Requires(msg != null);
+    
+    
+    
     Aux.Add(new AuxErrorInfo(tok, msg, category));
   }
 
