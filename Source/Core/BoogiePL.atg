@@ -878,7 +878,7 @@ Procedure<bool isPure, out Procedure proc, out /*maybe null*/ Implementation imp
      List<Requires> pre = new List<Requires>();
      List<IdentifierExpr> mods = new List<IdentifierExpr>();
      List<Ensures> post = new List<Ensures>();
-     List<Decreases> decreases = new List<Decreases>();
+     List<Measure> measure = new List<Measure>();
      List<Variable> locals = new List<Variable>();
      StmtList stmtList;
      QKeyValue kv = null;
@@ -888,8 +888,8 @@ Procedure<bool isPure, out Procedure proc, out /*maybe null*/ Implementation imp
   "procedure"
   ProcSignature<true, out x, out typeParams, out ins, out outs, out kv>
   ( ";"
-    { Spec<pre, mods, post, decreases> }
-  | { Spec<pre, mods, post, decreases> }
+    { Spec<pre, mods, post, measure> }
+  | { Spec<pre, mods, post, measure> }
     ImplBody<out locals, out stmtList>
     (.
       impl = new Implementation(x, x.val, typeParams.ConvertAll(tp => new TypeVariable(tp.tok, tp.Name)),
@@ -927,12 +927,12 @@ ProcSignature<.bool allowWhereClausesOnFormals, out IToken name, out List<TypeVa
   [ "returns" ProcFormals<false, allowWhereClausesOnFormals, out outs> ]
   .
   
-Spec<.List<Requires> pre, List<IdentifierExpr> mods, List<Ensures> post, List<Decreases> decreases.>
+Spec<.List<Requires> pre, List<IdentifierExpr> mods, List<Ensures> post, List<Measure> measure.>
 =
   (
     SpecModifies<mods>
-  | "free" SpecPrePost<true, pre, post, decreases>
-  | SpecPrePost<false, pre, post, decreases>
+  | "free" SpecPrePost<true, pre, post, measure>
+  | SpecPrePost<false, pre, post, measure>
   )
   .
 
@@ -943,7 +943,7 @@ SpecModifies<.List<IdentifierExpr> mods.>
   ";"
   .
 
-SpecPrePost<.bool free, List<Requires> pre, List<Ensures> post, List<Decreases> decreases.>
+SpecPrePost<.bool free, List<Requires> pre, List<Ensures> post, List<Measure> measure.>
 = (. Contract.Requires(pre != null); Contract.Requires(post != null); Expr e; Token tok = null; QKeyValue kv = null; .)
   ( "requires"              (. tok = t; .)
     { Attribute<ref kv> }
@@ -951,9 +951,9 @@ SpecPrePost<.bool free, List<Requires> pre, List<Ensures> post, List<Decreases> 
   | "ensures"               (. tok = t; .)
     { Attribute<ref kv> }
     Proposition<out e> ";"  (. post.Add(new Ensures(tok, free, e, null, kv)); .)
-  | "decreases"               (. tok = t; .)
+  | "measure"               (. tok = t; .)
     { Attribute<ref kv> }
-    Proposition<out e> ";"  (. decreases.Add(new Decreases(tok, free, e, null, kv)); .)
+    Proposition<out e> ";"  (. measure.Add(new Measure(tok, free, e, null, kv)); .)
   )
   .
 

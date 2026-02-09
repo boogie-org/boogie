@@ -171,6 +171,9 @@ namespace Microsoft.Boogie
 
       Inline(program);
 
+      FigureOutMeasure(program);
+      
+
       var stats = new PipelineStatistics();
       outcome = await InferAndVerify(output, program, stats, 1 < Options.VerifySnapshots ? programId : null, cancellationToken: cancellationToken);
       switch (outcome) {
@@ -184,6 +187,9 @@ namespace Microsoft.Boogie
           Debug.Assert(false, "Unreachable code");
           return false;
       }
+
+      
+
     }
 
     public static IList<IList<string>> LookForSnapshots(IList<string> fileNames)
@@ -531,6 +537,20 @@ namespace Microsoft.Boogie
             impl.OriginalLocVars = null;
           }
         }
+      }
+    }
+
+    public void FigureOutMeasure(Program program)
+    {
+      MeasureVisitor mv = new MeasureVisitor();
+      foreach (var proc in program.Procedures)
+      {
+        mv.VisitProcedure(proc);
+      }
+      foreach (var impl in program.Implementations)
+      {
+    
+       mv.VisitImplementation(impl);
       }
     }
 

@@ -53,6 +53,7 @@ namespace Microsoft.Boogie
         "call",
         "cast",
         "const",
+        "measure",
         "else",
         "ensures",
         "exists",

@@ -545,7 +545,7 @@ public class Scanner {
 			case "implementation": t.kind = 49; break;
 			case "free": t.kind = 50; break;
 			case "modifies": t.kind = 51; break;
-			case "decreases": t.kind = 52; break;
+			case "measure": t.kind = 52; break;
 			case "goto": t.kind = 53; break;
 			case "return": t.kind = 54; break;
 			case "if": t.kind = 55; break;

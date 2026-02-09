@@ -451,24 +451,24 @@ namespace Microsoft.Boogie
       return ensuresSeq;
     }
 
-    public virtual Decreases VisitDecreases(Decreases @decreases)
+    public virtual Measure VisitMeasure(Measure @measure)
     {
-      Contract.Requires(@decreases != null);
+      Contract.Requires(@measure != null);
       Contract.Ensures(Contract.Result<Ensures>() != null);
-      @decreases.Condition = this.VisitExpr(@decreases.Condition);
-      return @decreases;
+      @measure.Condition = this.VisitExpr(@measure.Condition);
+      return @measure;
     }
 
-    public virtual List<Decreases> VisitDecreasesSeq(List<Decreases> decreasesSeq)
+    public virtual List<Measure> VisitMeasureSeq(List<Measure> measureSeq)
     {
-      Contract.Requires(decreasesSeq != null);
+      Contract.Requires(measureSeq != null);
       Contract.Ensures(Contract.Result<List<Ensures>>() != null);
-      for (int i = 0, n = decreasesSeq.Count; i < n; i++)
+      for (int i = 0, n = measureSeq.Count; i < n; i++)
       {
-        decreasesSeq[i] = this.VisitDecreases(decreasesSeq[i]);
+        measureSeq[i] = this.VisitMeasure(measureSeq[i]);
       }
 
-      return decreasesSeq;
+      return measureSeq;
     }
     public virtual Expr VisitForallExpr(ForallExpr node)
     {
