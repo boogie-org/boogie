@@ -1097,7 +1097,6 @@ WhileCmd<out WhileCmd wcmd>
      List<CallCmd> yields = new List<CallCmd>();
      StmtList body;
      QKeyValue kv = null;
-     Token tok = null;
   .)
   "while"             (. x = t; .)
   Guard<out guard>    (. Contract.Assume(guard == null || Cce.Owner.None(guard)); .)
@@ -1123,7 +1122,7 @@ WhileCmd<out WhileCmd wcmd>
     ";"
   }
   "{"
-  StmtList<out body>  (. wcmd = new WhileCmd(x, guard, invariants, measures, yields, body); .)
+  StmtList<out body>  (. wcmd = new WhileCmd(x, guard, invariants, yields, body); .)
   .
 
 Guard<out Expr e>
