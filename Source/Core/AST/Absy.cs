@@ -2543,7 +2543,7 @@ namespace Microsoft.Boogie
   {
     public readonly bool Free;
 
-    public ProofObligationDescription Description { get; set; } = new EnsuresDescription();
+    public ProofObligationDescription Description { get; set; } = new MeasureDescription();
 
     private Expr _condition;
 

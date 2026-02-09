@@ -72,6 +72,17 @@ public class PreconditionDescription : ProofObligationDescription
   public override string ShortDescription => "precondition";
 }
 
+public class MeasureDescription : ProofObligationDescription
+{
+  public override string SuccessDescription =>
+    "all measures hold for this call";
+
+  public override string FailureDescription =>
+    "a measure for this call could not be proved";
+
+  public override string ShortDescription => "measure";
+}
+
 public class RequiresDescription : ProofObligationDescription
 {
   public override string SuccessDescription =>

@@ -1,3 +1,4 @@
+
 using System.Collections.Generic;
 using Microsoft.BaseTypes;
 
@@ -12,7 +13,7 @@ namespace Microsoft.Boogie
         var condition = mes.Condition;
         Expr zero = new LiteralExpr(Token.NoToken, BigNum.ZERO);
         var condition2 = Expr.Gt(condition, zero);
-        var req = new Requires(Token.NoToken, true, condition2, "");
+        var req = new Requires(node.tok, true, condition2, "");
         node.Requires.Add(req);
       }
 
@@ -36,8 +37,8 @@ namespace Microsoft.Boogie
             foreach (var mes in callCmd.Proc.Measure)
             {
               var ass = new AssertCmd(
-                Token.NoToken,
-                Expr.Lt(mes.Condition, node.Proc.Measure[count].Condition)
+                cmd.tok,
+                Expr.Lt(mes.Condition, node.Proc.Measure[count].Condition), new MeasureDescription()
               );
 
               newBlock.Cmds.Add(ass);
