@@ -34,6 +34,12 @@ namespace Microsoft.Boogie
           {
             var count = 0;
 
+            // fix this
+            // if(callCmd.Proc.Measure)
+            // {
+            // new AssertCmd(callCmd.tok, null, new DecreasesRecursiveDescription()));
+            //somehow make this work
+            // }
             foreach (var mes in callCmd.Proc.Measure)
             {
               var ass = new AssertCmd(
