@@ -787,6 +787,7 @@ YieldProcedureDecl<out YieldProcedureDecl ypDecl, out Implementation impl>
      List<Requires> pre = new List<Requires>();
      List<Requires> preserves = new List<Requires>();
      List<Ensures> post = new List<Ensures>();
+     List<Measure> measures = new List<Measure>();
      List<CallCmd> yieldRequires = new List<CallCmd>();
      List<CallCmd> yieldPreserves = new List<CallCmd>();
      List<CallCmd> yieldEnsures = new List<CallCmd>();
@@ -811,7 +812,7 @@ YieldProcedureDecl<out YieldProcedureDecl ypDecl, out Implementation impl>
                                    locals, stmtList, kv == null ? null : (QKeyValue)kv.Clone(), this.errors);
       .)
     )
-    (. ypDecl = new YieldProcedureDecl(name, name.val, moverType, ins, outs, pre, preserves, post, mods, yieldRequires, yieldPreserves, yieldEnsures, refinedAction, kv); .)
+    (. ypDecl = new YieldProcedureDecl(name, name.val, moverType, ins, outs, pre, preserves, post, measures, mods, yieldRequires, yieldPreserves, yieldEnsures, refinedAction, kv); .)
   .
 
 SpecAsserts<. List<AssertCmd> asserts .>
@@ -878,7 +879,7 @@ Procedure<bool isPure, out Procedure proc, out /*maybe null*/ Implementation imp
      List<Requires> pre = new List<Requires>();
      List<IdentifierExpr> mods = new List<IdentifierExpr>();
      List<Ensures> post = new List<Ensures>();
-     List<Measure> measure = new List<Measure>();
+     List<Measure> measures = new List<Measure>();
      List<Variable> locals = new List<Variable>();
      StmtList stmtList;
      QKeyValue kv = null;
@@ -888,15 +889,15 @@ Procedure<bool isPure, out Procedure proc, out /*maybe null*/ Implementation imp
   "procedure"
   ProcSignature<true, out x, out typeParams, out ins, out outs, out kv>
   ( ";"
-    { Spec<pre, mods, post, measure> }
-  | { Spec<pre, mods, post, measure> }
+    { Spec<pre, mods, post, measures> }
+  | { Spec<pre, mods, post, measures> }
     ImplBody<out locals, out stmtList>
     (.
       impl = new Implementation(x, x.val, typeParams.ConvertAll(tp => new TypeVariable(tp.tok, tp.Name)),
                                 Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs), locals, stmtList, kv == null ? null : (QKeyValue)kv.Clone(), this.errors);
     .)
   )
-  (. proc = new Procedure(x, x.val, typeParams, ins, outs, isPure, pre, new List<Requires>(), post, mods, kv); .)
+  (. proc = new Procedure(x, x.val, typeParams, ins, outs, isPure, pre, new List<Requires>(), post, measures, mods, kv); .)
   .
 
 Implementation<out Implementation impl>
@@ -927,12 +928,12 @@ ProcSignature<.bool allowWhereClausesOnFormals, out IToken name, out List<TypeVa
   [ "returns" ProcFormals<false, allowWhereClausesOnFormals, out outs> ]
   .
   
-Spec<.List<Requires> pre, List<IdentifierExpr> mods, List<Ensures> post, List<Measure> measure.>
+Spec<.List<Requires> pre, List<IdentifierExpr> mods, List<Ensures> post, List<Measure> measures.>
 =
   (
     SpecModifies<mods>
-  | "free" SpecPrePost<true, pre, post, measure>
-  | SpecPrePost<false, pre, post, measure>
+  | "free" SpecPrePost<true, pre, post, measures>
+  | SpecPrePost<false, pre, post, measures>
   )
   .
 
@@ -943,7 +944,7 @@ SpecModifies<.List<IdentifierExpr> mods.>
   ";"
   .
 
-SpecPrePost<.bool free, List<Requires> pre, List<Ensures> post, List<Measure> measure.>
+SpecPrePost<.bool free, List<Requires> pre, List<Ensures> post, List<Measure> measures.>
 = (. Contract.Requires(pre != null); Contract.Requires(post != null); Expr e; Token tok = null; QKeyValue kv = null; .)
   ( "requires"              (. tok = t; .)
     { Attribute<ref kv> }
@@ -953,7 +954,7 @@ SpecPrePost<.bool free, List<Requires> pre, List<Ensures> post, List<Measure> me
     Proposition<out e> ";"  (. post.Add(new Ensures(tok, free, e, null, kv)); .)
   | "measure"               (. tok = t; .)
     { Attribute<ref kv> }
-    Proposition<out e> ";"  (. measure.Add(new Measure(tok, free, e, null, kv)); .)
+    Proposition<out e> ";"  (. measures.Add(new Measure(tok, free, e, null, kv)); .)
   )
   .
 
@@ -1092,9 +1093,11 @@ WhileCmd<out WhileCmd wcmd>
 = (. Contract.Ensures(Contract.ValueAtReturn(out wcmd) != null); IToken x;  Token z;
      Expr guard;  Expr e;  Cmd cmd;  bool isFree;
      List<PredicateCmd> invariants = new List<PredicateCmd>();
+     List<Measure> measures = new List<Measure>();
      List<CallCmd> yields = new List<CallCmd>();
      StmtList body;
      QKeyValue kv = null;
+     Token tok = null;
   .)
   "while"             (. x = t; .)
   Guard<out guard>    (. Contract.Assume(guard == null || Cce.Owner.None(guard)); .)
@@ -1120,7 +1123,7 @@ WhileCmd<out WhileCmd wcmd>
     ";"
   }
   "{"
-  StmtList<out body>  (. wcmd = new WhileCmd(x, guard, invariants, yields, body); .)
+  StmtList<out body>  (. wcmd = new WhileCmd(x, guard, invariants, measures, yields, body); .)
   .
 
 Guard<out Expr e>
