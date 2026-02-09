@@ -9,6 +9,8 @@ public class WhileCmd : StructuredCmd
 
   public List<PredicateCmd> Invariants;
 
+  public List<Measure> Measures;
+
   public List<CallCmd> Yields;
 
   public StmtList Body;
@@ -20,7 +22,7 @@ public class WhileCmd : StructuredCmd
     Contract.Invariant(Cce.NonNullElements(Invariants));
   }
 
-  public WhileCmd(IToken tok, [Captured] Expr guard, List<PredicateCmd> invariants, List<CallCmd> yields, StmtList body)
+  public WhileCmd(IToken tok, [Captured] Expr guard, List<PredicateCmd> invariants, List<Measure> measures,  List<CallCmd> yields, StmtList body)
     : base(tok)
   {
     Contract.Requires(Cce.NonNullElements(invariants));
@@ -28,6 +30,7 @@ public class WhileCmd : StructuredCmd
     Contract.Requires(tok != null);
     this.Guard = guard;
     this.Invariants = invariants;
+    this.Measures = measures;
     this.Yields = yields;
     this.Body = body;
   }
@@ -66,6 +69,8 @@ public class WhileCmd : StructuredCmd
       inv.Expr.Emit(stream);
       stream.WriteLine(";");
     }
+
+
 
     stream.WriteLine(level, "{");
     Body.Emit(stream, level + 1);

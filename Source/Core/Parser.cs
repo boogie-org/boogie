@@ -597,7 +597,7 @@ private class BvBounds : Expr {
 		List<Requires> pre = new List<Requires>();
 		List<Requires> preserves = new List<Requires>();
 		List<Ensures> post = new List<Ensures>();
-		List<Measure> measure = new List<Measure>();
+		List<Measure> measures = new List<Measure>();
 		List<CallCmd> yieldRequires = new List<CallCmd>();
 		List<CallCmd> yieldPreserves = new List<CallCmd>();
 		List<CallCmd> yieldEnsures = new List<CallCmd>();
@@ -634,7 +634,7 @@ private class BvBounds : Expr {
 			                         locals, stmtList, kv == null ? null : (QKeyValue)kv.Clone(), this.errors);
 			
 		} else SynErr(129);
-		ypDecl = new YieldProcedureDecl(name, name.val, moverType, ins, outs, pre, preserves, post, measure, mods, yieldRequires, yieldPreserves, yieldEnsures, refinedAction, kv); 
+		ypDecl = new YieldProcedureDecl(name, name.val, moverType, ins, outs, pre, preserves, post, measures, mods, yieldRequires, yieldPreserves, yieldEnsures, refinedAction, kv); 
 	}
 
 	void Pure(ref bool isPure) {
@@ -651,7 +651,7 @@ private class BvBounds : Expr {
 		List<Requires> pre = new List<Requires>();
 		List<IdentifierExpr> mods = new List<IdentifierExpr>();
 		List<Ensures> post = new List<Ensures>();
-		List<Measure> measure = new List<Measure>();
+		List<Measure> measures = new List<Measure>();
 		List<Variable> locals = new List<Variable>();
 		StmtList stmtList;
 		QKeyValue kv = null;
@@ -662,18 +662,18 @@ private class BvBounds : Expr {
 		if (la.kind == 10) {
 			Get();
 			while (StartOf(8)) {
-				Spec(pre, mods, post, measure);
+				Spec(pre, mods, post, measures);
 			}
 		} else if (StartOf(9)) {
 			while (StartOf(8)) {
-				Spec(pre, mods, post, measure);
+				Spec(pre, mods, post, measures);
 			}
 			ImplBody(out locals, out stmtList);
 			impl = new Implementation(x, x.val, typeParams.ConvertAll(tp => new TypeVariable(tp.tok, tp.Name)),
 			                         Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs), locals, stmtList, kv == null ? null : (QKeyValue)kv.Clone(), this.errors);
 			
 		} else SynErr(130);
-		proc = new Procedure(x, x.val, typeParams, ins, outs, isPure, pre, new List<Requires>(), post, measure, mods, kv); 
+		proc = new Procedure(x, x.val, typeParams, ins, outs, isPure, pre, new List<Requires>(), post, measures, mods, kv); 
 	}
 
 	void ActionDecl(bool isPure, out ActionDecl actionDecl, out Implementation impl, out DatatypeTypeCtorDecl datatypeTypeCtorDecl) {
@@ -1359,18 +1359,18 @@ out List<Variable> ins, out List<Variable> outs, out QKeyValue kv) {
 		}
 	}
 
-	void Spec(List<Requires> pre, List<IdentifierExpr> mods, List<Ensures> post, List<Measure> measure) {
+	void Spec(List<Requires> pre, List<IdentifierExpr> mods, List<Ensures> post, List<Measure> measures) {
 		if (la.kind == 51) {
 			SpecModifies(mods);
 		} else if (la.kind == 50) {
 			Get();
-			SpecPrePost(true, pre, post, measure);
+			SpecPrePost(true, pre, post, measures);
 		} else if (la.kind == 47 || la.kind == 48 || la.kind == 52) {
-			SpecPrePost(false, pre, post, measure);
+			SpecPrePost(false, pre, post, measures);
 		} else SynErr(143);
 	}
 
-	void SpecPrePost(bool free, List<Requires> pre, List<Ensures> post, List<Measure> measure) {
+	void SpecPrePost(bool free, List<Requires> pre, List<Ensures> post, List<Measure> measures) {
 		Contract.Requires(pre != null); Contract.Requires(post != null); Expr e; Token tok = null; QKeyValue kv = null; 
 		if (la.kind == 47) {
 			Get();
@@ -1398,7 +1398,7 @@ out List<Variable> ins, out List<Variable> outs, out QKeyValue kv) {
 			}
 			Proposition(out e);
 			Expect(10);
-			measure.Add(new Measure(tok, free, e, null, kv)); 
+			measures.Add(new Measure(tok, free, e, null, kv)); 
 		} else SynErr(144);
 	}
 
@@ -1623,9 +1623,11 @@ out List<Variable> ins, out List<Variable> outs, out QKeyValue kv) {
 		Contract.Ensures(Contract.ValueAtReturn(out wcmd) != null); IToken x;  Token z;
 		Expr guard;  Expr e;  Cmd cmd;  bool isFree;
 		List<PredicateCmd> invariants = new List<PredicateCmd>();
+		List<Measure> measures = new List<Measure>();
 		List<CallCmd> yields = new List<CallCmd>();
 		StmtList body;
 		QKeyValue kv = null;
+		Token tok = null;
 		
 		Expect(57);
 		x = t; 
@@ -1656,11 +1658,19 @@ out List<Variable> ins, out List<Variable> outs, out QKeyValue kv) {
 				kv = null;
 				
 			} else SynErr(150);
+			Expect(52);
+			tok = t; 
+			while (la.kind == 26) {
+				Attribute(ref kv);
+			}
+			Proposition(out e);
+			Expect(10);
+			measures.Add(new Measure(tok, isFree, e, null, kv)); 
 			Expect(10);
 		}
 		Expect(26);
 		StmtList(out body);
-		wcmd = new WhileCmd(x, guard, invariants, yields, body); 
+		wcmd = new WhileCmd(x, guard, invariants, measures, yields, body); 
 	}
 
 	void BreakCmd(out BreakCmd bcmd) {

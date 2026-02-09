@@ -1,10 +1,7 @@
 using System.Collections.Generic;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Numerics;
 using Microsoft.BaseTypes;
-using System.Threading;
+
 namespace Microsoft.Boogie;
 
 public class MeasureVisitor : StandardVisitor
@@ -39,19 +36,19 @@ public class MeasureVisitor : StandardVisitor
         if (cmd is CallCmd callCmd)
         {
         var count =0;
-          foreach(var dec2 in callCmd.Proc.Measure)
+        foreach(var dec2 in callCmd.Proc.Measure)
           {
             AssertCmd ass = new AssertCmd(Token.NoToken, Expr.Lt(dec2.Condition, node.Proc.Measure[count].Condition));
-             newblock.Cmds.Add(ass);
-             count++;
+            newblock.Cmds.Add(ass);
+            count++;
         }
         }
     }
-    newBlockList.Add(newblock);
+      newBlockList.Add(newblock);
     }
 
-   node.Blocks = newBlockList;
-   Console.WriteLine("hello");
+    node.Blocks = newBlockList;
+    Console.WriteLine("hello");
 
 
 
@@ -64,7 +61,7 @@ public class MeasureVisitor : StandardVisitor
   //   throw new NotImplementedException();
   // }
 
-    public override Cmd VisitCallCmd(CallCmd node)
+  public override Cmd VisitCallCmd(CallCmd node)
     {
       VisitProcedure(node.Proc);
       return base.VisitCallCmd(node);
