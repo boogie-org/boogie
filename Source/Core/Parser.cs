@@ -597,7 +597,7 @@ private class BvBounds : Expr {
 		List<Requires> pre = new List<Requires>();
 		List<Requires> preserves = new List<Requires>();
 		List<Ensures> post = new List<Ensures>();
-		List<Measure> measures = new List<Measure>();
+		List<Measure> measure = new List<Measure>();
 		List<CallCmd> yieldRequires = new List<CallCmd>();
 		List<CallCmd> yieldPreserves = new List<CallCmd>();
 		List<CallCmd> yieldEnsures = new List<CallCmd>();
@@ -634,7 +634,7 @@ private class BvBounds : Expr {
 			                         locals, stmtList, kv == null ? null : (QKeyValue)kv.Clone(), this.errors);
 			
 		} else SynErr(129);
-		ypDecl = new YieldProcedureDecl(name, name.val, moverType, ins, outs, pre, preserves, post, measures, mods, yieldRequires, yieldPreserves, yieldEnsures, refinedAction, kv); 
+		ypDecl = new YieldProcedureDecl(name, name.val, moverType, ins, outs, pre, preserves, post, measure, mods, yieldRequires, yieldPreserves, yieldEnsures, refinedAction, kv); 
 	}
 
 	void Pure(ref bool isPure) {
@@ -651,7 +651,7 @@ private class BvBounds : Expr {
 		List<Requires> pre = new List<Requires>();
 		List<IdentifierExpr> mods = new List<IdentifierExpr>();
 		List<Ensures> post = new List<Ensures>();
-		List<Measure> measures = new List<Measure>();
+		List<Measure> measure = new List<Measure>();
 		List<Variable> locals = new List<Variable>();
 		StmtList stmtList;
 		QKeyValue kv = null;
@@ -662,18 +662,18 @@ private class BvBounds : Expr {
 		if (la.kind == 10) {
 			Get();
 			while (StartOf(8)) {
-				Spec(pre, mods, post, measures);
+				Spec(pre, mods, post, measure);
 			}
 		} else if (StartOf(9)) {
 			while (StartOf(8)) {
-				Spec(pre, mods, post, measures);
+				Spec(pre, mods, post, measure);
 			}
 			ImplBody(out locals, out stmtList);
 			impl = new Implementation(x, x.val, typeParams.ConvertAll(tp => new TypeVariable(tp.tok, tp.Name)),
 			                         Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs), locals, stmtList, kv == null ? null : (QKeyValue)kv.Clone(), this.errors);
 			
 		} else SynErr(130);
-		proc = new Procedure(x, x.val, typeParams, ins, outs, isPure, pre, new List<Requires>(), post, measures, mods, kv); 
+		proc = new Procedure(x, x.val, typeParams, ins, outs, isPure, pre, new List<Requires>(), post, measure, mods, kv); 
 	}
 
 	void ActionDecl(bool isPure, out ActionDecl actionDecl, out Implementation impl, out DatatypeTypeCtorDecl datatypeTypeCtorDecl) {

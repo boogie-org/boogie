@@ -11,6 +11,10 @@ using System.Runtime.Caching;
 using System.Diagnostics;
 using VCGeneration;
 using System.Reflection;
+using Microsoft.Boogie.GraphUtil;
+using System.ComponentModel.DataAnnotations;
+
+
 
 namespace Microsoft.Boogie
 {
@@ -83,6 +87,8 @@ namespace Microsoft.Boogie
 
     private readonly TaskScheduler largeThreadScheduler;
     private readonly bool disposeScheduler;
+
+    protected Graph<Implementation> callGraph;
 
     public async Task<bool> ProcessFiles(TextWriter output, IList<string> fileNames, bool lookForSnapshots = true,
       string programId = null, CancellationToken cancellationToken = default) {
@@ -165,6 +171,18 @@ namespace Microsoft.Boogie
         Options.PrintUnstructured = oldPrintUnstructured;
       }
 
+      callGraph = Program.BuildCallGraph(Options, program);
+      foreach(var edge in callGraph.Edges)
+      {
+        if(edge.Item1 == edge.Item2)
+        {
+          if (edge.Item1.Proc.Measure.Count  == 0)
+          {
+              // var errorInfo = ErrorInformation.Create(program.tok, "hello", null);
+              // How to create an error?
+          }
+        }
+      }
       DesugarMeasure(program);
 
       EliminateDeadVariables(program);
