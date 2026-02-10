@@ -165,14 +165,13 @@ namespace Microsoft.Boogie
         Options.PrintUnstructured = oldPrintUnstructured;
       }
 
+      DesugarMeasure(program);
+
       EliminateDeadVariables(program);
 
       CoalesceBlocks(program);
 
       Inline(program);
-
-      FigureOutMeasure(program);
-      
 
       var stats = new PipelineStatistics();
       outcome = await InferAndVerify(output, program, stats, 1 < Options.VerifySnapshots ? programId : null, cancellationToken: cancellationToken);
@@ -187,9 +186,6 @@ namespace Microsoft.Boogie
           Debug.Assert(false, "Unreachable code");
           return false;
       }
-
-      
-
     }
 
     public static IList<IList<string>> LookForSnapshots(IList<string> fileNames)
@@ -540,7 +536,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    public void FigureOutMeasure(Program program)
+    public void DesugarMeasure(Program program)
     {
       MeasureVisitor mv = new MeasureVisitor();
       foreach (var proc in program.Procedures)
@@ -549,7 +545,6 @@ namespace Microsoft.Boogie
       }
       foreach (var impl in program.Implementations)
       {
-    
        mv.VisitImplementation(impl);
       }
     }

@@ -2797,11 +2797,9 @@ namespace Microsoft.Boogie
           Contract.Assert(e != null);
           e.Resolve(rc);
         }
-        
         RegisterFormals(OutParams, rc);
         ResolveFormals(OutParams,
           rc); // "where" clauses of out-parameters are resolved with both in- and out-parameters in scope
-
         if (!IsPure)
         {
           rc.StateMode = ResolutionContext.State.Two;
@@ -2811,7 +2809,6 @@ namespace Microsoft.Boogie
           Contract.Assert(e != null);
           e.Resolve(rc);
         }
-
         rc.StateMode = ResolutionContext.State.Single;
         (this as ICarriesAttributes).ResolveAttributes(rc);
 
@@ -3191,7 +3188,7 @@ namespace Microsoft.Boogie
       List<Requires> requires, List<Requires> preserves, List<Ensures> ensures, List<Measure> measure, List<IdentifierExpr> modifies,
       List<CallCmd> yieldRequires, List<CallCmd> yieldPreserves, List<CallCmd> yieldEnsures,
       ActionDeclRef refinedAction, QKeyValue kv) : base(tok, name, new List<TypeVariable>(), inParams, outParams,
-      false, requires, preserves, ensures,measure, modifies, kv)
+      false, requires, preserves, ensures, measure, modifies, kv)
     {
       this.MoverType = moverType;
       this.YieldRequires = yieldRequires;

@@ -1,15 +1,14 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
+
 var x: int;
 var y: int;
 
-procedure one(tid: int, next: bool, abc: int) returns (out: bool)
+procedure one(tid: int, next: bool, abc: int) 
 measure x;
 measure x-1; 
-measure x+1;
-modifies x;
 {
-call two(2);
+    call one(2, true,3 );
 }
 
 procedure two(tid: int)
