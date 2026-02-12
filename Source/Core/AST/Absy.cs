@@ -2788,6 +2788,7 @@ namespace Microsoft.Boogie
           Contract.Assert(e != null);
           e.Resolve(rc);
         }
+
         foreach (Measure e in Measure)
         {
           e.Resolve(rc);
@@ -2797,9 +2798,11 @@ namespace Microsoft.Boogie
           Contract.Assert(e != null);
           e.Resolve(rc);
         }
+
         RegisterFormals(OutParams, rc);
         ResolveFormals(OutParams,
           rc); // "where" clauses of out-parameters are resolved with both in- and out-parameters in scope
+
         if (!IsPure)
         {
           rc.StateMode = ResolutionContext.State.Two;
@@ -2809,6 +2812,7 @@ namespace Microsoft.Boogie
           Contract.Assert(e != null);
           e.Resolve(rc);
         }
+        
         rc.StateMode = ResolutionContext.State.Single;
         (this as ICarriesAttributes).ResolveAttributes(rc);
 

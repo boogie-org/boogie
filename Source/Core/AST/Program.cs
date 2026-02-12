@@ -544,6 +544,131 @@ public class Program : Absy
     return callGraph;
   }
 
+  public static Graph<Implementation> BuildTransitiveCallGraph(CoreOptions options, Program program)
+  {
+    // First build direct call graph
+    var callGraph = BuildCallGraph(options, program);
+
+    // Then add transitive edges
+    AddTransitiveEdges(callGraph);
+
+    return callGraph;
+  }
+
+
+  public static Graph<Implementation> BuildCallGraphTransitive(CoreOptions options, Program program)
+  {
+    // 1) Build direct call graph (your existing logic)
+    Graph<Implementation> callGraph = new Graph<Implementation>();
+    Dictionary<Procedure, HashSet<Implementation>> procToImpls = new Dictionary<Procedure, HashSet<Implementation>>();
+
+    foreach (var proc in program.Procedures)
+    {
+      procToImpls[proc] = new HashSet<Implementation>();
+    }
+
+    foreach (var impl in program.Implementations)
+    {
+      if (impl.IsSkipVerification(options))
+      {
+        continue;
+      }
+
+      callGraph.AddSource(impl);
+      procToImpls[impl.Proc].Add(impl);
+    }
+
+    foreach (var impl in program.Implementations)
+    {
+      if (impl.IsSkipVerification(options))
+      {
+        continue;
+      }
+
+      foreach (var b in impl.Blocks)
+      {
+        foreach (var c in b.Cmds)
+        {
+          if (c is not CallCmd cc)
+          {
+            continue;
+          }
+
+          foreach (var callee in procToImpls[cc.Proc])
+          {
+            callGraph.AddEdge(impl, callee);
+          }
+        }
+      }
+    }
+
+    // 2) Add transitive edges (transitive closure)
+    AddTransitiveEdges(callGraph);
+
+    return callGraph;
+  }
+
+  private static void AddTransitiveEdges(Graph<Implementation> g)
+  {
+    // Build adjacency from existing edges
+    var adj = new Dictionary<Implementation, HashSet<Implementation>>();
+    foreach (var src in g.Nodes)
+    {
+      adj[src] = new HashSet<Implementation>();
+    }
+
+    foreach (var (from, to) in g.Edges)
+    {
+      if (!adj.TryGetValue(from, out var set))
+      {
+        set = new HashSet<Implementation>();
+        adj[from] = set;
+      }
+      set.Add(to);
+    }
+
+    // For each node, find all reachable nodes and add edges
+    foreach (var start in g.Nodes)
+    {
+      var visited = new HashSet<Implementation>();
+      var stack = new Stack<Implementation>();
+
+      // seed with direct successors
+      if (adj.TryGetValue(start, out var succ))
+      {
+        foreach (var s in succ)
+        {
+          if (visited.Add(s))
+          {
+            stack.Push(s);
+          }
+        }
+      }
+
+      while (stack.Count > 0)
+      {
+        var cur = stack.Pop();
+
+        // cur is reachable from start => ensure transitive edge exists
+        g.AddEdge(start, cur);
+
+        if (!adj.TryGetValue(cur, out var next))
+        {
+          continue;
+        }
+
+        foreach (var n in next)
+        {
+          if (visited.Add(n))
+          {
+            stack.Push(n);
+          }
+        }
+      }
+    }
+  }
+
+
   public static Graph<Block> GraphFromBlocksSubset(IList<Block> blocks, IReadOnlySet<Block> subset = null, bool forward = true)
   {
     var result = new Graph<Block>();

@@ -2,24 +2,30 @@
 using System.IO;
 using Microsoft.Boogie.GraphUtil;
 using Microsoft.BaseTypes;
+using System;
 
 namespace Microsoft.Boogie
 {
   public class MeasureVisitor : StandardVisitor
   {
-  internal static string GetFileNameForConsole(ExecutionEngineOptions options, string filename)
-  {
+    internal static string GetFileNameForConsole(ExecutionEngineOptions options, string filename)
+    {
       return options.UseBaseNameForFileName && !string.IsNullOrEmpty(filename) &&
              filename != "<console>"
         ? Path.GetFileName(filename)
         : filename;
-  }
+    }
 
-  protected Graph<Implementation>  callGraph;
-    public MeasureVisitor(Program program, ExecutionEngineOptions Options, CivlTypeChecker civlTypeChecker, string bplFileName)
+    protected Graph<Implementation> callGraph;
+
+    public MeasureVisitor(
+      Program program,
+      ExecutionEngineOptions Options,
+      CivlTypeChecker civlTypeChecker,
+      string bplFileName)
     {
-      callGraph = Program.BuildCallGraph(Options, program);
-      // protected Graph<Implementation>  callGraph = Program.BuildCallGraph(Options, program);
+      callGraph = Program.BuildTransitiveCallGraph(Options, program);
+      // protected Graph<Implementation> callGraph = Program.BuildCallGraph(Options, program);
 
       foreach (var edge in callGraph.Edges)
       {
@@ -28,7 +34,11 @@ namespace Microsoft.Boogie
           var proc = edge.Item1?.Proc;
           if (proc.Measure.Count == 0)
           {
-            Options.OutputWriter.WriteLine("Recursive calls should have measure annotation.", civlTypeChecker.checkingContext.ErrorCount, GetFileNameForConsole(Options, bplFileName));
+            Options.OutputWriter.WriteLine(
+              "Recursive calls should have measure annotation.",
+              civlTypeChecker.checkingContext.ErrorCount,
+              GetFileNameForConsole(Options, bplFileName)
+            );
           }
         }
       }
@@ -37,11 +47,13 @@ namespace Microsoft.Boogie
       {
         VisitProcedure(proc);
       }
+
       foreach (var impl in program.Implementations)
       {
-       VisitImplementation(impl);
+        VisitImplementation(impl);
       }
     }
+
     public override Procedure VisitProcedure(Procedure node)
     {
       foreach (var mes in node.Measure)
@@ -49,13 +61,13 @@ namespace Microsoft.Boogie
         var condition = mes.Condition;
         Expr zero = new LiteralExpr(Token.NoToken, BigNum.ZERO);
         var condition2 = Expr.Gt(condition, zero);
-        var req = new Requires(node.tok, true, condition2, "");
+        var req = new Requires(node.tok, false, condition2, "");
         node.Requires.Add(req);
       }
 
       return base.VisitProcedure(node);
     }
-    
+
     public override Implementation VisitImplementation(Implementation node)
     {
       var newBlockList = new List<Block>();
@@ -63,27 +75,35 @@ namespace Microsoft.Boogie
       foreach (var block in node.Blocks)
       {
         var newBlock = new Block(Token.NoToken, null);
-
         foreach (var cmd in block.Cmds)
         {
           if (cmd is CallCmd callCmd)
           {
+            Expr Expr0 = Expr.True;
             var count = 0;
 
             foreach (var mes in callCmd.Proc.Measure)
             {
-              var ass = new AssertCmd(
-                cmd.tok,
-                Expr.Lt(mes.Condition, node.Proc.Measure[count].Condition),
-                new MeasureDescription()
-              );
+                var Expr1 = Expr.Lt(
+                  mes.Condition,
+                  node.Proc.Measure[count].Condition
+                );
 
-              newBlock.Cmds.Add(ass);
-              count++;
+                var Expr2 =  Expr.Eq(
+                  mes.Condition,
+                  node.Proc.Measure[count].Condition
+                );
+
+                var Expr3 = Expr.Or(Expr1, Expr2);
+
+                Expr0 = Expr.Or(Expr0, Expr3);
+     
             }
+            var ass = new AssertCmd( node.tok, Expr0, new MeasureDescription(),  null);
+            newBlock.Cmds.Add(ass);
+            count++;
           }
         }
-
         newBlockList.Add(newBlock);
       }
 
@@ -96,7 +116,5 @@ namespace Microsoft.Boogie
       VisitProcedure(node.Proc);
       return base.VisitCallCmd(node);
     }
-
   }
 }
-  

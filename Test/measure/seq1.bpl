@@ -14,13 +14,16 @@ measure x-1;
 
 procedure two(tid: int)
 measure x - 100;
+measure y - 100;
 {
-
+   call three(2);
 }
 
 procedure three(tid: int)
-
+measure x - 50;
+measure x +10;
+measure x + 20;
 {
-
+   call one(2, true, 4);
 }
 

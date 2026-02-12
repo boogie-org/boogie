@@ -1359,18 +1359,18 @@ out List<Variable> ins, out List<Variable> outs, out QKeyValue kv) {
 		}
 	}
 
-	void Spec(List<Requires> pre, List<IdentifierExpr> mods, List<Ensures> post, List<Measure> measures) {
+	void Spec(List<Requires> pre, List<IdentifierExpr> mods, List<Ensures> post, List<Measure> measure) {
 		if (la.kind == 51) {
 			SpecModifies(mods);
 		} else if (la.kind == 50) {
 			Get();
-			SpecPrePost(true, pre, post, measures);
+			SpecPrePost(true, pre, post, measure);
 		} else if (la.kind == 47 || la.kind == 48 || la.kind == 52) {
-			SpecPrePost(false, pre, post, measures);
+			SpecPrePost(false, pre, post, measure);
 		} else SynErr(143);
 	}
 
-	void SpecPrePost(bool free, List<Requires> pre, List<Ensures> post, List<Measure> measures) {
+	void SpecPrePost(bool free, List<Requires> pre, List<Ensures> post, List<Measure> measure) {
 		Contract.Requires(pre != null); Contract.Requires(post != null); Expr e; Token tok = null; QKeyValue kv = null; 
 		if (la.kind == 47) {
 			Get();
@@ -1398,7 +1398,7 @@ out List<Variable> ins, out List<Variable> outs, out QKeyValue kv) {
 			}
 			Proposition(out e);
 			Expect(10);
-			measures.Add(new Measure(tok, free, e, null, kv)); 
+			measure.Add(new Measure(tok, free, e, null, kv)); 
 		} else SynErr(144);
 	}
 

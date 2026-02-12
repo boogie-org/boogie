@@ -928,12 +928,12 @@ ProcSignature<.bool allowWhereClausesOnFormals, out IToken name, out List<TypeVa
   [ "returns" ProcFormals<false, allowWhereClausesOnFormals, out outs> ]
   .
   
-Spec<.List<Requires> pre, List<IdentifierExpr> mods, List<Ensures> post, List<Measure> measures.>
+Spec<.List<Requires> pre, List<IdentifierExpr> mods, List<Ensures> post, List<Measure> measure.>
 =
   (
     SpecModifies<mods>
-  | "free" SpecPrePost<true, pre, post, measures>
-  | SpecPrePost<false, pre, post, measures>
+  | "free" SpecPrePost<true, pre, post, measure>
+  | SpecPrePost<false, pre, post, measure>
   )
   .
 
@@ -944,7 +944,7 @@ SpecModifies<.List<IdentifierExpr> mods.>
   ";"
   .
 
-SpecPrePost<.bool free, List<Requires> pre, List<Ensures> post, List<Measure> measures.>
+SpecPrePost<.bool free, List<Requires> pre, List<Ensures> post, List<Measure> measure.>
 = (. Contract.Requires(pre != null); Contract.Requires(post != null); Expr e; Token tok = null; QKeyValue kv = null; .)
   ( "requires"              (. tok = t; .)
     { Attribute<ref kv> }
@@ -954,7 +954,7 @@ SpecPrePost<.bool free, List<Requires> pre, List<Ensures> post, List<Measure> me
     Proposition<out e> ";"  (. post.Add(new Ensures(tok, free, e, null, kv)); .)
   | "measure"               (. tok = t; .)
     { Attribute<ref kv> }
-    Proposition<out e> ";"  (. measures.Add(new Measure(tok, free, e, null, kv)); .)
+    Proposition<out e> ";"  (. measure.Add(new Measure(tok, free, e, null, kv)); .)
   )
   .
 
