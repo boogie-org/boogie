@@ -12,9 +12,6 @@ using System.Diagnostics;
 using VCGeneration;
 using System.Reflection;
 using Microsoft.Boogie.GraphUtil;
-using System.ComponentModel.DataAnnotations;
-
-
 
 namespace Microsoft.Boogie
 {
@@ -77,6 +74,8 @@ namespace Microsoft.Boogie
     public CheckerPool CheckerPool { get; }
     private readonly SemaphoreSlim verifyImplementationSemaphore;
 
+    protected Graph<Implementation>  callGraph;
+
     static DateTime FirstRequestStart;
 
     static readonly ConcurrentDictionary<string, TimeSpan> TimePerRequest = new();
@@ -87,8 +86,6 @@ namespace Microsoft.Boogie
 
     private readonly TaskScheduler largeThreadScheduler;
     private readonly bool disposeScheduler;
-
-    protected Graph<Implementation> callGraph;
 
     public async Task<bool> ProcessFiles(TextWriter output, IList<string> fileNames, bool lookForSnapshots = true,
       string programId = null, CancellationToken cancellationToken = default) {
@@ -171,19 +168,32 @@ namespace Microsoft.Boogie
         Options.PrintUnstructured = oldPrintUnstructured;
       }
 
-      callGraph = Program.BuildCallGraph(Options, program);
-      foreach(var edge in callGraph.Edges)
+      MeasureVisitor mv = new MeasureVisitor();
+   
+      foreach (var proc in program.Procedures)
       {
-        if(edge.Item1 == edge.Item2)
+        mv.VisitProcedure(proc);
+      }
+      foreach (var impl in program.Implementations)
+      {
+        mv.VisitImplementation(impl);
+      }
+    
+
+      callGraph = Program.BuildCallGraph(Options, program);
+      // protected Graph<Implementation>  callGraph = Program.BuildCallGraph(Options, program);
+
+      foreach (var edge in callGraph.Edges)
+      {
+        if (edge.Item1 == edge.Item2)
         {
-          if (edge.Item1.Proc.Measure.Count  == 0)
+          var proc = edge.Item1?.Proc;
+          if (proc.Measure.Count == 0)
           {
-              // var errorInfo = ErrorInformation.Create(program.tok, "hello", null);
-              // How to create an error?
+            Options.OutputWriter.WriteLine("Recursive calls should have measure annotation.", civlTypeChecker.checkingContext.ErrorCount, GetFileNameForConsole(Options, bplFileName));
           }
         }
       }
-      DesugarMeasure(program);
 
       EliminateDeadVariables(program);
 
@@ -248,6 +258,20 @@ namespace Microsoft.Boogie
         BlockCoalescer.CoalesceBlocks(program);
       }
     }
+
+    // public void DesugarMeasure(Program program)
+    // {
+    //   MeasureVisitor mv = new MeasureVisitor();
+    //   foreach (var proc in program.Procedures)
+    //   {
+    //     mv.VisitProcedure(proc);
+    //   }
+    //   foreach (var impl in program.Implementations)
+    //   {
+    //    mv.VisitImplementation(impl);
+    //   }
+    // }
+
 
 
     public void CollectModifies(Program program)
@@ -551,19 +575,6 @@ namespace Microsoft.Boogie
             impl.OriginalLocVars = null;
           }
         }
-      }
-    }
-
-    public void DesugarMeasure(Program program)
-    {
-      MeasureVisitor mv = new MeasureVisitor();
-      foreach (var proc in program.Procedures)
-      {
-        mv.VisitProcedure(proc);
-      }
-      foreach (var impl in program.Implementations)
-      {
-       mv.VisitImplementation(impl);
       }
     }
 

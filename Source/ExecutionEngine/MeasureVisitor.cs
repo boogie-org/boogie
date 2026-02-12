@@ -1,9 +1,24 @@
+using System;
+using System.Linq;
+using System.Collections;
+using System.Diagnostics;
 using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using Microsoft.BaseTypes;
+using Microsoft.Boogie.GraphUtil;
+using System.Collections.Concurrent;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
+using VC;
+using System.Runtime.Caching;
+using VCGeneration;
+using System.Reflection;
+using System.ComponentModel.DataAnnotations;
 
 namespace Microsoft.Boogie
 {
-  public class MeasureVisitor : StandardVisitor
+  public sealed class MeasureVisitor : StandardVisitor
   {
     public override Procedure VisitProcedure(Procedure node)
     {
@@ -33,17 +48,12 @@ namespace Microsoft.Boogie
           {
             var count = 0;
 
-            // fix this
-            // if(callCmd.Proc.Measure)
-            // {
-            // new AssertCmd(callCmd.tok, null, new DecreasesRecursiveDescription()));
-            //somehow make this work
-            // }
             foreach (var mes in callCmd.Proc.Measure)
             {
               var ass = new AssertCmd(
                 cmd.tok,
-                Expr.Lt(mes.Condition, node.Proc.Measure[count].Condition), new MeasureDescription()
+                Expr.Lt(mes.Condition, node.Proc.Measure[count].Condition),
+                new MeasureDescription()
               );
 
               newBlock.Cmds.Add(ass);
@@ -64,5 +74,6 @@ namespace Microsoft.Boogie
       VisitProcedure(node.Proc);
       return base.VisitCallCmd(node);
     }
+
   }
 }

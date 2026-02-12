@@ -8,11 +8,18 @@ procedure one(tid: int, next: bool, abc: int)
 measure x;
 measure x-1; 
 {
-    call one(2, true,3 );
+    call two(2);
+    call one(3, true, 2);
 }
 
 procedure two(tid: int)
-measure y+1;
+measure x - 100;
+{
+
+}
+
+procedure three(tid: int)
+
 {
 
 }

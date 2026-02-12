@@ -61,17 +61,6 @@ public class ActionGateDescription : ProofObligationDescription
   public override string ShortDescription => "assert";
 }
 
-public class DecreasesRecursiveDescription : ProofObligationDescription
-{
-  public override string SuccessDescription =>
-    "measure exists";
-
-  public override string FailureDescription =>
-    "measure does not exist";
-
-  public override string ShortDescription => "measure";
-}
-
 public class PreconditionDescription : ProofObligationDescription
 {
   public override string SuccessDescription =>
