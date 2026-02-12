@@ -11,7 +11,6 @@ using System.Runtime.Caching;
 using System.Diagnostics;
 using VCGeneration;
 using System.Reflection;
-using Microsoft.Boogie.GraphUtil;
 
 namespace Microsoft.Boogie
 {
@@ -73,8 +72,6 @@ namespace Microsoft.Boogie
     public ExecutionEngineOptions Options { get; }
     public CheckerPool CheckerPool { get; }
     private readonly SemaphoreSlim verifyImplementationSemaphore;
-
-    protected Graph<Implementation>  callGraph;
 
     static DateTime FirstRequestStart;
 
@@ -168,32 +165,8 @@ namespace Microsoft.Boogie
         Options.PrintUnstructured = oldPrintUnstructured;
       }
 
-      MeasureVisitor mv = new MeasureVisitor();
-   
-      foreach (var proc in program.Procedures)
-      {
-        mv.VisitProcedure(proc);
-      }
-      foreach (var impl in program.Implementations)
-      {
-        mv.VisitImplementation(impl);
-      }
-    
-
-      callGraph = Program.BuildCallGraph(Options, program);
-      // protected Graph<Implementation>  callGraph = Program.BuildCallGraph(Options, program);
-
-      foreach (var edge in callGraph.Edges)
-      {
-        if (edge.Item1 == edge.Item2)
-        {
-          var proc = edge.Item1?.Proc;
-          if (proc.Measure.Count == 0)
-          {
-            Options.OutputWriter.WriteLine("Recursive calls should have measure annotation.", civlTypeChecker.checkingContext.ErrorCount, GetFileNameForConsole(Options, bplFileName));
-          }
-        }
-      }
+      MeasureVisitor mv = new MeasureVisitor(program, Options, civlTypeChecker, bplFileName);
+  
 
       EliminateDeadVariables(program);
 
@@ -258,19 +231,6 @@ namespace Microsoft.Boogie
         BlockCoalescer.CoalesceBlocks(program);
       }
     }
-
-    // public void DesugarMeasure(Program program)
-    // {
-    //   MeasureVisitor mv = new MeasureVisitor();
-    //   foreach (var proc in program.Procedures)
-    //   {
-    //     mv.VisitProcedure(proc);
-    //   }
-    //   foreach (var impl in program.Implementations)
-    //   {
-    //    mv.VisitImplementation(impl);
-    //   }
-    // }
 
 
 

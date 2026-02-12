@@ -1,25 +1,47 @@
-using System;
-using System.Linq;
-using System.Collections;
-using System.Diagnostics;
-using System.Collections.Generic;
-using System.Diagnostics.Contracts;
-using Microsoft.BaseTypes;
-using Microsoft.Boogie.GraphUtil;
-using System.Collections.Concurrent;
+﻿using System.Collections.Generic;
 using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
-using VC;
-using System.Runtime.Caching;
-using VCGeneration;
-using System.Reflection;
-using System.ComponentModel.DataAnnotations;
+using Microsoft.Boogie.GraphUtil;
+using Microsoft.BaseTypes;
 
 namespace Microsoft.Boogie
 {
-  public sealed class MeasureVisitor : StandardVisitor
+  public class MeasureVisitor : StandardVisitor
   {
+  internal static string GetFileNameForConsole(ExecutionEngineOptions options, string filename)
+  {
+      return options.UseBaseNameForFileName && !string.IsNullOrEmpty(filename) &&
+             filename != "<console>"
+        ? Path.GetFileName(filename)
+        : filename;
+  }
+
+  protected Graph<Implementation>  callGraph;
+    public MeasureVisitor(Program program, ExecutionEngineOptions Options, CivlTypeChecker civlTypeChecker, string bplFileName)
+    {
+      callGraph = Program.BuildCallGraph(Options, program);
+      // protected Graph<Implementation>  callGraph = Program.BuildCallGraph(Options, program);
+
+      foreach (var edge in callGraph.Edges)
+      {
+        if (edge.Item1 == edge.Item2)
+        {
+          var proc = edge.Item1?.Proc;
+          if (proc.Measure.Count == 0)
+          {
+            Options.OutputWriter.WriteLine("Recursive calls should have measure annotation.", civlTypeChecker.checkingContext.ErrorCount, GetFileNameForConsole(Options, bplFileName));
+          }
+        }
+      }
+
+      foreach (var proc in program.Procedures)
+      {
+        VisitProcedure(proc);
+      }
+      foreach (var impl in program.Implementations)
+      {
+       VisitImplementation(impl);
+      }
+    }
     public override Procedure VisitProcedure(Procedure node)
     {
       foreach (var mes in node.Measure)
@@ -33,7 +55,7 @@ namespace Microsoft.Boogie
 
       return base.VisitProcedure(node);
     }
-
+    
     public override Implementation VisitImplementation(Implementation node)
     {
       var newBlockList = new List<Block>();
@@ -77,3 +99,4 @@ namespace Microsoft.Boogie
 
   }
 }
+  
