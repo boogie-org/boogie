@@ -50,7 +50,7 @@ namespace Microsoft.Boogie
 
       foreach (var impl in program.Implementations)
       {
-        VisitImplementation(impl);
+        VisitImplementation2(impl, program);
       }
     }
 
@@ -68,48 +68,129 @@ namespace Microsoft.Boogie
       return base.VisitProcedure(node);
     }
 
-    public override Implementation VisitImplementation(Implementation node)
+    public Implementation VisitImplementation2(Implementation node, Program program)
+{
+  var newBlockList = new List<Block>();
+
+  foreach (var block in node.Blocks)
+  {
+    var newBlock = new Block(Token.NoToken, null);
+
+    foreach (var cmd in block.Cmds)
     {
-      var newBlockList = new List<Block>();
-
-      foreach (var block in node.Blocks)
+      if (cmd is CallCmd callCmd)
       {
-        var newBlock = new Block(Token.NoToken, null);
-        foreach (var cmd in block.Cmds)
+        foreach (var impl in program.Implementations)
         {
-          if (cmd is CallCmd callCmd)
+          if (impl.Proc == callCmd.Proc)
           {
-            Expr Expr0 = Expr.True;
-            var count = 0;
-
-            foreach (var mes in callCmd.Proc.Measure)
+            foreach (var edge in callGraph.Edges)
             {
-                var Expr1 = Expr.Lt(
-                  mes.Condition,
-                  node.Proc.Measure[count].Condition
-                );
-
-                var Expr2 =  Expr.Eq(
-                  mes.Condition,
-                  node.Proc.Measure[count].Condition
-                );
-
-                var Expr3 = Expr.Or(Expr1, Expr2);
-
-                Expr0 = Expr.Or(Expr0, Expr3);
-     
+              if (edge.Item1 == impl && edge.Item2 == node)
+              {
+                Console.WriteLine("wohoo");
+              }
             }
-            var ass = new AssertCmd( node.tok, Expr0, new MeasureDescription(),  null);
-            newBlock.Cmds.Add(ass);
-            count++;
           }
         }
-        newBlockList.Add(newBlock);
-      }
 
-      node.Blocks = newBlockList;
-      return base.VisitImplementation(node);
+        Expr storeExprEqual = Expr.True;
+        Expr Expr3 = Expr.False;
+        var count = 0;
+
+        foreach (var mes in callCmd.Proc.Measure)
+        {
+          var Expr1 = Expr.Lt(
+            mes.Condition,
+            node.Proc.Measure[count].Condition
+          );
+
+          Expr3 = Expr.Or(Expr.And(Expr1, storeExprEqual), Expr3);
+
+          storeExprEqual = Expr.And(
+            storeExprEqual,
+            Expr.Eq(mes.Condition, node.Proc.Measure[count].Condition)
+          );
+
+          count++; //
+        }
+
+        var ass = new AssertCmd(node.tok, Expr3, new MeasureDescription(), null);
+        newBlock.Cmds.Add(ass);
+      }
+      else
+      {
+        // Keep non-call commands, otherwise you're deleting them
+        newBlock.Cmds.Add(cmd);
+      }
     }
+
+    newBlockList.Add(newBlock);
+  }
+
+  node.Blocks = newBlockList;
+
+  // If you want to traverse children via the base visitor:
+  base.VisitImplementation(node);
+
+  return node;
+}
+
+
+    // public Implementation VisitImplementation2(Implementation node, Program program)
+    // {
+    //   var newBlockList = new List<Block>();
+
+    //   foreach (var block in node.Blocks)
+    //   {
+    //     var newBlock = new Block(Token.NoToken, null);
+    //     foreach (var cmd in block.Cmds)
+    //     {
+    //       if (cmd is CallCmd callCmd)
+    //       {
+          
+    //         foreach(var impl in program.Implementations){
+    //           if(impl.Proc == callCmd.Proc)
+    //           {
+    //              foreach (var edge in callGraph.Edges)
+    //             {
+    //               if(edge.Item1 == impl && edge.Item2 == node)
+    //               {
+    //                 Console.WriteLine("wohoo");
+    //               }
+    //           }
+    //         }
+    //         Expr Expr0 = Expr.True;
+    //         Expr storeExprEqual = Expr.True;
+    //         Expr Expr3 = Expr.False;
+    //         var count = 0;
+
+    //         foreach (var mes in callCmd.Proc.Measure)
+    //         {
+              
+    //           var Expr1 = Expr.Lt(
+    //             mes.Condition,
+    //             node.Proc.Measure[count].Condition
+    //           );
+
+    //           Expr3 = Expr.Or(Expr.And(Expr1, storeExprEqual),Expr3);
+
+    //           storeExprEqual =  Expr.And(storeExprEqual, Expr.Eq(
+    //             mes.Condition,
+    //             node.Proc.Measure[count].Condition
+    //           ));
+    //         }
+    //         var ass = new AssertCmd( node.tok, Expr3, new MeasureDescription(),  null);
+    //         newBlock.Cmds.Add(ass);
+    //         count++;
+    //       }
+    //     }
+    //     newBlockList.Add(newBlock);
+    //   }
+
+    //   node.Blocks = newBlockList;
+    //   return base.VisitImplementation(node);
+    // }
 
     public override Cmd VisitCallCmd(CallCmd node)
     {
