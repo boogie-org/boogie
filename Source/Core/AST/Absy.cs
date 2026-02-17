@@ -2791,8 +2791,16 @@ namespace Microsoft.Boogie
 
         foreach (Measure e in Measure)
         {
+          var savedStateMode = rc.StateMode;
+          // Yield-procedure measures may contain (explicit or implicit) old-expressions.
+          if (this is YieldProcedureDecl)
+          {
+            rc.StateMode = ResolutionContext.State.Two;
+          }
           e.Resolve(rc);
+          rc.StateMode = savedStateMode;
         }
+
         foreach (Requires e in Preserves)
         {
           Contract.Assert(e != null);
@@ -2866,10 +2874,15 @@ namespace Microsoft.Boogie
       {
         TypecheckSpec(e.Layers, e.Typecheck);
       }
+      
       foreach (Measure e in Measure)
       {
-        TypecheckSpec(e.Layers, e.Typecheck);
+        var savedGlobalAccessOnlyInOld = tc.GlobalAccessOnlyInOld;
+        tc.GlobalAccessOnlyInOld = false;   // allow globals in measure without old(...)
+        e.Typecheck(tc);
+        tc.GlobalAccessOnlyInOld = savedGlobalAccessOnlyInOld;
       }
+
       foreach (Requires e in Preserves)
       {
         if (this is YieldProcedureDecl yieldProcedureDecl &&

@@ -542,10 +542,10 @@ public class Scanner {
 			case "asserts": t.kind = 46; break;
 			case "requires": t.kind = 47; break;
 			case "ensures": t.kind = 48; break;
-			case "implementation": t.kind = 49; break;
-			case "free": t.kind = 50; break;
-			case "modifies": t.kind = 51; break;
-			case "measure": t.kind = 52; break;
+			case "measure": t.kind = 49; break;
+			case "implementation": t.kind = 50; break;
+			case "free": t.kind = 51; break;
+			case "modifies": t.kind = 52; break;
 			case "goto": t.kind = 53; break;
 			case "return": t.kind = 54; break;
 			case "if": t.kind = 55; break;

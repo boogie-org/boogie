@@ -804,8 +804,8 @@ YieldProcedureDecl<out YieldProcedureDecl ypDecl, out Implementation impl>
     ProcFormals<true, true, out ins>
       [ "returns" ProcFormals<false, true, out outs> ]
     ( ";"
-      { SpecYieldPrePost<ref refinedAction, name, ins, outs, pre, preserves, post, yieldRequires, yieldPreserves, yieldEnsures, mods> }
-    | { SpecYieldPrePost<ref refinedAction, name, ins, outs, pre, preserves, post, yieldRequires, yieldPreserves, yieldEnsures, mods> }
+      { SpecYieldPrePost<ref refinedAction, name, ins, outs, pre, preserves, post, measure, yieldRequires, yieldPreserves, yieldEnsures, mods> }
+    | { SpecYieldPrePost<ref refinedAction, name, ins, outs, pre, preserves, post, measure, yieldRequires, yieldPreserves, yieldEnsures, mods> }
       ImplBody<out locals, out stmtList>
       (.
          impl = new Implementation(name, name.val, new List<TypeVariable>(), Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs),
@@ -861,13 +861,27 @@ SpecYieldEnsures<. List<Ensures> post, List<CallCmd> yieldEnsures .>
   ";"
   .
 
-SpecYieldPrePost<. ref ActionDeclRef refinedAction, IToken name, List<Variable> ins, List<Variable> outs, List<Requires> pre, List<Requires> preserves, List<Ensures> post, List<CallCmd> yieldRequires, List<CallCmd> yieldPreserves, List<CallCmd> yieldEnsures, List<IdentifierExpr> mods.>
+SpecYieldMeasure<. List<Measure> measure .>
+= (. Expr e; Token tok; QKeyValue kv = null; .)
+  "measure"               (. tok = t; .)
+  (
+    { Attribute<ref kv> }
+    Proposition<out e>  (. measure.Add(new Measure(tok, false, e, null, kv)); .)
+  )
+  ";"
+  .
+
+
+
+
+SpecYieldPrePost<. ref ActionDeclRef refinedAction, IToken name, List<Variable> ins, List<Variable> outs, List<Requires> pre, List<Requires> preserves, List<Ensures> post, List<Measure> measure, List<CallCmd> yieldRequires, List<CallCmd> yieldPreserves, List<CallCmd> yieldEnsures, List<IdentifierExpr> mods.>
 =
   (  
     SpecRefinedActionForYieldProcedure<ref refinedAction, name, ins, outs>
   | SpecYieldRequires<pre, yieldRequires>
   | SpecYieldPreserves<preserves, yieldPreserves>
   | SpecYieldEnsures<post, yieldEnsures>
+  | SpecYieldMeasure<measure>
   | SpecModifies<mods>
   )
   .
