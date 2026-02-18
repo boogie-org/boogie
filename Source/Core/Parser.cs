@@ -1364,7 +1364,7 @@ private class BvBounds : Expr {
 			Attribute(ref kv);
 		}
 		Proposition(out e);
-		measure.Add(new Measure(tok, false, new OldExpr(tok, e), null, kv)); 
+		measure.Add(new Measure(tok, false, e, null, kv)); 
 		Expect(10);
 	}
 

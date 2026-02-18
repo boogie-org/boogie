@@ -1,47 +1,35 @@
-﻿using System.Collections.Generic;
-using System.IO;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using Microsoft.Boogie;
 using Microsoft.Boogie.GraphUtil;
 using Microsoft.BaseTypes;
-using System;
 
 namespace Microsoft.Boogie
 {
   public class MeasureVisitor : StandardVisitor
   {
-    internal static string GetFileNameForConsole(ExecutionEngineOptions options, string filename)
-    {
-      return options.UseBaseNameForFileName && !string.IsNullOrEmpty(filename) &&
-             filename != "<console>"
-        ? Path.GetFileName(filename)
-        : filename;
-    }
-
     protected Graph<Implementation> callGraph;
+
+    private readonly Program program;
+    private readonly ExecutionEngineOptions options;
+    private readonly CivlTypeChecker civlTypeChecker;
+    private readonly string bplFileName;
 
     public MeasureVisitor(
       Program program,
-      ExecutionEngineOptions Options,
+      ExecutionEngineOptions options,
       CivlTypeChecker civlTypeChecker,
       string bplFileName)
     {
-      callGraph = Program.BuildTransitiveCallGraph(Options, program);
-      // protected Graph<Implementation> callGraph = Program.BuildCallGraph(Options, program);
+      this.program = program;
+      this.options = options;
+      this.civlTypeChecker = civlTypeChecker;
+      this.bplFileName = bplFileName;
 
-      foreach (var edge in callGraph.Edges)
-      {
-        if (edge.Item1 == edge.Item2)
-        {
-          var proc = edge.Item1?.Proc;
-          if (proc.Measure.Count == 0)
-          {
-            Options.OutputWriter.WriteLine(
-              "Recursive calls should have measure annotation.",
-              civlTypeChecker.checkingContext.ErrorCount,
-              GetFileNameForConsole(Options, bplFileName)
-            );
-          }
-        }
-      }
+      callGraph = Program.BuildTransitiveCallGraph(options, program);
+
+      CheckRecursiveProceduresHaveMeasure();
 
       foreach (var proc in program.Procedures)
       {
@@ -50,151 +38,213 @@ namespace Microsoft.Boogie
 
       foreach (var impl in program.Implementations)
       {
-        VisitImplementation2(impl, program);
+        VisitImplementation2(impl);
       }
     }
 
+    // ------------------------------------------------------------
+    // Require measure exists on recursive procedures
+    // ------------------------------------------------------------
+    private void CheckRecursiveProceduresHaveMeasure()
+    {
+      foreach (var edge in callGraph.Edges)
+      {
+        if (edge.Item1 != edge.Item2)
+        {
+          continue;
+        }
+
+        var impl = edge.Item1;
+        var proc = impl?.Proc;
+
+        if (proc == null)
+        {
+          continue;
+        }
+
+        if (proc.Measure == null || proc.Measure.Count == 0)
+        {
+          var tok = proc.tok;
+
+          if (proc is YieldProcedureDecl yp &&
+              yp.MoverType.HasValue &&
+              yp.MoverType.Value == MoverType.Left)
+          {
+            civlTypeChecker.checkingContext.Error(
+              tok,
+              $"Left-mover recursive procedures must have a measure annotation: {proc.Name}");
+          }
+          else
+          {
+            civlTypeChecker.checkingContext.Error(
+              tok,
+              $"Recursive procedures must have a measure annotation: {proc.Name}");
+          }
+        }
+      }
+    }
+
+    // ------------------------------------------------------------
+    // Add measure > 0 requirement at procedure entry
+    // ------------------------------------------------------------
     public override Procedure VisitProcedure(Procedure node)
     {
-      foreach (var mes in node.Measure)
+      if (node.Measure != null)
       {
-        var condition = mes.Condition;
-        Expr zero = new LiteralExpr(Token.NoToken, BigNum.ZERO);
-        var condition2 = Expr.Gt(condition, zero);
-        var req = new Requires(node.tok, false, condition2, "");
-        node.Requires.Add(req);
+        foreach (var mes in node.Measure)
+        {
+          var zero = new LiteralExpr(Token.NoToken, BigNum.ZERO);
+          var gt = Expr.Gt(mes.Condition, zero);
+
+          var req = new Requires(node.tok, false, gt, "measure must be > 0");
+          node.Requires.Add(req);
+        }
       }
 
       return base.VisitProcedure(node);
     }
 
-    public Implementation VisitImplementation2(Implementation node, Program program)
-{
-  var newBlockList = new List<Block>();
-
-  foreach (var block in node.Blocks)
-  {
-    var newBlock = new Block(Token.NoToken, null);
-
-    foreach (var cmd in block.Cmds)
+    // ------------------------------------------------------------
+    // Substitute formals -> actuals safely
+    // ------------------------------------------------------------
+    private static Dictionary<Variable, Expr>
+      BuildFormalToActualMap(CallCmd call)
     {
-      if (cmd is CallCmd callCmd)
+      var map = new Dictionary<Variable, Expr>();
+
+      var formals = call.Proc.InParams;
+      var actuals = call.Ins;
+
+      int n = Math.Min(formals.Count, actuals.Count);
+
+      for (int i = 0; i < n; i++)
       {
-        foreach (var impl in program.Implementations)
-        {
-          if (impl.Proc == callCmd.Proc)
-          {
-            foreach (var edge in callGraph.Edges)
-            {
-              if (edge.Item1 == impl && edge.Item2 == node)
-              {
-                Console.WriteLine("wohoo");
-              }
-            }
-          }
-        }
-
-        Expr storeExprEqual = Expr.True;
-        Expr Expr3 = Expr.False;
-        var count = 0;
-
-        foreach (var mes in callCmd.Proc.Measure)
-        {
-          var Expr1 = Expr.Lt(
-            mes.Condition,
-            node.Proc.Measure[count].Condition
-          );
-
-          Expr3 = Expr.Or(Expr.And(Expr1, storeExprEqual), Expr3);
-
-          storeExprEqual = Expr.And(
-            storeExprEqual,
-            Expr.Eq(mes.Condition, node.Proc.Measure[count].Condition)
-          );
-
-          count++; //
-        }
-
-        var ass = new AssertCmd(node.tok, Expr3, new MeasureDescription(), null);
-        newBlock.Cmds.Add(ass);
+        map[formals[i]] = actuals[i];
       }
-      else
+
+      return map;
+    }
+
+    private sealed class SimpleSubstituter : StandardVisitor
+    {
+      private readonly Dictionary<Variable, Expr> map;
+
+      public SimpleSubstituter(Dictionary<Variable, Expr> map)
       {
-        // Keep non-call commands, otherwise you're deleting them
-        newBlock.Cmds.Add(cmd);
+        this.map = map;
+      }
+
+      public override Expr VisitIdentifierExpr(IdentifierExpr node)
+      {
+        if (node.Decl is Variable v && map.TryGetValue(v, out var repl))
+        {
+          return repl;
+        }
+
+        return base.VisitIdentifierExpr(node);
       }
     }
 
-    newBlockList.Add(newBlock);
-  }
+    private static Expr ApplySubstitution(
+      Expr expr,
+      Dictionary<Variable, Expr> subst)
+    {
+      if (expr == null || subst.Count == 0)
+      {
+        return expr;
+      }
 
-  node.Blocks = newBlockList;
+      var s = new SimpleSubstituter(subst);
+      return s.VisitExpr(expr);
+    }
 
-  // If you want to traverse children via the base visitor:
-  base.VisitImplementation(node);
+    // ------------------------------------------------------------
+    // Inject correct measure check
+    // ------------------------------------------------------------
+    public Implementation VisitImplementation2(Implementation impl)
+    {
+      if (impl?.Proc == null)
+      {
+        return impl;
+      }
 
-  return node;
-}
+      var newBlocks = new List<Block>();
 
+      foreach (var block in impl.Blocks)
+      {
+        var newCmds = new List<Cmd>();
 
-    // public Implementation VisitImplementation2(Implementation node, Program program)
-    // {
-    //   var newBlockList = new List<Block>();
+        foreach (var cmd in block.Cmds)
+        {
+          newCmds.Add(cmd);
 
-    //   foreach (var block in node.Blocks)
-    //   {
-    //     var newBlock = new Block(Token.NoToken, null);
-    //     foreach (var cmd in block.Cmds)
-    //     {
-    //       if (cmd is CallCmd callCmd)
-    //       {
-          
-    //         foreach(var impl in program.Implementations){
-    //           if(impl.Proc == callCmd.Proc)
-    //           {
-    //              foreach (var edge in callGraph.Edges)
-    //             {
-    //               if(edge.Item1 == impl && edge.Item2 == node)
-    //               {
-    //                 Console.WriteLine("wohoo");
-    //               }
-    //           }
-    //         }
-    //         Expr Expr0 = Expr.True;
-    //         Expr storeExprEqual = Expr.True;
-    //         Expr Expr3 = Expr.False;
-    //         var count = 0;
+          if (cmd is CallCmd call &&
+              call.Proc != null &&
+              call.Proc.Measure != null &&
+              impl.Proc.Measure != null &&
+              call.Proc.Measure.Count > 0)
+          {
+            bool recursive =
+              callGraph.Edges.Any(e =>
+                e.Item1 == impl &&
+                e.Item2.Proc == call.Proc);
 
-    //         foreach (var mes in callCmd.Proc.Measure)
-    //         {
-              
-    //           var Expr1 = Expr.Lt(
-    //             mes.Condition,
-    //             node.Proc.Measure[count].Condition
-    //           );
+            if (!recursive)
+            {
+              continue;
+            }
 
-    //           Expr3 = Expr.Or(Expr.And(Expr1, storeExprEqual),Expr3);
+            var subst = BuildFormalToActualMap(call);
 
-    //           storeExprEqual =  Expr.And(storeExprEqual, Expr.Eq(
-    //             mes.Condition,
-    //             node.Proc.Measure[count].Condition
-    //           ));
-    //         }
-    //         var ass = new AssertCmd( node.tok, Expr3, new MeasureDescription(),  null);
-    //         newBlock.Cmds.Add(ass);
-    //         count++;
-    //       }
-    //     }
-    //     newBlockList.Add(newBlock);
-    //   }
+            Expr decreasing = Expr.False;
+            Expr equalPrefix = Expr.True;
 
-    //   node.Blocks = newBlockList;
-    //   return base.VisitImplementation(node);
-    // }
+            for (int i = 0; i < call.Proc.Measure.Count; i++)
+            {
+              var calleeMeasure =
+                ApplySubstitution(call.Proc.Measure[i].Condition, subst);
+
+              var callerMeasure =
+                impl.Proc.Measure[i].Condition;
+
+              var less =
+                Expr.Lt(calleeMeasure, callerMeasure);
+
+              var term =
+                Expr.And(equalPrefix, less);
+
+              decreasing =
+                Expr.Or(decreasing, term);
+
+              equalPrefix =
+                Expr.And(equalPrefix,
+                  Expr.Eq(calleeMeasure, callerMeasure));
+            }
+
+            newCmds.Add(
+              new AssertCmd(
+                call.tok,
+                decreasing,
+                new MeasureDescription(),
+                null));
+          }
+        }
+
+        newBlocks.Add(
+          new Block(
+            block.tok,
+            block.Label,
+            newCmds,
+            block.TransferCmd));
+      }
+
+      impl.Blocks = newBlocks;
+
+      return impl;
+    }
 
     public override Cmd VisitCallCmd(CallCmd node)
     {
-      VisitProcedure(node.Proc);
       return base.VisitCallCmd(node);
     }
   }
