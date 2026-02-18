@@ -157,23 +157,13 @@ namespace Microsoft.Boogie
       }
 
       CivlRewriter.Transform(Options, civlTypeChecker);
-      // If civl rewriting reported errors, stop like normal front-end errors do
-      if (civlTypeChecker.checkingContext.ErrorCount != 0)
+
+      MeasureVisitor mv = new MeasureVisitor(program, Options);
+      if (mv.checkingContext.ErrorCount != 0)
       {
         Options.OutputWriter.WriteLine(
           "{0} type checking errors detected in {1}",
-          civlTypeChecker.checkingContext.ErrorCount,
-          GetFileNameForConsole(Options, bplFileName));
-        return true;
-      }
-
-      MeasureVisitor mv = new MeasureVisitor(program, Options, civlTypeChecker, bplFileName);
-
-      if (civlTypeChecker.checkingContext.ErrorCount != 0)
-      {
-        Options.OutputWriter.WriteLine(
-          "{0} type checking errors detected in {1}",
-          civlTypeChecker.checkingContext.ErrorCount,
+          mv.checkingContext.ErrorCount,
           GetFileNameForConsole(Options, bplFileName));
         return true;
       }

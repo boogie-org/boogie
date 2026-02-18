@@ -555,59 +555,6 @@ public class Program : Absy
     return callGraph;
   }
 
-
-  public static Graph<Implementation> BuildCallGraphTransitive(CoreOptions options, Program program)
-  {
-    // 1) Build direct call graph (your existing logic)
-    Graph<Implementation> callGraph = new Graph<Implementation>();
-    Dictionary<Procedure, HashSet<Implementation>> procToImpls = new Dictionary<Procedure, HashSet<Implementation>>();
-
-    foreach (var proc in program.Procedures)
-    {
-      procToImpls[proc] = new HashSet<Implementation>();
-    }
-
-    foreach (var impl in program.Implementations)
-    {
-      if (impl.IsSkipVerification(options))
-      {
-        continue;
-      }
-
-      callGraph.AddSource(impl);
-      procToImpls[impl.Proc].Add(impl);
-    }
-
-    foreach (var impl in program.Implementations)
-    {
-      if (impl.IsSkipVerification(options))
-      {
-        continue;
-      }
-
-      foreach (var b in impl.Blocks)
-      {
-        foreach (var c in b.Cmds)
-        {
-          if (c is not CallCmd cc)
-          {
-            continue;
-          }
-
-          foreach (var callee in procToImpls[cc.Proc])
-          {
-            callGraph.AddEdge(impl, callee);
-          }
-        }
-      }
-    }
-
-    // 2) Add transitive edges (transitive closure)
-    AddTransitiveEdges(callGraph);
-
-    return callGraph;
-  }
-
   private static void AddTransitiveEdges(Graph<Implementation> g)
   {
     // Build adjacency from existing edges

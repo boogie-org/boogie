@@ -5,6 +5,7 @@ using Microsoft.Boogie;
 using Microsoft.Boogie.GraphUtil;
 using Microsoft.BaseTypes;
 
+
 namespace Microsoft.Boogie
 {
   public class MeasureVisitor : StandardVisitor
@@ -12,20 +13,15 @@ namespace Microsoft.Boogie
     protected Graph<Implementation> callGraph;
 
     private readonly Program program;
-    private readonly ExecutionEngineOptions options;
-    private readonly CivlTypeChecker civlTypeChecker;
-    private readonly string bplFileName;
+    private readonly CoreOptions options;
+    public readonly CheckingContext checkingContext = new CheckingContext(null);
 
     public MeasureVisitor(
       Program program,
-      ExecutionEngineOptions options,
-      CivlTypeChecker civlTypeChecker,
-      string bplFileName)
+      CoreOptions options)
     {
       this.program = program;
       this.options = options;
-      this.civlTypeChecker = civlTypeChecker;
-      this.bplFileName = bplFileName;
 
       callGraph = Program.BuildTransitiveCallGraph(options, program);
 
@@ -62,6 +58,8 @@ namespace Microsoft.Boogie
           continue;
         }
 
+// only traverse if there is a measure, and there is a recursive call then we type check that the callee has a measure. 
+// yield -> rec + left  - TODO
         if (proc.Measure == null || proc.Measure.Count == 0)
         {
           var tok = proc.tok;
@@ -70,13 +68,14 @@ namespace Microsoft.Boogie
               yp.MoverType.HasValue &&
               yp.MoverType.Value == MoverType.Left)
           {
-            civlTypeChecker.checkingContext.Error(
+            // Create own checkingContext - TODO
+            checkingContext.Error(
               tok,
               $"Left-mover recursive procedures must have a measure annotation: {proc.Name}");
           }
           else
           {
-            civlTypeChecker.checkingContext.Error(
+            checkingContext.Error(
               tok,
               $"Recursive procedures must have a measure annotation: {proc.Name}");
           }
@@ -198,7 +197,7 @@ namespace Microsoft.Boogie
 
             Expr decreasing = Expr.False;
             Expr equalPrefix = Expr.True;
-
+// use old(global) instead of copy
             for (int i = 0; i < call.Proc.Measure.Count; i++)
             {
               var calleeMeasure =
