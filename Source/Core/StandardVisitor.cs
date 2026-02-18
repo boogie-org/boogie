@@ -454,7 +454,7 @@ namespace Microsoft.Boogie
     public virtual Measure VisitMeasure(Measure @measure)
     {
       Contract.Requires(@measure != null);
-      Contract.Ensures(Contract.Result<Ensures>() != null);
+      Contract.Ensures(Contract.Result<Measure>() != null);
       @measure.Condition = this.VisitExpr(@measure.Condition);
       return @measure;
     }
@@ -462,7 +462,7 @@ namespace Microsoft.Boogie
     public virtual List<Measure> VisitMeasureSeq(List<Measure> measureSeq)
     {
       Contract.Requires(measureSeq != null);
-      Contract.Ensures(Contract.Result<List<Ensures>>() != null);
+      Contract.Ensures(Contract.Result<List<Measure>>() != null);
       for (int i = 0, n = measureSeq.Count; i < n; i++)
       {
         measureSeq[i] = this.VisitMeasure(measureSeq[i]);

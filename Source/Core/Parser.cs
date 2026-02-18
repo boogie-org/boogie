@@ -1651,7 +1651,6 @@ out List<Variable> ins, out List<Variable> outs, out QKeyValue kv) {
 		Contract.Ensures(Contract.ValueAtReturn(out wcmd) != null); IToken x;  Token z;
 		Expr guard;  Expr e;  Cmd cmd;  bool isFree;
 		List<PredicateCmd> invariants = new List<PredicateCmd>();
-		List<Measure> measures = new List<Measure>();
 		List<CallCmd> yields = new List<CallCmd>();
 		StmtList body;
 		QKeyValue kv = null;
