@@ -5,7 +5,6 @@ using Microsoft.Boogie;
 using Microsoft.Boogie.GraphUtil;
 using Microsoft.BaseTypes;
 
-
 namespace Microsoft.Boogie
 {
   public class MeasureVisitor : StandardVisitor
@@ -16,9 +15,7 @@ namespace Microsoft.Boogie
     private readonly CoreOptions options;
     public readonly CheckingContext checkingContext = new CheckingContext(null);
 
-    public MeasureVisitor(
-      Program program,
-      CoreOptions options)
+    public MeasureVisitor(Program program, CoreOptions options)
     {
       this.program = program;
       this.options = options;
@@ -52,14 +49,11 @@ namespace Microsoft.Boogie
 
         var impl = edge.Item1;
         var proc = impl?.Proc;
-
         if (proc == null)
         {
           continue;
         }
 
-// only traverse if there is a measure, and there is a recursive call then we type check that the callee has a measure. 
-// yield -> rec + left  - TODO
         if (proc.Measure == null || proc.Measure.Count == 0)
         {
           var tok = proc.tok;
@@ -68,7 +62,6 @@ namespace Microsoft.Boogie
               yp.MoverType.HasValue &&
               yp.MoverType.Value == MoverType.Left)
           {
-            // Create own checkingContext - TODO
             checkingContext.Error(
               tok,
               $"Left-mover recursive procedures must have a measure annotation: {proc.Name}");
@@ -104,60 +97,6 @@ namespace Microsoft.Boogie
     }
 
     // ------------------------------------------------------------
-    // Substitute formals -> actuals safely
-    // ------------------------------------------------------------
-    private static Dictionary<Variable, Expr>
-      BuildFormalToActualMap(CallCmd call)
-    {
-      var map = new Dictionary<Variable, Expr>();
-
-      var formals = call.Proc.InParams;
-      var actuals = call.Ins;
-
-      int n = Math.Min(formals.Count, actuals.Count);
-
-      for (int i = 0; i < n; i++)
-      {
-        map[formals[i]] = actuals[i];
-      }
-
-      return map;
-    }
-
-    private sealed class SimpleSubstituter : StandardVisitor
-    {
-      private readonly Dictionary<Variable, Expr> map;
-
-      public SimpleSubstituter(Dictionary<Variable, Expr> map)
-      {
-        this.map = map;
-      }
-
-      public override Expr VisitIdentifierExpr(IdentifierExpr node)
-      {
-        if (node.Decl is Variable v && map.TryGetValue(v, out var repl))
-        {
-          return repl;
-        }
-
-        return base.VisitIdentifierExpr(node);
-      }
-    }
-
-    private static Expr ApplySubstitution(
-      Expr expr,
-      Dictionary<Variable, Expr> subst)
-    {
-      if (expr == null || subst.Count == 0)
-      {
-        return expr;
-      }
-
-      var s = new SimpleSubstituter(subst);
-      return s.VisitExpr(expr);
-    }
-
-    // ------------------------------------------------------------
     // Inject correct measure check
     // ------------------------------------------------------------
     public Implementation VisitImplementation2(Implementation impl)
@@ -177,56 +116,71 @@ namespace Microsoft.Boogie
         {
           newCmds.Add(cmd);
 
-          if (cmd is CallCmd call &&
-              call.Proc != null &&
-              call.Proc.Measure != null &&
-              impl.Proc.Measure != null &&
-              call.Proc.Measure.Count > 0)
+          if (cmd is not CallCmd callCmd ||
+              callCmd.Proc == null ||
+              callCmd.Proc.Measure == null ||
+              impl.Proc.Measure == null ||
+              callCmd.Proc.Measure.Count == 0)
           {
-            bool recursive =
-              callGraph.Edges.Any(e =>
-                e.Item1 == impl &&
-                e.Item2.Proc == call.Proc);
-
-            if (!recursive)
-            {
-              continue;
-            }
-
-            var subst = BuildFormalToActualMap(call);
-
-            Expr decreasing = Expr.False;
-            Expr equalPrefix = Expr.True;
-// use old(global) instead of copy
-            for (int i = 0; i < call.Proc.Measure.Count; i++)
-            {
-              var calleeMeasure =
-                ApplySubstitution(call.Proc.Measure[i].Condition, subst);
-
-              var callerMeasure =
-                impl.Proc.Measure[i].Condition;
-
-              var less =
-                Expr.Lt(calleeMeasure, callerMeasure);
-
-              var term =
-                Expr.And(equalPrefix, less);
-
-              decreasing =
-                Expr.Or(decreasing, term);
-
-              equalPrefix =
-                Expr.And(equalPrefix,
-                  Expr.Eq(calleeMeasure, callerMeasure));
-            }
-
-            newCmds.Add(
-              new AssertCmd(
-                call.tok,
-                decreasing,
-                new MeasureDescription(),
-                null));
+            continue;
           }
+
+          bool recursive =
+            callGraph.Edges.Any(e =>
+              e.Item1 == impl &&
+              e.Item2.Proc == callCmd.Proc);
+
+          if (!recursive)
+          {
+            continue;
+          }
+
+          // Defensive: Zip truncates silently; make mismatch loud if it ever happens.
+          if (callCmd.Proc.InParams.Count != callCmd.Ins.Count)
+          {
+            throw new InvalidOperationException(
+              $"Call to {callCmd.Proc.Name} has {callCmd.Ins.Count} actuals but {callCmd.Proc.InParams.Count} formals.");
+          }
+
+          // --- This is the exact substitution idiom you asked for ---
+          var callFormalsToActuals =
+            Substituter.SubstitutionFromDictionary(
+              callCmd.Proc.InParams
+                .Zip(callCmd.Ins, (formal, actual) => (formal, actual))
+                .ToDictionary(p => (Variable)p.formal, p => (Expr)p.actual)
+            );
+          // ----------------------------------------------------------
+
+          Expr decreasing = Expr.False;
+          Expr equalPrefix = Expr.True;
+
+          // Lexicographic decrease:
+          // (m0' < m0) OR (m0' == m0 AND m1' < m1) OR ...
+          int k = Math.Min(callCmd.Proc.Measure.Count, impl.Proc.Measure.Count);
+          for (int i = 0; i < k; i++)
+          {
+            // Instantiate callee measure at this callsite
+            Expr instantiated =
+              Substituter.Apply(callFormalsToActuals, callCmd.Proc.Measure[i].Condition);
+
+            var callerMeasure = impl.Proc.Measure[i].Condition;
+
+            var less = Expr.Lt(instantiated, callerMeasure);
+            var term = Expr.And(equalPrefix, less);
+
+            decreasing = Expr.Or(decreasing, term);
+
+            equalPrefix = Expr.And(
+              equalPrefix,
+              Expr.Eq(instantiated, callerMeasure));
+          }
+
+          newCmds.Add(
+            new AssertCmd(
+              callCmd.tok,
+              decreasing,
+              new MeasureDescription(),
+              null));
         }
 
         newBlocks.Add(
@@ -238,7 +192,6 @@ namespace Microsoft.Boogie
       }
 
       impl.Blocks = newBlocks;
-
       return impl;
     }
 
