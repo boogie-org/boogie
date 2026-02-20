@@ -11,6 +11,7 @@ using System.Runtime.Caching;
 using System.Diagnostics;
 using VCGeneration;
 using System.Reflection;
+using Microsoft.Boogie.GraphUtil;
 
 namespace Microsoft.Boogie
 {
@@ -156,9 +157,89 @@ namespace Microsoft.Boogie
         }
       }
 
+    
+      var alreadyChecked = new List<Implementation>();
+      Graph<Implementation>  callGraph = Program.BuildTransitiveCallGraph(Options, program);
+      CheckingContext checkingContext2 = new CheckingContext(null);
+      foreach (var edge in callGraph.Edges)
+      {
+          var currentEdgeOrNull = callGraph.Edges.FirstOrDefault(
+            e => e.Item1 == edge.Item1 && e.Item2 == edge.Item2,
+            Tuple.Create<Implementation, Implementation>(null, null)
+        );
+    
+        if(currentEdgeOrNull != Tuple.Create<Implementation, Implementation>(null, null))
+        {
+           var impl1 = edge.Item1;
+           var proc1 = impl1.Proc;
+           var impl2 = edge.Item2;
+           var proc2 = impl2.Proc;
+         
+
+           var tok1 = proc1.tok;
+           var tok2 = proc2.tok;
+
+           var k1 = proc1 is YieldProcedureDecl;
+           var k2 = proc2 is YieldProcedureDecl; 
+          if(!alreadyChecked.Contains(impl1))
+          {
+          if (proc1 is YieldProcedureDecl yp &&
+              yp.MoverType.HasValue &&
+              yp.MoverType.Value == MoverType.Left)
+          {  
+              if (proc1.Measure == null || proc1.Measure.Count == 0)
+              {
+                  checkingContext2.Error(
+                    tok1,
+                    $"Left-mover recursive procedures must have a measure annotation: {proc1.Name}");
+              }
+          }
+          else
+          {
+              checkingContext2.Error(
+                tok1,
+                $"Recursive procedures must have a measure annotation: {proc1.Name}");
+          }
+          }
+          if(!alreadyChecked.Contains(impl2)){
+          if (proc2 is YieldProcedureDecl yp2 &&
+              yp2.MoverType.HasValue &&
+              yp2.MoverType.Value == MoverType.Left)
+          {
+                
+            if (proc2.Measure == null || proc2.Measure.Count == 0)
+            {
+                checkingContext2.Error(
+                  tok2,
+                  $"Left-mover recursive procedures must have a measure annotation: {proc2.Name}");
+            }
+          } 
+        else
+        {
+            checkingContext2.Error(
+              tok2,
+              $"Recursive procedures must have a measure annotation: {proc2.Name}");
+        }
+          }
+        alreadyChecked.Add(impl1);
+        alreadyChecked.Add(impl2);
+
+        }
+      }
+    
+
       CivlRewriter.Transform(Options, civlTypeChecker);
 
-      MeasureVisitor mv = new MeasureVisitor(program, Options);
+     
+      if (Options.CivlDesugaredFile != null) {
+        int oldPrintUnstructured = Options.PrintUnstructured;
+        Options.PrintUnstructured = 1;
+        PrintBplFile(Options.CivlDesugaredFile, program, false, false,
+          Options.PrettyPrint);
+        Options.PrintUnstructured = oldPrintUnstructured;
+      }
+
+       MeasureVisitor mv = new MeasureVisitor(program, Options);
       if (mv.checkingContext.ErrorCount != 0)
       {
         Options.OutputWriter.WriteLine(
@@ -168,13 +249,6 @@ namespace Microsoft.Boogie
         return true;
       }
 
-      if (Options.CivlDesugaredFile != null) {
-        int oldPrintUnstructured = Options.PrintUnstructured;
-        Options.PrintUnstructured = 1;
-        PrintBplFile(Options.CivlDesugaredFile, program, false, false,
-          Options.PrettyPrint);
-        Options.PrintUnstructured = oldPrintUnstructured;
-      }
 
       EliminateDeadVariables(program);
 
