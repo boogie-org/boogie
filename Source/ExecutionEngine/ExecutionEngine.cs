@@ -240,8 +240,6 @@ namespace Microsoft.Boogie
       }
     }
 
-
-
     public void CollectModifies(Program program)
     {
       if (Options.InferModifies)
@@ -249,7 +247,6 @@ namespace Microsoft.Boogie
         new ModSetCollector(Options).CollectModifies(program);
       }
     }
-
 
     public void EliminateDeadVariables(Program program)
     {
@@ -291,7 +288,6 @@ namespace Microsoft.Boogie
 
       options.PrintDesugarings = oldPrintDesugaring;
     }
-
 
     /// <summary>
     /// Parse the given files into one Boogie program.  If an I/O or parse error occurs, an error will be printed

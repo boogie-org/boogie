@@ -5,8 +5,8 @@ var x: int;
 var y: int;
 var z : int;
 
-yield left procedure {:layer 1} one(tid: int, next: bool, abc: int)
-measure  {:layer 1} tid;
+yield left procedure {:layer 1} two(tid: int, next: bool, abc: int)
+measure {:layer 1} x;
 {
     if (tid == 1)
     {
@@ -14,6 +14,8 @@ measure  {:layer 1} tid;
     }
     else 
     {
-        call one(tid - 1, true, 2);
+        call two(tid-1, true, 3);
     }
 }
+
+
