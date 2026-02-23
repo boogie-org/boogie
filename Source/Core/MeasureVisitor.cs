@@ -17,6 +17,7 @@ namespace Microsoft.Boogie
             this.program = program;
             this.options = options;
             callGraph = Program.BuildTransitiveCallGraph(options, program);
+            CheckRecursiveProceduresHaveMeasure();
             foreach(var proc in program.Procedures)
             {
                 VisitProcedure(proc);
