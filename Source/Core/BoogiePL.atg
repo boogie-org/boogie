@@ -871,9 +871,6 @@ SpecYieldMeasure<. List<Measure> measure .>
   ";"
   .
 
-
-
-
 SpecYieldPrePost<. ref ActionDeclRef refinedAction, IToken name, List<Variable> ins, List<Variable> outs, List<Requires> pre, List<Requires> preserves, List<Ensures> post, List<Measure> measure, List<CallCmd> yieldRequires, List<CallCmd> yieldPreserves, List<CallCmd> yieldEnsures, List<IdentifierExpr> mods.>
 =
   (  

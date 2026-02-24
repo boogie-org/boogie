@@ -11,7 +11,6 @@ using System.Runtime.Caching;
 using System.Diagnostics;
 using VCGeneration;
 using System.Reflection;
-using Microsoft.Boogie.GraphUtil;
 
 namespace Microsoft.Boogie
 {
@@ -158,7 +157,6 @@ namespace Microsoft.Boogie
       }
 
       CivlRewriter.Transform(Options, civlTypeChecker);
-
       if (Options.CivlDesugaredFile != null) {
         int oldPrintUnstructured = Options.PrintUnstructured;
         Options.PrintUnstructured = 1;
@@ -176,7 +174,6 @@ namespace Microsoft.Boogie
           GetFileNameForConsole(Options, bplFileName));
         return true;
       }
-
 
       EliminateDeadVariables(program);
 

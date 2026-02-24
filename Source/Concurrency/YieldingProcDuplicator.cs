@@ -538,7 +538,7 @@ namespace Microsoft.Boogie
         checker = DeclHelper.Procedure(
           civlTypeChecker.AddNamePrefix($"AsyncCall_{newCall.Proc.Name}_{layerNum}"),
           newCall.Proc.InParams, newCall.Proc.OutParams,
-          procToDuplicate[newCall.Proc].Requires, [], [], [],[]);
+          procToDuplicate[newCall.Proc].Requires, [], [], [], []);
         asyncCallPreconditionCheckers[newCall.Proc.Name] = checker;
       }
       newCall.IsAsync = false;
@@ -556,7 +556,7 @@ namespace Microsoft.Boogie
           checker = DeclHelper.Procedure(
             civlTypeChecker.AddNamePrefix($"NoRequires_{newCall.Proc.Name}_{layerNum}"),
             newCall.Proc.InParams, newCall.Proc.OutParams,
-            [], [], new List<Ensures>(newCall.Proc.Ensures),[], []);
+            [], [], new List<Ensures>(newCall.Proc.Ensures), [], []);
           noRequiresPureProcedures[newCall.Proc.Name] = checker;
         }
         newCall.IsAsync = false;

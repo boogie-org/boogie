@@ -151,7 +151,7 @@ namespace Microsoft.Boogie
 
       var proc = checkerImpl.Proc;
       checkerImpl.Proc = new Procedure(proc.tok, checkerName, proc.TypeParameters, proc.InParams,
-        proc.OutParams, proc.IsPure, requires, new List<Requires>(), new List<Ensures>(), new List<Measure>(),  proc.Modifies);
+        proc.OutParams, proc.IsPure, requires, new List<Requires>(), new List<Ensures>(), new List<Measure>(), proc.Modifies);
       gateSufficiencyCheckerDecls.AddRange(new Declaration[] { checkerImpl.Proc, checkerImpl });
 
       Wlp.HoistAsserts(Impl, civlTypeChecker.Options);

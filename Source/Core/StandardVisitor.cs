@@ -467,9 +467,9 @@ namespace Microsoft.Boogie
       {
         measureSeq[i] = this.VisitMeasure(measureSeq[i]);
       }
-
       return measureSeq;
     }
+
     public virtual Expr VisitForallExpr(ForallExpr node)
     {
       Contract.Requires(node != null);
