@@ -1,34 +1,34 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.Boogie;
 using Microsoft.Boogie.GraphUtil;
 using Microsoft.BaseTypes;
 
 namespace Microsoft.Boogie
 {
-  public class MeasureVisitor : StandardVisitor
+  public class MeasureChecker
   {
     protected Graph<Implementation> callGraph;
     private readonly Program program;
-    private readonly CoreOptions options;
     public readonly CheckingContext checkingContext = new CheckingContext(null);
 
-    public MeasureVisitor(Program program, CoreOptions options)
+    public MeasureChecker(Program program, CoreOptions options)
     {
       this.program = program;
-      this.options = options;
       callGraph = Program.BuildTransitiveCallGraph(options, program);
       CheckRecursiveProceduresHaveMeasure();
+    }
 
+    public void Transform()
+    {
       foreach (var proc in program.Procedures)
       {
-        VisitProcedure(proc);
+        TransformProcedure(proc);
       }
 
       foreach (var impl in program.Implementations)
       {
-        VisitImplementation2(impl);
+        TransformImplementation(impl);
       }
     }
 
@@ -105,7 +105,7 @@ namespace Microsoft.Boogie
     // ------------------------------------------------------------
     // Add measure > 0 requirement at procedure entry
     // ------------------------------------------------------------
-    public override Procedure VisitProcedure(Procedure node)
+    private void TransformProcedure(Procedure node)
     {
       if (node.Measure != null)
       {
@@ -117,20 +117,13 @@ namespace Microsoft.Boogie
           node.Requires.Add(req);
         }
       }
-
-      return base.VisitProcedure(node);
     }
 
     // ------------------------------------------------------------
     // Inject correct measure check
     // ------------------------------------------------------------
-    public Implementation VisitImplementation2(Implementation impl)
+    public void TransformImplementation(Implementation impl)
     {
-      if (impl?.Proc == null)
-      {
-        return impl;
-      }
-
       var newBlocks = new List<Block>();
 
       foreach (var block in impl.Blocks)
@@ -156,12 +149,6 @@ namespace Microsoft.Boogie
           if (!recursive)
           {
             continue;
-          }
-
-          if (callCmd.Proc.InParams.Count != callCmd.Ins.Count)
-          {
-            throw new InvalidOperationException(
-              "Call to {callCmd.Proc.Name} has {callCmd.Ins.Count} actuals but {callCmd.Proc.InParams.Count} formals.");
           }
 
           var callFormalsToActuals =
@@ -216,12 +203,6 @@ namespace Microsoft.Boogie
       }
 
       impl.Blocks = newBlocks;
-      return impl;
-    }
-
-    public override Cmd VisitCallCmd(CallCmd node)
-    {
-      return base.VisitCallCmd(node);
     }
   }
 }

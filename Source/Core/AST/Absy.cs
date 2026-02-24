@@ -2791,14 +2791,8 @@ namespace Microsoft.Boogie
 
         foreach (Measure e in Measure)
         {
-          var savedStateMode = rc.StateMode;
-          // Yield-procedure measures may contain (explicit or implicit) old-expressions.
-          if (this is YieldProcedureDecl)
-          {
-            rc.StateMode = ResolutionContext.State.Two;
-          }
+          Contract.Assert(e != null);
           e.Resolve(rc);
-          rc.StateMode = savedStateMode;
         }
 
         foreach (Requires e in Preserves)

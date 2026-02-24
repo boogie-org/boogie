@@ -156,16 +156,7 @@ namespace Microsoft.Boogie
         }
       }
 
-      CivlRewriter.Transform(Options, civlTypeChecker);
-      if (Options.CivlDesugaredFile != null) {
-        int oldPrintUnstructured = Options.PrintUnstructured;
-        Options.PrintUnstructured = 1;
-        PrintBplFile(Options.CivlDesugaredFile, program, false, false,
-          Options.PrettyPrint);
-        Options.PrintUnstructured = oldPrintUnstructured;
-      }
-
-      MeasureVisitor mv = new MeasureVisitor(program, Options);
+      MeasureChecker mv = new MeasureChecker(program, Options);
       if (mv.checkingContext.ErrorCount != 0)
       {
         Options.OutputWriter.WriteLine(
@@ -173,6 +164,16 @@ namespace Microsoft.Boogie
           mv.checkingContext.ErrorCount,
           GetFileNameForConsole(Options, bplFileName));
         return true;
+      }
+
+      CivlRewriter.Transform(Options, civlTypeChecker);
+      mv.Transform();
+      if (Options.CivlDesugaredFile != null) {
+        int oldPrintUnstructured = Options.PrintUnstructured;
+        Options.PrintUnstructured = 1;
+        PrintBplFile(Options.CivlDesugaredFile, program, false, false,
+          Options.PrettyPrint);
+        Options.PrintUnstructured = oldPrintUnstructured;
       }
 
       EliminateDeadVariables(program);
