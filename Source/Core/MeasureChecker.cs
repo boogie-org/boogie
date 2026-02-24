@@ -64,14 +64,14 @@ namespace Microsoft.Boogie
               {
                 checkingContext.Error(
                   tok1,
-                  "Left-mover recursive procedures must have a measure annotation: {proc1.Name}");
+                  $"Left-mover recursive procedures must have a measure annotation: {proc1.Name}");
               }
             }
             else
             {
               checkingContext.Error(
                 tok1,
-                "Recursive procedures must have a measure annotation: {proc1.Name}");
+                $"Recursive procedures must have a measure annotation: {proc1.Name}");
             }
           }
 
@@ -85,14 +85,14 @@ namespace Microsoft.Boogie
               {
                 checkingContext.Error(
                   tok2,
-                  "Left-mover recursive procedures must have a measure annotation: {proc2.Name}");
+                  $"Left-mover recursive procedures must have a measure annotation: {proc2.Name}");
               }
             }
             else
             {
               checkingContext.Error(
                 tok2,
-                "Recursive procedures must have a measure annotation: {proc2.Name}");
+                $"Recursive procedures must have a measure annotation: {proc2.Name}");
             }
           }
 
