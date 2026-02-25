@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Boogie.GraphUtil;
 using Microsoft.BaseTypes;
+using System.Numerics;
 
 namespace Microsoft.Boogie
 {
@@ -96,12 +97,20 @@ namespace Microsoft.Boogie
       foreach (var mes in node.Measure)
       {
         var zero = new LiteralExpr(Token.NoToken, BigNum.ZERO);
-        var gt = Expr.Gt(mes.Condition, zero);
-        var req = new Requires(node.tok, false, gt, "measure must be > 0");
-        // all non-negative and one of them is strictly greater than 0
+        var ge = Expr.Ge(mes.Condition, zero);
+        var req = new Requires(node.tok, false, ge, "measure must be >= 0");
         node.Requires.Add(req);
       }
-      // node.Measure = empty list
+
+      Expr exprOr = Expr.True;
+      foreach (var mes in node.Measure)
+      {
+        var zero = new LiteralExpr(Token.NoToken, BigNum.ZERO);
+        var gt = Expr.Ge(mes.Condition, zero);
+        exprOr = Expr.Or(exprOr, gt);
+      }
+      var req2 = new Requires(node.tok, false, exprOr, "measure must be > 0");
+      node.Requires.Add(req2);
     }
 
     // ------------------------------------------------------------
