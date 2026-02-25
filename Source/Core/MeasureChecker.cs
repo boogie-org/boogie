@@ -57,7 +57,7 @@ namespace Microsoft.Boogie
           {
             foreach(var cmd in block.Cmds)
             {
-              if(cmd is CallCmd  || cmd is CallCmd asyncCall && asyncCall.IsAsync)
+              if(cmd is CallCmd || (cmd is CallCmd asyncCall && asyncCall.IsAsync && !asyncCall.HasAttribute(CivlAttributes.SYNC)))
               {
                 var callCmd = (CallCmd)cmd;
                 bool recursive = callGraph.Edges.Any(e => e.Item1.Proc == callCmd.Proc && e.Item2.Proc == impl.Proc);
@@ -116,94 +116,55 @@ namespace Microsoft.Boogie
     // ------------------------------------------------------------
     // Inject correct measure check
     // ------------------------------------------------------------
-    public void TransformImplementation(Implementation impl)
     // go over all blocks in the impl
     // create an empty list of commands
     // iterate over each command - if it is a call cmd and it has a measure - substitute and inject - also push the call cmd
     // otherwise push it
+    public void TransformImplementation(Implementation impl)
     {
-      var newBlocks = new List<Block>();
-      // you don't need new blocks, just add new commands.
-
-
-      foreach (var block in impl.Blocks)
+      foreach(var block in impl.Blocks)
       {
         var newCmds = new List<Cmd>();
-
-        foreach (var cmd in block.Cmds)
+        foreach(var cmd in block.Cmds)
         {
-          // newCmds.Add(cmd);
-          // first inject the assertion if any
-
-          if (cmd is not CallCmd callCmd ||
-              callCmd.Proc == null ||
-              callCmd.Proc.Measure == null ||
-              impl.Proc.Measure == null ||
-              callCmd.Proc.Measure.Count == 0)
+          if(cmd is CallCmd callCmd && callCmd.Proc.Measure.Count != 0)
           {
-            continue;
-          }
+            var callFormalsToActuals = Substituter.SubstitutionFromDictionary(
+            callCmd.Proc.InParams
+              .Zip(callCmd.Ins, (formal, actual) => (formal, actual))
+              .ToDictionary(
+                p => (Variable)p.formal,
+                p => (Expr)p.actual));
 
-          bool recursive = callGraph.Edges.Any(
-            e => e.Item1 == impl && e.Item2.Proc == callCmd.Proc);
+            Expr decreasing = Expr.False;
+            Expr equalPrefix = Expr.True;
 
-          if (!recursive)
-          {
-            continue;
-          }
+            for (int i = 0; i < callCmd.Proc.Measure.Count; i++)
+              {
+                Expr instantiated =
+                  Substituter.Apply(
+                    callFormalsToActuals,
+                    callCmd.Proc.Measure[i].Condition);
 
-          var callFormalsToActuals =
-            Substituter.SubstitutionFromDictionary(
-              callCmd.Proc.InParams
-                .Zip(callCmd.Ins, (formal, actual) => (formal, actual))
-                .ToDictionary(
-                  p => (Variable)p.formal,
-                  p => (Expr)p.actual));
+                var callerMeasure =
+                  impl.Proc.Measure[i].Condition;
 
-          Expr decreasing = Expr.False;
-          Expr equalPrefix = Expr.True;
+                var less = Expr.Lt(instantiated, callerMeasure);
+                var term = Expr.And(equalPrefix, less);
 
-          int k = Math.Min(
-            callCmd.Proc.Measure.Count,
-            impl.Proc.Measure.Count);
-
-          for (int i = 0; i < k; i++)
-          {
-            Expr instantiated =
-              Substituter.Apply(
-                callFormalsToActuals,
-                callCmd.Proc.Measure[i].Condition);
-
-            var callerMeasure =
-              impl.Proc.Measure[i].Condition;
-
-            var less = Expr.Lt(instantiated, callerMeasure);
-            var term = Expr.And(equalPrefix, less);
-
-            decreasing = Expr.Or(decreasing, term);
-            equalPrefix =
-              Expr.And(
-                equalPrefix,
-                Expr.Eq(instantiated, callerMeasure));
-          }
-
-          newCmds.Add(
-            new AssertCmd(
-              callCmd.tok,
-              decreasing,
-              new MeasureDescription(),
-              null));
+                decreasing = Expr.Or(decreasing, term);
+                equalPrefix =
+                  Expr.And(
+                    equalPrefix,
+                    Expr.Eq(instantiated, callerMeasure));
+              }
+            newCmds.Add(new AssertCmd(callCmd.tok, decreasing, new MeasureDescription(), null));
+            newCmds.Add(cmd);
         }
-
-        newBlocks.Add(
-          new Block(
-            block.tok,
-            block.Label,
-            newCmds,
-            block.TransferCmd));
       }
-
-      impl.Blocks = newBlocks;
+        block.Cmds = newCmds;
+      }
     }
+
   }
 }
