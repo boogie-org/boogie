@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Diagnostics;
-// copy measure when duplicating at disappearing layer
 namespace Microsoft.Boogie
 {
   public class YieldingProcDuplicator : Duplicator
