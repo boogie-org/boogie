@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Diagnostics;
-
+// copy measure when duplicating at disappearing layer
 namespace Microsoft.Boogie
 {
   public class YieldingProcDuplicator : Duplicator
@@ -52,6 +52,7 @@ namespace Microsoft.Boogie
         var requires = VisitRequiresSeq(node.Requires);
         var preserves = VisitRequiresSeq(node.Preserves);
         var ensures = VisitEnsuresSeq(node.Ensures);
+        var measure = VisitMeasureSeq(node.Measure);
         if (node.MoverType.HasValue && layerNum == node.Layer && !doRefinementCheck)
         {
           requires = requires.Select(req => new Requires(req.tok, true, req.Condition, req.Comment, req.Attributes)).ToList();
@@ -70,7 +71,7 @@ namespace Microsoft.Boogie
           requires,
           [],
           ensures,
-          [],
+          measure,
           (node.MoverType.HasValue && node.Layer == layerNum
             ? node.ModifiedVars.Select(Expr.Ident)
             : civlTypeChecker.GlobalVariables.Select(v => Expr.Ident(v))).ToList()
