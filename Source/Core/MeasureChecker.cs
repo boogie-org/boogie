@@ -35,96 +35,87 @@ namespace Microsoft.Boogie
     // ------------------------------------------------------------
     // Require measure exists on recursive procedures
     // ------------------------------------------------------------
+    // private void CheckRecursiveProceduresHaveMeasure()
+    // iterate over implemenations of left mover yield procedures / seq procedures (A) with measure - check for same layer also
+    // check for a call cmd. (B)
+    // check for a backedge (B to A)
+    // if -> then we check if there is a measure for B, and then check the length to be equal.
+    // report an error on the call cmd.
+
+    // must also handle async and parallel calls
+    // for async call -> it needs to have a sync annotation and call is to a procedure at same layer
+    // for parallel call -> check for same layer 
+
     private void CheckRecursiveProceduresHaveMeasure()
     {
-      var alreadyChecked = new List<Implementation>();
-
-      foreach (var edge in callGraph.Edges)
+      foreach(var impl in program.Implementations)
       {
-        var currentEdgeOrNull = callGraph.Edges.FirstOrDefault(
-          e => e.Item1 == edge.Item1 && e.Item2 == edge.Item2,
-          Tuple.Create<Implementation, Implementation>(null, null));
-
-        if (currentEdgeOrNull != Tuple.Create<Implementation, Implementation>(null, null))
+        if (((impl.Proc is YieldProcedureDecl yp && yp.MoverType.HasValue && yp.MoverType.Value == MoverType.Left) || (!(impl.Proc is YieldProcedureDecl))) && (impl.Proc.Measure.Count != 0))
         {
-          var impl1 = edge.Item1;
-          var proc1 = impl1.Proc;
-          var impl2 = edge.Item2;
-          var proc2 = impl2.Proc;
-          var tok1 = proc1.tok;
-          var tok2 = proc2.tok;
-
-          if (alreadyChecked.Contains(impl1))
+          foreach(var block in impl.Blocks)
           {
-            if (proc1 is YieldProcedureDecl yp &&
-                yp.MoverType.HasValue &&
-                yp.MoverType.Value == MoverType.Left)
+            foreach(var cmd in block.Cmds)
             {
-              if (proc1.Measure == null || proc1.Measure.Count == 0)
+              if(cmd is CallCmd  || cmd is CallCmd asyncCall && asyncCall.IsAsync)
               {
-                checkingContext.Error(
-                  tok1,
-                  $"Left-mover recursive procedures must have a measure annotation: {proc1.Name}");
+                var callCmd = (CallCmd)cmd;
+                bool recursive = callGraph.Edges.Any(e => e.Item1.Proc == callCmd.Proc && e.Item2.Proc == impl.Proc);
+                if (recursive && ((Microsoft.Boogie.YieldProcedureDecl)impl.Proc).Layer== ((Microsoft.Boogie.YieldProcedureDecl)callCmd.Proc).Layer)
+                {
+                  if (callCmd.Proc.Measure.Count != impl.Proc.Measure.Count)
+                  {
+                    checkingContext.Error(callCmd.tok, $"The callee and caller measure count should match.");
+                  }
+                }
+              }
+              if(cmd is ParCallCmd parCallCmd)
+              {
+                foreach(var procCallCmd in parCallCmd.CallCmds)
+                {
+                  bool recursive = callGraph.Edges.Any(e => e.Item1.Proc == procCallCmd.Proc && e.Item2.Proc == impl.Proc);
+                  if (recursive && ((Microsoft.Boogie.YieldProcedureDecl)impl.Proc).Layer== ((Microsoft.Boogie.YieldProcedureDecl)procCallCmd.Proc).Layer)
+                  {
+                    if (procCallCmd.Proc.Measure.Count != impl.Proc.Measure.Count)
+                    {
+                      checkingContext.Error(procCallCmd.tok, $"The callee and caller measure count should match.");
+                    }
+                  }
+                }
               }
             }
-            else
-            {
-              checkingContext.Error(
-                tok1,
-                $"Recursive procedures must have a measure annotation: {proc1.Name}");
-            }
           }
-
-          if (alreadyChecked.Contains(impl2))
-          {
-            if (proc2 is YieldProcedureDecl yp2 &&
-                yp2.MoverType.HasValue &&
-                yp2.MoverType.Value == MoverType.Left)
-            {
-              if (proc2.Measure == null || proc2.Measure.Count == 0)
-              {
-                checkingContext.Error(
-                  tok2,
-                  $"Left-mover recursive procedures must have a measure annotation: {proc2.Name}");
-              }
-            }
-            else
-            {
-              checkingContext.Error(
-                tok2,
-                $"Recursive procedures must have a measure annotation: {proc2.Name}");
-            }
-          }
-
-          alreadyChecked.Add(impl1);
-          alreadyChecked.Add(impl2);
         }
       }
     }
-
+      
     // ------------------------------------------------------------
     // Add measure > 0 requirement at procedure entry
     // ------------------------------------------------------------
     private void TransformProcedure(Procedure node)
     {
-      if (node.Measure != null)
+      foreach (var mes in node.Measure)
       {
-        foreach (var mes in node.Measure)
-        {
-          var zero = new LiteralExpr(Token.NoToken, BigNum.ZERO);
-          var gt = Expr.Gt(mes.Condition, zero);
-          var req = new Requires(node.tok, false, gt, "measure must be > 0");
-          node.Requires.Add(req);
-        }
+        var zero = new LiteralExpr(Token.NoToken, BigNum.ZERO);
+        var gt = Expr.Gt(mes.Condition, zero);
+        var req = new Requires(node.tok, false, gt, "measure must be > 0");
+        // all non-negative and one of them is strictly greater than 0
+        node.Requires.Add(req);
       }
+      // node.Measure = empty list
     }
 
     // ------------------------------------------------------------
     // Inject correct measure check
     // ------------------------------------------------------------
     public void TransformImplementation(Implementation impl)
+    // go over all blocks in the impl
+    // create an empty list of commands
+    // iterate over each command - if it is a call cmd and it has a measure - substitute and inject - also push the call cmd
+    // otherwise push it
     {
       var newBlocks = new List<Block>();
+      // you don't need new blocks, just add new commands.
+
 
       foreach (var block in impl.Blocks)
       {
@@ -132,7 +123,8 @@ namespace Microsoft.Boogie
 
         foreach (var cmd in block.Cmds)
         {
-          newCmds.Add(cmd);
+          // newCmds.Add(cmd);
+          // first inject the assertion if any
 
           if (cmd is not CallCmd callCmd ||
               callCmd.Proc == null ||
