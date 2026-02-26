@@ -17,7 +17,7 @@ namespace Microsoft.Boogie
     {
       this.program = program;
       callGraph = Program.BuildTransitiveCallGraph(options, program);
-      CheckRecursiveProceduresHaveMeasure();
+      CheckRecursiveCalls();
     }
 
     public void Transform()
@@ -33,54 +33,67 @@ namespace Microsoft.Boogie
       }
     }
 
-    // ------------------------------------------------------------
-    // Require measure exists on recursive procedures
-    // ------------------------------------------------------------
-    // private void CheckRecursiveProceduresHaveMeasure()
-    // iterate over implemenations of left mover yield procedures / seq procedures (A) with measure - check for same layer also
-    // check for a call cmd. (B)
-    // check for a backedge (B to A)
-    // if -> then we check if there is a measure for B, and then check the length to be equal.
-    // report an error on the call cmd.
-
-    // must also handle async and parallel calls
-    // for async call -> it needs to have a sync annotation and call is to a procedure at same layer
-    // for parallel call -> check for same layer 
-
-    private void CheckRecursiveProceduresHaveMeasure()
+    private bool IsRecursiveCall(Procedure callerProc, CallCmd callCmd)
     {
+      return callGraph.Edges.Any(e => e.Item1.Proc == callCmd.Proc && e.Item2.Proc == callerProc);
+    }
+
+    // ------------------------------------------------------------
+    // Check that number of measures match on recursive calls
+    // ------------------------------------------------------------
+    private void CheckRecursiveCalls()
+    {
+      void CheckCall(Procedure callerProc, CallCmd callCmd)
+      {
+        if (IsRecursiveCall(callerProc, callCmd))
+        {
+          if (callCmd.Proc.Measure.Count != callerProc.Measure.Count)
+          {
+            checkingContext.Error(callCmd.tok, $"Expected number of measures on callee to be same as caller");
+          }
+        }
+      }
+
       foreach(var impl in program.Implementations)
       {
-        if (((impl.Proc is YieldProcedureDecl yp && yp.MoverType.HasValue && yp.MoverType.Value == MoverType.Left) || (!(impl.Proc is YieldProcedureDecl))) && (impl.Proc.Measure.Count != 0))
+        if (impl.Proc.Measure.Count == 0)
         {
-          foreach(var block in impl.Blocks)
+          continue;
+        }
+        if (impl.Proc is not YieldProcedureDecl callerDecl)
+        {
+          impl.Blocks.SelectMany(block => block.Cmds.OfType<CallCmd>()).ForEach(callCmd => CheckCall(impl.Proc, callCmd));
+        }
+        else if (callerDecl.MoverType.HasValue && callerDecl.MoverType.Value == MoverType.Left)
+        {
+          foreach (var block in impl.Blocks)
           {
-            foreach(var cmd in block.Cmds)
+            foreach (var callCmd in block.Cmds.OfType<CallCmd>())
             {
-              if(cmd is CallCmd || (cmd is CallCmd asyncCall && asyncCall.IsAsync && !asyncCall.HasAttribute(CivlAttributes.SYNC)))
+              if (callCmd.Proc is YieldProcedureDecl calleeDecl)
               {
-                var callCmd = (CallCmd)cmd;
-                bool recursive = callGraph.Edges.Any(e => e.Item1.Proc == callCmd.Proc && e.Item2.Proc == impl.Proc);
-                if (recursive && ((Microsoft.Boogie.YieldProcedureDecl)impl.Proc).Layer== ((Microsoft.Boogie.YieldProcedureDecl)callCmd.Proc).Layer)
+                if (callerDecl.Layer == calleeDecl.Layer)
                 {
-                  if (callCmd.Proc.Measure.Count != impl.Proc.Measure.Count)
-                  {
-                    checkingContext.Error(callCmd.tok, $"The callee and caller measure count should match.");
-                  }
+                  CheckCall(callerDecl, callCmd);
                 }
               }
-              if(cmd is ParCallCmd parCallCmd)
+              else if (callCmd.Proc is ActionDecl)
               {
-                foreach(var procCallCmd in parCallCmd.CallCmds)
+                // do nothing
+              }
+              else if (callCmd.Layers.Contains(callerDecl.Layer))
+              {
+                CheckCall(callerDecl, callCmd);
+              }
+            }
+            foreach (var parCallCmd in block.Cmds.OfType<ParCallCmd>())
+            {
+              foreach (var callCmd in parCallCmd.CallCmds)
+              {
+                var calleeDecl = (YieldProcedureDecl)callCmd.Proc;
+                if (callerDecl.Layer == calleeDecl.Layer)
                 {
-                  bool recursive = callGraph.Edges.Any(e => e.Item1.Proc == procCallCmd.Proc && e.Item2.Proc == impl.Proc);
-                  if (recursive && ((Microsoft.Boogie.YieldProcedureDecl)impl.Proc).Layer== ((Microsoft.Boogie.YieldProcedureDecl)procCallCmd.Proc).Layer)
-                  {
-                    if (procCallCmd.Proc.Measure.Count != impl.Proc.Measure.Count)
-                    {
-                      checkingContext.Error(procCallCmd.tok, $"The callee and caller measure count should match.");
-                    }
-                  }
+                  CheckCall(callerDecl, callCmd);
                 }
               }
             }
@@ -90,81 +103,49 @@ namespace Microsoft.Boogie
     }
       
     // ------------------------------------------------------------
-    // Add measure > 0 requirement at procedure entry
+    // Add non-negative measure requirement at procedure entry
     // ------------------------------------------------------------
     private void TransformProcedure(Procedure node)
     {
-      foreach (var mes in node.Measure)
+      foreach (var m in node.Measure)
       {
         var zero = new LiteralExpr(Token.NoToken, BigNum.ZERO);
-        var ge = Expr.Ge(mes.Condition, zero);
-        var req = new Requires(node.tok, false, ge, "measure must be >= 0");
-        node.Requires.Add(req);
+        var ge = Expr.Ge(m.Condition, zero);
+        node.Requires.Add(new Requires(m.tok, false, ge, null){ Description = new MeasureNonNegativeDescription() });
       }
-
-      Expr exprOr = Expr.True;
-      foreach (var mes in node.Measure)
-      {
-        var zero = new LiteralExpr(Token.NoToken, BigNum.ZERO);
-        var gt = Expr.Ge(mes.Condition, zero);
-        exprOr = Expr.Or(exprOr, gt);
-      }
-      var req2 = new Requires(node.tok, false, exprOr, "measure must be > 0");
-      node.Requires.Add(req2);
     }
 
     // ------------------------------------------------------------
-    // Inject correct measure check
+    // Inject measure decreases check
     // ------------------------------------------------------------
-    // go over all blocks in the impl
-    // create an empty list of commands
-    // iterate over each command - if it is a call cmd and it has a measure - substitute and inject - also push the call cmd
-    // otherwise push it
     public void TransformImplementation(Implementation impl)
     {
-      foreach(var block in impl.Blocks)
+      var implFormals = impl.InParams.Select(x => (Expr)Expr.Ident(x));
+      var procToImplSubst = Substituter.SubstitutionFromDictionary(impl.Proc.InParams.Zip(implFormals).ToDictionary());
+      foreach (var block in impl.Blocks)
       {
         var newCmds = new List<Cmd>();
-        foreach(var cmd in block.Cmds)
+        foreach (var cmd in block.Cmds)
         {
-          if(cmd is CallCmd callCmd && callCmd.Proc.Measure.Count != 0)
+          if (cmd is CallCmd callCmd && callCmd.Proc.Measure.Count != 0 && IsRecursiveCall(impl.Proc, callCmd))
           {
-            var callFormalsToActuals = Substituter.SubstitutionFromDictionary(
-            callCmd.Proc.InParams
-              .Zip(callCmd.Ins, (formal, actual) => (formal, actual))
-              .ToDictionary(
-                p => (Variable)p.formal,
-                p => (Expr)p.actual));
-
+            var formalToActualSubst =
+              Substituter.SubstitutionFromDictionary(callCmd.Proc.InParams.Zip(callCmd.Ins).ToDictionary());
             Expr decreasing = Expr.False;
             Expr equalPrefix = Expr.True;
-
             for (int i = 0; i < callCmd.Proc.Measure.Count; i++)
-              {
-                Expr instantiated =
-                  Substituter.Apply(
-                    callFormalsToActuals,
-                    callCmd.Proc.Measure[i].Condition);
-
-                var callerMeasure =
-                  impl.Proc.Measure[i].Condition;
-
-                var less = Expr.Lt(instantiated, callerMeasure);
-                var term = Expr.And(equalPrefix, less);
-
-                decreasing = Expr.Or(decreasing, term);
-                equalPrefix =
-                  Expr.And(
-                    equalPrefix,
-                    Expr.Eq(instantiated, callerMeasure));
-              }
-            newCmds.Add(new AssertCmd(callCmd.tok, decreasing, new MeasureDescription(), null));
-            newCmds.Add(cmd);
+            {
+              var callerMeasure = Substituter.Apply(procToImplSubst, impl.Proc.Measure[i].Condition);
+              var calleeMeasure = Substituter.Apply(formalToActualSubst, callCmd.Proc.Measure[i].Condition);
+              decreasing = Expr.Or(decreasing, Expr.And(equalPrefix, Expr.Lt(calleeMeasure, callerMeasure)));
+              equalPrefix = Expr.And(equalPrefix, Expr.Eq(calleeMeasure, callerMeasure));
+            }
+            newCmds.Add(new AssertCmd(callCmd.tok, decreasing, new MeasureDecreasesDescription(), null));
+          }
+          newCmds.Add(cmd);
         }
-      }
         block.Cmds = newCmds;
       }
     }
-
   }
 }

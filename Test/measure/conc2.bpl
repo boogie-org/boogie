@@ -15,7 +15,6 @@ measure {:layer 1} tid;
     }
     else 
     {
-        assume (tid - 1) > 0;
         call two(tid - 1, true, 3);
     }
 }
