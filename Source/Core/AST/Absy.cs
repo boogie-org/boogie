@@ -2337,6 +2337,13 @@ namespace Microsoft.Boogie
       Contract.Requires(token != null);
     }
 
+    public Requires(IToken token, bool free, Expr condition)
+      : this(token, free, condition, null, null)
+    {
+      Contract.Requires(condition != null);
+      Contract.Requires(token != null);
+    }
+
     public Requires(bool free, Expr condition)
       : this(Token.NoToken, free, condition, null)
     {

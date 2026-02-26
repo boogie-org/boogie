@@ -1,9 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Boogie.GraphUtil;
 using Microsoft.BaseTypes;
-using System.Numerics;
 
 namespace Microsoft.Boogie
 {
@@ -27,7 +25,7 @@ namespace Microsoft.Boogie
         TransformProcedure(proc);
       }
 
-      foreach (var impl in program.Implementations)
+      foreach (var impl in program.Implementations.Where(impl => impl.Proc.Measure.Count > 0))
       {
         TransformImplementation(impl);
       }
@@ -43,59 +41,22 @@ namespace Microsoft.Boogie
     // ------------------------------------------------------------
     private void CheckRecursiveCalls()
     {
-      void CheckCall(Procedure callerProc, CallCmd callCmd)
+      IEnumerable<CallCmd> RecursiveCallCmds(Procedure callerDecl, Block block)
       {
-        if (IsRecursiveCall(callerProc, callCmd))
-        {
-          if (callCmd.Proc.Measure.Count != callerProc.Measure.Count)
-          {
-            checkingContext.Error(callCmd.tok, $"Expected number of measures on callee to be same as caller");
-          }
-        }
+        return block.Cmds.OfType<ParCallCmd>().SelectMany(parCallCmd => parCallCmd.CallCmds).Union(block.Cmds.OfType<CallCmd>())
+                .Where(callCmd => IsRecursiveCall(callerDecl, callCmd));
       }
 
-      foreach(var impl in program.Implementations)
+      foreach(var impl in program.Implementations.Where(impl => impl.Proc.Measure.Count > 0))
       {
-        if (impl.Proc.Measure.Count == 0)
+        var callerDecl = impl.Proc;
+        foreach (var block in impl.Blocks)
         {
-          continue;
-        }
-        if (impl.Proc is not YieldProcedureDecl callerDecl)
-        {
-          impl.Blocks.SelectMany(block => block.Cmds.OfType<CallCmd>()).ForEach(callCmd => CheckCall(impl.Proc, callCmd));
-        }
-        else if (callerDecl.MoverType.HasValue && callerDecl.MoverType.Value == MoverType.Left)
-        {
-          foreach (var block in impl.Blocks)
+          foreach (var callCmd in RecursiveCallCmds(callerDecl, block))
           {
-            foreach (var callCmd in block.Cmds.OfType<CallCmd>())
+            if (callCmd.Proc.Measure.Count != callerDecl.Measure.Count)
             {
-              if (callCmd.Proc is YieldProcedureDecl calleeDecl)
-              {
-                if (callerDecl.Layer == calleeDecl.Layer)
-                {
-                  CheckCall(callerDecl, callCmd);
-                }
-              }
-              else if (callCmd.Proc is ActionDecl)
-              {
-                // do nothing
-              }
-              else if (callCmd.Layers.Contains(callerDecl.Layer))
-              {
-                CheckCall(callerDecl, callCmd);
-              }
-            }
-            foreach (var parCallCmd in block.Cmds.OfType<ParCallCmd>())
-            {
-              foreach (var callCmd in parCallCmd.CallCmds)
-              {
-                var calleeDecl = (YieldProcedureDecl)callCmd.Proc;
-                if (callerDecl.Layer == calleeDecl.Layer)
-                {
-                  CheckCall(callerDecl, callCmd);
-                }
-              }
+              checkingContext.Error(callCmd.tok, $"Expected number of measures on callee and caller to be same");
             }
           }
         }
@@ -111,7 +72,7 @@ namespace Microsoft.Boogie
       {
         var zero = new LiteralExpr(Token.NoToken, BigNum.ZERO);
         var ge = Expr.Ge(m.Condition, zero);
-        node.Requires.Add(new Requires(m.tok, false, ge, null){ Description = new MeasureNonNegativeDescription() });
+        node.Requires.Add(new Requires(m.tok, false, ge){ Description = new MeasureNonNegativeDescription() });
       }
     }
 
@@ -127,7 +88,7 @@ namespace Microsoft.Boogie
         var newCmds = new List<Cmd>();
         foreach (var cmd in block.Cmds)
         {
-          if (cmd is CallCmd callCmd && callCmd.Proc.Measure.Count != 0 && IsRecursiveCall(impl.Proc, callCmd))
+          if (cmd is CallCmd callCmd && IsRecursiveCall(impl.Proc, callCmd))
           {
             var formalToActualSubst =
               Substituter.SubstitutionFromDictionary(callCmd.Proc.InParams.Zip(callCmd.Ins).ToDictionary());
@@ -140,7 +101,7 @@ namespace Microsoft.Boogie
               decreasing = Expr.Or(decreasing, Expr.And(equalPrefix, Expr.Lt(calleeMeasure, callerMeasure)));
               equalPrefix = Expr.And(equalPrefix, Expr.Eq(calleeMeasure, callerMeasure));
             }
-            newCmds.Add(new AssertCmd(callCmd.tok, decreasing, new MeasureDecreasesDescription(), null));
+            newCmds.Add(new AssertCmd(callCmd.tok, decreasing){ Description = new MeasureDecreasesDescription() });
           }
           newCmds.Add(cmd);
         }

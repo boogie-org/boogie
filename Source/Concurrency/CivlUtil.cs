@@ -244,7 +244,7 @@ namespace Microsoft.Boogie
     public static AssertRequiresCmd AssertGateCmd(IToken tok, CallCmd callCmd, Expr expr)
     {
       callCmd.Description = new ActionGateCheckDescription();
-      var requires = new Requires(tok, false, expr, null){ Description = new ActionGateDescription() };
+      var requires = new Requires(tok, false, expr){ Description = new ActionGateDescription() };
       return new AssertRequiresCmd(callCmd, requires);
     }
 
