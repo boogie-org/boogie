@@ -1,0 +1,38 @@
+// RUN: %parallel-boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
+var x: int;
+var y: int;
+var z : int;
+
+yield left procedure {:layer 1} two(tid: int, cid: int)
+measure {:layer 1} tid + x;
+measure {:layer 1} cid;
+preserves call  YieldX();
+{
+    if (tid <= 0 || cid <=0 )
+    {
+        return;
+    }
+    else 
+    {
+        call one(tid - 1, cid - 1);
+    }
+}
+
+yield left procedure {:layer 1} one(tid: int, cid: int)
+measure {:layer 1} tid;
+measure {:layer 1} cid;
+{
+    if (tid <= 0 || cid <= 0)
+    {
+        return;
+    }
+    else 
+    {
+        call two(tid - 1, cid - 1);
+    }
+}
+
+yield invariant {:layer 1} YieldX();
+preserves x > 0;
