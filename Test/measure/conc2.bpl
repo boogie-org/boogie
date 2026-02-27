@@ -19,19 +19,3 @@ measure {:layer 1} tid;
     }
 }
 
-
-// yield left procedure {:layer 1} one(tid: int, next: bool, abc: int)
-// measure {:layer 1} y;
-// {
-//     if (tid == 1)
-//     {
-//         return;
-//     }
-//     else 
-//     {
-//         call one(tid-1, true, 3);
-//     }
-// }
-
-
-// all are greater than or equal to 0 and atleast one of them is greater than 0

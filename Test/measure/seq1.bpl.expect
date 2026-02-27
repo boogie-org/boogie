@@ -1,0 +1,5 @@
+seq1.bpl(9,5): Error: measure could not be proved to decrease for this call
+Execution trace:
+    seq1.bpl(9,5): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
