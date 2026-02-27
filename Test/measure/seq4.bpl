@@ -6,6 +6,7 @@ var y: int;
 var z : int;
 
 procedure two(tid: int, cid: int)
+requires x > 0;
 measure tid + x;
 measure cid;
 {
@@ -20,7 +21,8 @@ measure cid;
 }
 
 procedure one(tid: int, cid: int)
-measure tid;
+requires x > 0;
+measure tid + x;
 measure cid;
 {
     if (tid <= 1 || cid <= 1)
