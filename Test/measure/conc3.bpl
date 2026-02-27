@@ -6,11 +6,11 @@ var y: int;
 var z : int;
 
 yield left procedure {:layer 1} two(tid: int, cid: int)
-measure {:layer 1} tid + x;
+preserves {:layer 1} x > 0;
+measure {:layer 1} tid + x ;
 measure {:layer 1} cid;
-preserves call  YieldX();
 {
-    if (tid <= 0 || cid <=0 )
+    if (tid <= 1 || cid <=1 )
     {
         return;
     }
@@ -21,10 +21,11 @@ preserves call  YieldX();
 }
 
 yield left procedure {:layer 1} one(tid: int, cid: int)
+preserves {:layer 1} x > 0;
 measure {:layer 1} tid;
 measure {:layer 1} cid;
 {
-    if (tid <= 0 || cid <= 0)
+    if (tid <= 1 || cid <= 1)
     {
         return;
     }
@@ -33,6 +34,3 @@ measure {:layer 1} cid;
         call two(tid - 1, cid - 1);
     }
 }
-
-yield invariant {:layer 1} YieldX();
-preserves x > 0;
