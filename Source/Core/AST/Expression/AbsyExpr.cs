@@ -500,7 +500,6 @@ namespace Microsoft.Boogie
       }
     }
 
-
     public static NAryExpr Select(Expr map, params Expr[] args)
     {
       Contract.Requires(args != null);

@@ -46,26 +46,24 @@ namespace Microsoft.Boogie
         return block.Cmds.OfType<ParCallCmd>().SelectMany(parCallCmd => parCallCmd.CallCmds).Union(block.Cmds.OfType<CallCmd>())
                 .Where(callCmd => IsRecursiveCall(callerDecl, callCmd));
       }
-      foreach(var impl in program.Implementations)
-      {
-        if(impl.Proc.Measure.Count != 0)
-        { 
-          if (impl.Proc is YieldProcedureDecl yp && !yp.MoverType.HasValue)
-          {
-              checkingContext.Error(impl.Proc.tok, $"Measure expected only for mover procedures");
-          } 
-        }
-      }
-      foreach(var impl in program.Implementations.Where(impl => impl.Proc.Measure.Count > 0))
+
+      foreach (var impl in program.Implementations.Where(impl => impl.Proc.Measure.Count > 0))
       {
         var callerDecl = impl.Proc;
-        foreach (var block in impl.Blocks)
+        if (callerDecl is ActionDecl || callerDecl is YieldProcedureDecl yp && !yp.MoverType.HasValue)
         {
-          foreach (var callCmd in RecursiveCallCmds(callerDecl, block))
+          checkingContext.Error(callerDecl.tok, $"Measure expected only for mover procedures");
+        }
+        else
+        {
+          foreach (var block in impl.Blocks)
           {
-            if (callCmd.Proc.Measure.Count != callerDecl.Measure.Count)
+            foreach (var callCmd in RecursiveCallCmds(callerDecl, block))
             {
-              checkingContext.Error(callCmd.tok, $"Expected number of measures on callee and caller to be same");
+              if (callCmd.Proc.Measure.Count != callerDecl.Measure.Count)
+              {
+                checkingContext.Error(callCmd.tok, $"Expected number of measures on callee and caller to be same");
+              }
             }
           }
         }
@@ -105,7 +103,7 @@ namespace Microsoft.Boogie
             Expr equalPrefix = Expr.True;
             for (int i = 0; i < callCmd.Proc.Measure.Count; i++)
             {
-              var callerMeasure = Substituter.Apply(procToImplSubst, impl.Proc.Measure[i].Condition);
+              var callerMeasure = new OldExpr(callCmd.tok, Substituter.Apply(procToImplSubst, impl.Proc.Measure[i].Condition));
               var calleeMeasure = Substituter.Apply(formalToActualSubst, callCmd.Proc.Measure[i].Condition);
               decreasing = Expr.Or(decreasing, Expr.And(equalPrefix, Expr.Lt(calleeMeasure, callerMeasure)));
               equalPrefix = Expr.And(equalPrefix, Expr.Eq(calleeMeasure, callerMeasure));
