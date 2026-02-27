@@ -1,0 +1,3 @@
+ypetest2.bpl(17,8): Error: Expected number of measures on callee and caller to be same
+typetest2.bpl(32,8): Error: Expected number of measures on callee and caller to be same
+2 type checking errors detected in typetest2.bpl

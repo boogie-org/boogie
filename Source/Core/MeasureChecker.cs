@@ -46,7 +46,16 @@ namespace Microsoft.Boogie
         return block.Cmds.OfType<ParCallCmd>().SelectMany(parCallCmd => parCallCmd.CallCmds).Union(block.Cmds.OfType<CallCmd>())
                 .Where(callCmd => IsRecursiveCall(callerDecl, callCmd));
       }
-
+      foreach(var impl in program.Implementations)
+      {
+        if(impl.Proc.Measure.Count != 0)
+        { 
+          if (impl.Proc is YieldProcedureDecl yp && !yp.MoverType.HasValue)
+          {
+              checkingContext.Error(impl.Proc.tok, $"Measure expected only for mover procedures");
+          } 
+        }
+      }
       foreach(var impl in program.Implementations.Where(impl => impl.Proc.Measure.Count > 0))
       {
         var callerDecl = impl.Proc;
