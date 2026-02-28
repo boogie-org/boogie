@@ -52,7 +52,7 @@ namespace Microsoft.Boogie
         var requires = VisitRequiresSeq(node.Requires);
         var preserves = VisitRequiresSeq(node.Preserves);
         var ensures = VisitEnsuresSeq(node.Ensures);
-        var measure = VisitMeasureSeq(node.Measure);
+        var measure = doRefinementCheck ? VisitMeasureSeq(node.Measure) : [];
         if (node.MoverType.HasValue && layerNum == node.Layer && !doRefinementCheck)
         {
           requires = requires.Select(req => new Requires(req.tok, true, req.Condition, req.Comment, req.Attributes)).ToList();

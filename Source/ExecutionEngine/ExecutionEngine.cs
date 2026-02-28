@@ -167,14 +167,14 @@ namespace Microsoft.Boogie
       }
 
       CivlRewriter.Transform(Options, civlTypeChecker);
-      mv.Transform();
       if (Options.CivlDesugaredFile != null) {
         int oldPrintUnstructured = Options.PrintUnstructured;
         Options.PrintUnstructured = 1;
-        PrintBplFile(Options.CivlDesugaredFile, program, false, false,
-          Options.PrettyPrint);
+        PrintBplFile(Options.CivlDesugaredFile, program, false, false, Options.PrettyPrint);
         Options.PrintUnstructured = oldPrintUnstructured;
       }
+
+      MeasureChecker.Transform(program, Options);
 
       EliminateDeadVariables(program);
 

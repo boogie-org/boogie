@@ -2738,6 +2738,12 @@ namespace Microsoft.Boogie
         Contract.Assert(e != null);
         e.Emit(stream, level);
       }
+
+      foreach (Measure m in this.Measure)
+      {
+        Contract.Assert(m != null);
+        m.Emit(stream, level);
+      }
     }
 
     public override void Emit(TokenTextWriter stream, int level)

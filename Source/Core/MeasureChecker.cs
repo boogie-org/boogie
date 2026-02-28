@@ -2,6 +2,7 @@
 using System.Linq;
 using Microsoft.Boogie.GraphUtil;
 using Microsoft.BaseTypes;
+using System.Diagnostics;
 
 namespace Microsoft.Boogie
 {
@@ -18,16 +19,22 @@ namespace Microsoft.Boogie
       CheckRecursiveCalls();
     }
 
-    public void Transform()
+    public static void Transform(Program program, CoreOptions options)
     {
-      foreach (var proc in program.Procedures)
-      {
-        TransformProcedure(proc);
-      }
+      var measureChecker = new MeasureChecker(program, options);
+      Debug.Assert(measureChecker.checkingContext.ErrorCount == 0);
 
       foreach (var impl in program.Implementations.Where(impl => impl.Proc.Measure.Count > 0))
       {
-        TransformImplementation(impl);
+        measureChecker.TransformImplementation(impl);
+      }
+
+      // Add non-negative requirements for each measure
+      // Since implementations have already been transformed, measure annotations are no longer
+      // needed and should be dropped
+      foreach (var proc in program.Procedures)
+      {
+        measureChecker.TransformProcedure(proc);
       }
     }
 
@@ -81,6 +88,7 @@ namespace Microsoft.Boogie
         var ge = Expr.Ge(m.Condition, zero);
         node.Requires.Add(new Requires(m.tok, false, ge){ Description = new MeasureNonNegativeDescription() });
       }
+      node.Measure = [];
     }
 
     // ------------------------------------------------------------
