@@ -1,0 +1,6 @@
+seq2.bpl(14,5): Error: a precondition for this call could not be proved
+seq2.bpl(18,1): Related location: this measure could not be proved to be non-negative
+Execution trace:
+    seq2.bpl(14,5): anon0
+
+Boogie program verifier finished with 1 verified, 1 error

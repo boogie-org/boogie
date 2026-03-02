@@ -244,8 +244,7 @@ namespace Microsoft.Boogie
     public static AssertRequiresCmd AssertGateCmd(IToken tok, CallCmd callCmd, Expr expr)
     {
       callCmd.Description = new ActionGateCheckDescription();
-      var requires = new Requires(tok, false, expr, null);
-      requires.Description = new ActionGateDescription();
+      var requires = new Requires(tok, false, expr){ Description = new ActionGateDescription() };
       return new AssertRequiresCmd(callCmd, requires);
     }
 
@@ -330,10 +329,10 @@ namespace Microsoft.Boogie
   {
     public static Procedure Procedure(string name,
       List<Variable> inParams, List<Variable> outParams,
-      List<Requires> requires, List<Requires> preserves, List<Ensures> ensures, List<IdentifierExpr> modifies,
+      List<Requires> requires, List<Requires> preserves, List<Ensures> ensures, List<Measure> measure, List<IdentifierExpr> modifies,
       QKeyValue kv = null)
     {
-      return new Procedure(Token.NoToken, name, new List<TypeVariable>(), inParams, outParams, false, requires, preserves, ensures, modifies, kv);
+      return new Procedure(Token.NoToken, name, new List<TypeVariable>(), inParams, outParams, false, requires, preserves, ensures, measure, modifies, kv);
     }
 
     public static Implementation Implementation(Procedure proc,

@@ -1,0 +1,7 @@
+conc1.bpl(17,9): Error: a precondition for this call could not be proved
+conc1.bpl(9,1): Related location: this measure could not be proved to be non-negative
+Execution trace:
+    conc1.bpl(11,5): anon0
+    conc1.bpl(17,9): anon3_Else
+
+Boogie program verifier finished with 0 verified, 1 error

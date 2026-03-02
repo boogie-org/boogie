@@ -72,6 +72,28 @@ public class PreconditionDescription : ProofObligationDescription
   public override string ShortDescription => "precondition";
 }
 
+public class MeasureDecreasesDescription : ProofObligationDescription
+{
+  public override string SuccessDescription =>
+    "measure decreases for this call";
+
+  public override string FailureDescription =>
+    "measure could not be proved to decrease for this call";
+
+  public override string ShortDescription => "measure decreases";
+}
+
+public class MeasureNonNegativeDescription : ProofObligationDescription
+{
+  public override string SuccessDescription =>
+    "this measure is non-negative";
+
+  public override string FailureDescription =>
+    "this measure could not be proved to be non-negative";
+
+  public override string ShortDescription => "measure non-negative";
+}
+
 public class RequiresDescription : ProofObligationDescription
 {
   public override string SuccessDescription =>

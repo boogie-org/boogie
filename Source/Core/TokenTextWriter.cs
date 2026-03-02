@@ -67,6 +67,7 @@ namespace Microsoft.Boogie
         "int",
         "invariant",
         "left",
+        "measure",
         "modifies",
         "old",
         "preserves",

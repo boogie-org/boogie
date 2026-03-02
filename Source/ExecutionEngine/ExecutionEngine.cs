@@ -156,14 +156,25 @@ namespace Microsoft.Boogie
         }
       }
 
+      MeasureChecker mv = new MeasureChecker(program, Options);
+      if (mv.checkingContext.ErrorCount != 0)
+      {
+        Options.OutputWriter.WriteLine(
+          "{0} type checking errors detected in {1}",
+          mv.checkingContext.ErrorCount,
+          GetFileNameForConsole(Options, bplFileName));
+        return true;
+      }
+
       CivlRewriter.Transform(Options, civlTypeChecker);
       if (Options.CivlDesugaredFile != null) {
         int oldPrintUnstructured = Options.PrintUnstructured;
         Options.PrintUnstructured = 1;
-        PrintBplFile(Options.CivlDesugaredFile, program, false, false,
-          Options.PrettyPrint);
+        PrintBplFile(Options.CivlDesugaredFile, program, false, false, Options.PrettyPrint);
         Options.PrintUnstructured = oldPrintUnstructured;
       }
+
+      MeasureChecker.Transform(program, Options);
 
       EliminateDeadVariables(program);
 
@@ -229,7 +240,6 @@ namespace Microsoft.Boogie
       }
     }
 
-
     public void CollectModifies(Program program)
     {
       if (Options.InferModifies)
@@ -237,7 +247,6 @@ namespace Microsoft.Boogie
         new ModSetCollector(Options).CollectModifies(program);
       }
     }
-
 
     public void EliminateDeadVariables(Program program)
     {
@@ -279,7 +288,6 @@ namespace Microsoft.Boogie
 
       options.PrintDesugarings = oldPrintDesugaring;
     }
-
 
     /// <summary>
     /// Parse the given files into one Boogie program.  If an I/O or parse error occurs, an error will be printed

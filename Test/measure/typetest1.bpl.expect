@@ -1,0 +1,2 @@
+typetest1.bpl(8,27): Error: Measure expected only for mover procedures
+1 type checking errors detected in typetest1.bpl

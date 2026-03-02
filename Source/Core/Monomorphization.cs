@@ -1697,8 +1697,10 @@ namespace Microsoft.Boogie
           (IdentifierExpr) InstantiateAbsy(ie, procTypeParamInstantiation, variableMapping)).ToList();
         var ensures = proc.Ensures.Select(ensures => new Ensures(ensures.tok, ensures.Free,
           (Expr) InstantiateAbsy(ensures.Condition, procTypeParamInstantiation, variableMapping), ensures.Comment)).ToList();
+        var measure = proc.Measure.Select(measure => new Measure(measure.tok, measure.Free,
+          (Expr) InstantiateAbsy(measure.Condition, procTypeParamInstantiation, variableMapping), measure.Comment)).ToList();
         var instantiatedProc = new Procedure(proc.tok, MkInstanceName(proc.Name, actualTypeParams),
-          new List<TypeVariable>(), instantiatedInParams, instantiatedOutParams, proc.IsPure, requires, preserves, ensures, modifies,
+          new List<TypeVariable>(), instantiatedInParams, instantiatedOutParams, proc.IsPure, requires, preserves, ensures, measure, modifies,
           proc.Attributes == null ? null : VisitQKeyValue(proc.Attributes));
         instantiatedProc.OriginalDeclWithFormals = proc;
         newInstantiatedDeclarations.Add(instantiatedProc);
