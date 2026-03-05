@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
 using VCGeneration;
+using Microsoft.BaseTypes;
 
 namespace Microsoft.Boogie;
 
@@ -444,6 +445,18 @@ class BigBlocksResolutionContext
             foreach (PredicateCmd inv in whileCmd.Invariants)
             {
               ssHead.Add(inv);
+            }
+            foreach (Measure mea in whileCmd.Measures)
+            {
+              var zero = new LiteralExpr(Token.NoToken, BigNum.ZERO);
+              var ge = Expr.Ge(mea.Condition, zero);
+              var ac1 = new AssertCmd(whileCmd.tok, ge);
+              ssHead.Add(ac1);
+              ssBody.Add(ac1);
+              var old = new OldExpr(whileCmd.tok, mea.Condition);
+              var decreasing = Expr.Lt(mea.Condition, old);
+              var ac2 = new AssertCmd(whileCmd.tok, decreasing);
+              ssBody.Add(ac2);
             }
 
             block = new Block(whileCmd.tok, loopHeadLabel, ssHead,

@@ -1651,6 +1651,7 @@ out List<Variable> ins, out List<Variable> outs, out QKeyValue kv) {
 		Contract.Ensures(Contract.ValueAtReturn(out wcmd) != null); IToken x;  Token z;
 		Expr guard;  Expr e;  Cmd cmd;  bool isFree;
 		List<PredicateCmd> invariants = new List<PredicateCmd>();
+		List<Measure> measures = new List<Measure>();
 		List<CallCmd> yields = new List<CallCmd>();
 		StmtList body;
 		QKeyValue kv = null;
@@ -1659,36 +1660,52 @@ out List<Variable> ins, out List<Variable> outs, out QKeyValue kv) {
 		x = t; 
 		Guard(out guard);
 		Contract.Assume(guard == null || Cce.Owner.None(guard)); 
-		while (la.kind == 36 || la.kind == 51) {
+		while (la.kind == 36 || la.kind == 49 || la.kind == 51) {
 			isFree = false; z = la/*lookahead token*/; 
-			if (la.kind == 51) {
-				Get();
-				isFree = true;  
-			}
-			Expect(36);
-			while (la.kind == 26) {
-				Attribute(ref kv);
-			}
-			if (StartOf(19)) {
-				Expression(out e);
-				if (isFree) {
-				 invariants.Add(new AssumeCmd(z, e, kv));
-				} else {
-				 invariants.Add(new AssertCmd(z, e, kv));
+			if (la.kind == 36 || la.kind == 51) {
+				if (la.kind == 51) {
+					Get();
+					isFree = true; 
 				}
+				Expect(36);
+				z = t; 
+				while (la.kind == 26) {
+					Attribute(ref kv);
+				}
+				if (StartOf(19)) {
+					Expression(out e);
+					if (isFree) {
+					 invariants.Add(new AssumeCmd(z, e, kv));
+					} else {
+					 invariants.Add(new AssertCmd(z, e, kv));
+					}
+					kv = null;
+					isFree = false;
+					
+				} else if (la.kind == 51 || la.kind == 69 || la.kind == 70) {
+					CallCmd(true, out cmd);
+					yields.Add((CallCmd)cmd);
+					kv = null;
+					isFree = false;
+					
+				} else SynErr(150);
+				Expect(10);
+			} else {
+				Get();
+				z = t; 
+				while (la.kind == 26) {
+					Attribute(ref kv);
+				}
+				Proposition(out e);
+				measures.Add(new Measure(z, false, e, null, kv));
 				kv = null;
 				
-			} else if (la.kind == 51 || la.kind == 69 || la.kind == 70) {
-				CallCmd(true, out cmd);
-				yields.Add((CallCmd)cmd);
-				kv = null;
-				
-			} else SynErr(150);
-			Expect(10);
+				Expect(10);
+			}
 		}
 		Expect(26);
 		StmtList(out body);
-		wcmd = new WhileCmd(x, guard, invariants, yields, body); 
+		wcmd = new WhileCmd(x, guard, invariants, measures, yields, body); 
 	}
 
 	void BreakCmd(out BreakCmd bcmd) {

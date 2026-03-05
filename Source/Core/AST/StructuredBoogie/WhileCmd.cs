@@ -8,7 +8,7 @@ public class WhileCmd : StructuredCmd
   [Peer] public Expr Guard;
 
   public List<PredicateCmd> Invariants;
-
+  public List<Measure> Measures;
   public List<CallCmd> Yields;
 
   public StmtList Body;
@@ -20,7 +20,7 @@ public class WhileCmd : StructuredCmd
     Contract.Invariant(Cce.NonNullElements(Invariants));
   }
 
-  public WhileCmd(IToken tok, [Captured] Expr guard, List<PredicateCmd> invariants, List<CallCmd> yields, StmtList body)
+  public WhileCmd(IToken tok, [Captured] Expr guard, List<PredicateCmd> invariants, List<Measure> measures, List<CallCmd> yields, StmtList body)
     : base(tok)
   {
     Contract.Requires(Cce.NonNullElements(invariants));
@@ -28,6 +28,7 @@ public class WhileCmd : StructuredCmd
     Contract.Requires(tok != null);
     this.Guard = guard;
     this.Invariants = invariants;
+    this.Measures = measures;
     this.Yields = yields;
     this.Body = body;
   }
@@ -46,11 +47,15 @@ public class WhileCmd : StructuredCmd
 
     stream.WriteLine(")");
 
-    foreach (var yield in Yields)
+    if (Yields != null)
     {
-      stream.Write(level + 1, "invariant");
-      yield.Emit(stream, level + 1);
+      foreach (var yield in Yields)
+      {
+        stream.Write(level + 1, "invariant ");
+        yield.Emit(stream, level + 1);
+      }
     }
+
     foreach (var inv in Invariants)
     {
       if (inv is AssumeCmd)
@@ -65,6 +70,14 @@ public class WhileCmd : StructuredCmd
       Cmd.EmitAttributes(stream, inv.Attributes);
       inv.Expr.Emit(stream);
       stream.WriteLine(";");
+    }
+
+    if (Measures != null)
+    {
+      foreach (var mea in Measures)
+      {
+        mea.Emit(stream, level + 1);
+      }
     }
 
     stream.WriteLine(level, "{");
