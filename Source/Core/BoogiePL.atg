@@ -1204,6 +1204,10 @@ LabelOrCmd<out Cmd c, out IToken label>
     { Attribute<ref kv> }
     Proposition<out e>    (. c = new AssumeCmd(x, e, kv); .)
     ";"
+  | "measure"              (. x = t; .)
+    { Attribute<ref kv> }
+    Proposition<out e>    (. c = new MeasureCmd(x, e, kv); .)
+    ";"
   | "havoc"               (. x = t; .)
     Idents<out xs> ";"    (. ids = new List<IdentifierExpr>();
                              foreach(IToken y in xs){

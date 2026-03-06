@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
 using VCGeneration;
-using Microsoft.BaseTypes;
 
 namespace Microsoft.Boogie;
 
@@ -446,19 +445,12 @@ class BigBlocksResolutionContext
             {
               ssHead.Add(inv);
             }
-            foreach (Measure mea in whileCmd.Measures)
-            {
-              var zero = new LiteralExpr(Token.NoToken, BigNum.ZERO);
-              var ge = Expr.Ge(mea.Condition, zero);
-              var ac1 = new AssertCmd(whileCmd.tok, ge);
-              ssHead.Add(ac1);
-              ssBody.Add(ac1);
-              var old = new OldExpr(whileCmd.tok, mea.Condition);
-              var decreasing = Expr.Lt(mea.Condition, old);
-              var ac2 = new AssertCmd(whileCmd.tok, decreasing);
-              ssBody.Add(ac2);
-            }
 
+            foreach (Measure mea in whileCmd.Measures)
+            {
+               ssHead.Add(new MeasureCmd(whileCmd.tok, mea.Condition));
+            }
+  
             block = new Block(whileCmd.tok, loopHeadLabel, ssHead,
               new GotoCmd(whileCmd.tok, new List<string> {loopDoneLabel, loopBodyLabel}));
             blocks.Add(block);
@@ -472,7 +464,15 @@ class BigBlocksResolutionContext
             }
 
             // recurse to create the blocks for the loop body
+            foreach (Measure mea in whileCmd.Measures)
+            {
+               ssBody.Add(new MeasureCmd(whileCmd.tok, mea.Condition));
+            }
+
             CreateBlocks(whileCmd.Body, loopHeadLabel);
+            block = new Block(whileCmd.tok, loopBodyLabel, ssBody,
+                new GotoCmd(whileCmd.tok, new List<string> {whileCmd.Body.BigBlocks[0].LabelName}));
+              blocks.Add(block);
 
             // LoopDone: assume !guard; goto loopSuccessor;
             TransferCmd trCmd;
