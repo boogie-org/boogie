@@ -2006,6 +2006,63 @@ namespace Microsoft.Boogie
     }
   }
 
+  public class MeasureCmd : SugaredCmd, ICarriesAttributes
+  {
+    public Expr Expr;
+    public Expr OrigExpr;
+    public Dictionary<Variable, Expr> IncarnationMap;
+    public QKeyValue Attributes { get; set; }
+
+    public MeasureCmd(IToken tok, Expr expr, QKeyValue kv = null)
+      : base(tok)
+    {
+      Contract.Requires(tok != null);
+      Contract.Requires(expr != null);
+      Expr = expr;
+      OrigExpr = expr;
+      Attributes = kv;
+    }
+
+    public override void Resolve(ResolutionContext rc)
+    {
+      Expr.Resolve(rc);
+      (this as ICarriesAttributes).ResolveAttributes(rc);
+    }
+
+    public override void Typecheck(TypecheckingContext tc)
+    {
+      (this as ICarriesAttributes).TypecheckAttributes(tc);
+      Expr.Typecheck(tc);
+      Contract.Assert(Expr.Type != null);
+      if (!Expr.Type.Unify(Type.Int))
+      {
+        tc.Error(this, "measure must be of type int");
+      }
+    }
+
+    public override void AddAssignedIdentifiers(List<IdentifierExpr> vars)
+    {
+    }
+
+    public override void Emit(TokenTextWriter stream, int level)
+    {
+      stream.Write(this, level, "measure ");
+      Cmd.EmitAttributes(stream, Attributes);
+      Expr.Emit(stream);
+      stream.WriteLine(";");
+    }
+
+    protected override Cmd ComputeDesugaring(PrintOptions options)
+    {
+      return new StateCmd(tok, new List<Variable>(), new List<Cmd>());
+    }
+
+    public override Absy StdDispatch(StandardVisitor visitor)
+    {
+      return visitor.VisitMeasureCmd(this);
+    }
+  }
+  
   /// <summary>
   /// An AssertCmd that is introduced in translation from an ensures
   /// declaration.

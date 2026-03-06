@@ -17,8 +17,92 @@ namespace Microsoft.Boogie
       this.program = program;
       callGraph = Program.BuildTransitiveCallGraph(options, program);
       CheckRecursiveCalls();
+      //To add typechecking or measure commands.
     }
 
+    public static void TransformMeasureCmds(Program program)
+    {
+      foreach(var impl in program.Implementations)
+      {
+        foreach (var block in impl.Blocks)
+        {
+          var x = block.Label;
+
+          if (block.Label.Contains("LoopHead"))
+          {
+            var newCmds = new List<Cmd>();
+
+            foreach (var cmd in block.Cmds)
+            {
+              if (cmd is MeasureCmd measureCmd)
+              {
+                var zero = new LiteralExpr(Token.NoToken, BigNum.ZERO);
+                var ge = Expr.Ge(measureCmd.Expr, zero);
+                var ac1 = new AssertCmd(measureCmd.tok, ge);
+                newCmds.Add(ac1);
+
+                var newLocalVars = new List<Variable>();
+
+                LocalVariable localVar =
+                  new LocalVariable(
+                    Token.NoToken,
+                    new TypedIdent(Token.NoToken, "old_" + measureCmd.Expr, Type.Int));
+
+                newLocalVars.Add(localVar);
+
+                foreach (var k in impl.LocVars)
+                {
+                  newLocalVars.Add(k);
+                }
+
+                impl.LocVars = newLocalVars;
+
+                var lhs = new SimpleAssignLhs(Token.NoToken, Expr.Ident(localVar));
+
+                newCmds.Add(
+                  new AssignCmd(
+                    Token.NoToken,
+                    new List<AssignLhs> { lhs },
+                    new List<Expr> { measureCmd.Expr }));
+              }
+              else
+              {
+                newCmds.Add(cmd);
+              }
+            }
+
+            block.Cmds = newCmds;
+          }
+          else if (block.Label.Contains("LoopBody"))
+          {
+            var newCmds = new List<Cmd>();
+
+            foreach (var cmd in block.Cmds)
+            {
+              if (cmd is MeasureCmd measureCmd)
+              {
+                LocalVariable localVar =
+                  new LocalVariable(
+                    Token.NoToken,
+                    new TypedIdent(Token.NoToken, "old_" + measureCmd.Expr, Type.Int));
+
+                var old = Expr.Ident(localVar);
+                var decreasing = Expr.Lt(measureCmd.Expr, old);
+                var ac2 = new AssertCmd(measureCmd.tok, decreasing);
+
+                newCmds.Add(ac2);
+              }
+              else
+              {
+                newCmds.Add(cmd);
+              }
+            }
+
+            block.Cmds = newCmds;
+          }
+        }
+      }
+    }
     public static void Transform(Program program, CoreOptions options)
     {
       var measureChecker = new MeasureChecker(program, options);
