@@ -427,12 +427,6 @@ class BigBlocksResolutionContext
               ssDone.Add(ac);
             }
 
-            foreach (Measure mea in whileCmd.Measures)
-            {
-               ssBody.Add(new MeasureCmd(whileCmd.tok, mea.Condition));
-            }
-
-
             // Try to squeeze in ssBody into the first block of wcmd.Body
             bool bodyGuardTakenCareOf = whileCmd.Body.PrefixFirstBlock(ssBody, ref loopBodyLabel);
 
