@@ -3,6 +3,7 @@ using System.Linq;
 using Microsoft.Boogie.GraphUtil;
 using Microsoft.BaseTypes;
 using System.Diagnostics;
+using System.Reflection.Emit;
 
 namespace Microsoft.Boogie
 {
@@ -18,24 +19,37 @@ namespace Microsoft.Boogie
       callGraph = Program.BuildTransitiveCallGraph(options, program);
       CheckRecursiveCalls();
       //To add typechecking or measure commands.
+      TransformMeasureCmds(program);
     }
 
     public static void TransformMeasureCmds(Program program)
     {
-      foreach(var impl in program.Implementations)
+      foreach (var impl in program.Implementations)
       {
+        Dictionary<string, List<Expr>> map = new Dictionary<string, List<Expr>>();
+
         foreach (var block in impl.Blocks)
         {
           var x = block.Label;
+          var label_name = x.Split('_')[0];
+
+          map[label_name] = new List<Expr>();
+        }
+
+        foreach (var block in impl.Blocks)
+        {
+          var newCmds = new List<Cmd>();
+          var x = block.Label;
+          var label_name = x.Split('_')[0];
 
           if (block.Label.Contains("LoopHead"))
           {
-            var newCmds = new List<Cmd>();
-
             foreach (var cmd in block.Cmds)
             {
               if (cmd is MeasureCmd measureCmd)
               {
+                map[label_name].Add(measureCmd.Expr);
+
                 var zero = new LiteralExpr(Token.NoToken, BigNum.ZERO);
                 var ge = Expr.Ge(measureCmd.Expr, zero);
                 var ac1 = new AssertCmd(measureCmd.tok, ge);
@@ -70,39 +84,43 @@ namespace Microsoft.Boogie
                 newCmds.Add(cmd);
               }
             }
-
-            block.Cmds = newCmds;
           }
           else if (block.Label.Contains("LoopBody"))
           {
-            var newCmds = new List<Cmd>();
+            var x2 = block.Label;
 
-            foreach (var cmd in block.Cmds)
+            foreach (var c in block.Cmds)
             {
-              if (cmd is MeasureCmd measureCmd)
+              newCmds.Add(c);
+            }
+
+            var label_name2 = x.Split('_')[0];
+            if (map.ContainsKey(label_name2))
+            {
+              foreach (var val in map[label_name2])
               {
                 LocalVariable localVar =
                   new LocalVariable(
                     Token.NoToken,
-                    new TypedIdent(Token.NoToken, "old_" + measureCmd.Expr, Type.Int));
+                    new TypedIdent(Token.NoToken, "old_" + val, Type.Int));
 
                 var old = Expr.Ident(localVar);
-                var decreasing = Expr.Lt(measureCmd.Expr, old);
-                var ac2 = new AssertCmd(measureCmd.tok, decreasing);
-
+                var decreasing = Expr.Lt(val, old);
+                var ac2 = new AssertCmd(Token.NoToken, decreasing);
                 newCmds.Add(ac2);
               }
-              else
-              {
-                newCmds.Add(cmd);
-              }
             }
-
-            block.Cmds = newCmds;
           }
+          else
+          {
+            newCmds = block.Cmds;
+          }
+
+          block.Cmds = newCmds;
         }
       }
     }
+
     public static void Transform(Program program, CoreOptions options)
     {
       var measureChecker = new MeasureChecker(program, options);
