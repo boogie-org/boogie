@@ -459,6 +459,17 @@ namespace Microsoft.Boogie
       return @measure;
     }
 
+    public virtual Cmd VisitMeasureCmd(MeasureCmd node)
+    {
+      node.Expr = this.VisitExpr(node.Expr);
+      if (node.OrigExpr != null)
+      {
+        node.OrigExpr = this.VisitExpr(node.OrigExpr);
+      }
+      VisitAttributes(node);
+      return node;
+    }
+
     public virtual List<Measure> VisitMeasureSeq(List<Measure> measureSeq)
     {
       Contract.Requires(measureSeq != null);
@@ -1734,5 +1745,22 @@ namespace Microsoft.Boogie
       this.VisitExpr(node.Expr);
       return node;
     }
+
+    // public override Cmd VisitMeasureCmd(MeasureCmd node)
+    // {
+    //   Contract.Ensures(Contract.Result<Cmd>() == node);
+    //   this.VisitExpr(node.OrigExpr);
+    //   return node;
+    // }
+
+    public override Cmd VisitMeasureCmd(MeasureCmd node)
+{
+  this.VisitExpr(node.Expr);
+  if (node.OrigExpr != null)
+  {
+    this.VisitExpr(node.OrigExpr);
+  }
+  return node;
+}
   }
 }
