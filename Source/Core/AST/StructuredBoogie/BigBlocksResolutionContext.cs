@@ -427,6 +427,12 @@ class BigBlocksResolutionContext
               ssDone.Add(ac);
             }
 
+            foreach (Measure mea in whileCmd.Measures)
+            {
+               ssBody.Add(new MeasureCmd(whileCmd.tok, mea.Condition));
+            }
+
+
             // Try to squeeze in ssBody into the first block of wcmd.Body
             bool bodyGuardTakenCareOf = whileCmd.Body.PrefixFirstBlock(ssBody, ref loopBodyLabel);
 
@@ -450,7 +456,8 @@ class BigBlocksResolutionContext
             {
                ssHead.Add(new MeasureCmd(whileCmd.tok, mea.Condition));
             }
-  
+
+
             block = new Block(whileCmd.tok, loopHeadLabel, ssHead,
               new GotoCmd(whileCmd.tok, new List<string> {loopDoneLabel, loopBodyLabel}));
             blocks.Add(block);
@@ -464,15 +471,7 @@ class BigBlocksResolutionContext
             }
 
             // recurse to create the blocks for the loop body
-            foreach (Measure mea in whileCmd.Measures)
-            {
-               ssBody.Add(new MeasureCmd(whileCmd.tok, mea.Condition));
-            }
-
             CreateBlocks(whileCmd.Body, loopHeadLabel);
-            block = new Block(whileCmd.tok, loopBodyLabel, ssBody,
-                new GotoCmd(whileCmd.tok, new List<string> {whileCmd.Body.BigBlocks[0].LabelName}));
-              blocks.Add(block);
 
             // LoopDone: assume !guard; goto loopSuccessor;
             TransferCmd trCmd;
