@@ -169,7 +169,7 @@ action {:layer 5} READCLIENT({:linear} one_pid: One ProcessId) returns (value: V
     var {:layer 2, 3} tsq: ReplicaSet;
     var {:layer 2} tsq': ReplicaSet;
 
-    call old_ts := BEGIN#4(one_pid); // | ValueStoreInv#1(LeastTimeStamp(), InitValue) | ValidTimeStamp() | ValueStoreInv#3(LeastTimeStamp(), InitValue);
+    call old_ts := BEGIN#4(one_pid);
     call ts, value := READ#4(one_pid, old_ts);
     call End#4(one_pid, ts);
 }
