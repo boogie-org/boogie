@@ -165,9 +165,6 @@ action {:layer 5} READCLIENT({:linear} one_pid: One ProcessId) returns (value: V
 {
     var old_ts: TimeStamp;
     var ts: TimeStamp;
-    // tsq is the quorum witnessing the global timestamp TS
-    var {:layer 2, 3} tsq: ReplicaSet;
-    var {:layer 2} tsq': ReplicaSet;
 
     call old_ts := BEGIN#4(one_pid);
     call ts, value := READ#4(one_pid, old_ts);
@@ -200,9 +197,6 @@ action {:layer 5} WRITECLIENT({:linear} one_pid: One ProcessId, value: Value)
     returns (ts: TimeStamp)
 {
     var old_ts: TimeStamp;
-    // tsq is the quorum witnessing the global timestamp TS
-    var {:layer 2, 3} tsq: ReplicaSet;
-    var {:layer 2} tsq': ReplicaSet;
 
     call old_ts := BEGIN#4(one_pid);
     call ts := WRITE#4(one_pid, value, old_ts);
