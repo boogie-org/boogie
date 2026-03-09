@@ -8,7 +8,6 @@ yield procedure {:layer 1} one()
     var n: int;
     n := 10;
     while(n >= 1)
-    invariant {:yields} true;
     measure {:layer 1} n;
     {
         n := n - 1;

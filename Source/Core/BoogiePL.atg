@@ -1145,7 +1145,7 @@ WhileCmd<out WhileCmd wcmd>
                        .)
     ";"
   )
-}
+  }
   "{"
   StmtList<out body>  (. wcmd = new WhileCmd(x, guard, invariants, measures, yields, body); .)
   .
