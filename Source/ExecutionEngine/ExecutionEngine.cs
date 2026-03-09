@@ -157,7 +157,6 @@ namespace Microsoft.Boogie
       }
 
       MeasureChecker mv = new MeasureChecker(program, Options);
-           
       if (mv.checkingContext.ErrorCount != 0)
       {
         Options.OutputWriter.WriteLine(
@@ -175,10 +174,7 @@ namespace Microsoft.Boogie
         Options.PrintUnstructured = oldPrintUnstructured;
       }
 
-
-      
       MeasureChecker.Transform(program, Options);
-
 
       EliminateDeadVariables(program);
 
