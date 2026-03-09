@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
@@ -447,10 +446,10 @@ class BigBlocksResolutionContext
             }
 
             var listMeasures = new List<Expr>();
-            foreach (Measure mea in whileCmd.Measures)
-            {
-               listMeasures.Add(mea.Condition);
-            }
+            foreach (Measure m in whileCmd.Measures)
+            {
+              listMeasures.Add(m.Condition);
+            }
             ssHead.Add(new MeasureCmd(whileCmd.tok, listMeasures));
 
             block = new Block(whileCmd.tok, loopHeadLabel, ssHead,

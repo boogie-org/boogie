@@ -47,13 +47,10 @@ public class WhileCmd : StructuredCmd
 
     stream.WriteLine(")");
 
-    if (Yields != null)
+    foreach (var yield in Yields)
     {
-      foreach (var yield in Yields)
-      {
-        stream.Write(level + 1, "invariant ");
-        yield.Emit(stream, level + 1);
-      }
+      stream.Write(level + 1, "invariant ");
+      yield.Emit(stream, level + 1);
     }
 
     foreach (var inv in Invariants)
@@ -72,12 +69,9 @@ public class WhileCmd : StructuredCmd
       stream.WriteLine(";");
     }
 
-    if (Measures != null)
+    foreach (var m in Measures)
     {
-      foreach (var mea in Measures)
-      {
-        mea.Emit(stream, level + 1);
-      }
+      m.Emit(stream, level + 1);
     }
 
     stream.WriteLine(level, "{");
