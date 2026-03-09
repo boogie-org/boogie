@@ -157,7 +157,7 @@ namespace Microsoft.Boogie
       }
 
       MeasureChecker mv = new MeasureChecker(program, Options);
-      mv.TransformMeasureCmds(program);
+
       if (mv.checkingContext.ErrorCount != 0)
       {
         Options.OutputWriter.WriteLine(

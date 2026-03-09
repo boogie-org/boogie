@@ -3,7 +3,6 @@ using System.Linq;
 using Microsoft.Boogie.GraphUtil;
 using Microsoft.BaseTypes;
 using System.Diagnostics;
-using System.Reflection.Emit;
 
 namespace Microsoft.Boogie
 {
@@ -19,7 +18,6 @@ namespace Microsoft.Boogie
       TypeCheckMeasureCmd(program);
       callGraph = Program.BuildTransitiveCallGraph(options, program);
       CheckRecursiveCalls();
-      //To add typechecking or measure commands
     }
 
     private void TypeCheckMeasureCmd(Program program)
@@ -62,6 +60,8 @@ namespace Microsoft.Boogie
       {
         measureChecker.TransformProcedure(proc);
       }
+
+      measureChecker.TransformMeasureCmds(program);
     }
 
     private bool IsRecursiveCall(Procedure callerProc, CallCmd callCmd)
@@ -176,18 +176,19 @@ namespace Microsoft.Boogie
       {
         var graph = Program.GraphFromImpl(impl);
         graph.ComputeLoops();
-        Dictionary<string, List<Expr>> map = new Dictionary<string, List<Expr>>();
 
         foreach (var header in graph.Headers)
         {
           var blockLoopHead = header;
           var newCmdsHead = new List<Cmd>();
+          AssertCmd deferredAssert = null;
 
           foreach (var cmd in blockLoopHead.Cmds)
           {
             if (cmd is MeasureCmd measureCmd)
             {
               var zero = new LiteralExpr(Token.NoToken, BigNum.ZERO);
+
               foreach (var ex in measureCmd.Exprs)
               {
                 var ge = Expr.Ge(ex, zero);
@@ -195,23 +196,20 @@ namespace Microsoft.Boogie
                 newCmdsHead.Add(ac1);
               }
 
-              var newLocalVars = new List<Variable>();
+              int count = 0;
+              Expr decreasing = Expr.False;
+              Expr equalPrefix = Expr.True;
 
               foreach (var ex in measureCmd.Exprs)
               {
-                LocalVariable localVar =
-                  new LocalVariable(
+                var localVar = new LocalVariable(
+                  Token.NoToken,
+                  new TypedIdent(
                     Token.NoToken,
-                    new TypedIdent(Token.NoToken, "old_" + ex, Type.Int));
+                    $"old_{measureCmd.UniqueId}_{count}",
+                    Type.Int));
 
-                newLocalVars.Add(localVar);
-
-                foreach (var k in impl.LocVars)
-                {
-                  newLocalVars.Add(k);
-                }
-
-                impl.LocVars = newLocalVars;
+                impl.LocVars.Add(localVar);
 
                 var lhs = new SimpleAssignLhs(Token.NoToken, Expr.Ident(localVar));
 
@@ -220,7 +218,23 @@ namespace Microsoft.Boogie
                     Token.NoToken,
                     new List<AssignLhs> { lhs },
                     new List<Expr> { ex }));
+
+                var oldMeasure = Expr.Ident(localVar);
+                var newMeasure = ex;
+
+                decreasing = Expr.Or(
+                  decreasing,
+                  Expr.And(equalPrefix, Expr.Lt(newMeasure, oldMeasure)));
+
+                equalPrefix = Expr.And(equalPrefix, Expr.Eq(newMeasure, oldMeasure));
+
+                count++;
               }
+
+              deferredAssert = new AssertCmd(measureCmd.tok, decreasing)
+              {
+                Description = new MeasureDecreasesDescription()
+              };
             }
             else
             {
@@ -229,10 +243,12 @@ namespace Microsoft.Boogie
           }
 
           blockLoopHead.Cmds = newCmdsHead;
-        }
 
-        foreach (var header in graph.Headers)
-        {
+          if (deferredAssert == null)
+          {
+            continue;
+          }
+
           foreach (var backEdgeNode in graph.BackEdgeNodes(header))
           {
             var blockLoopBody = backEdgeNode;
@@ -243,29 +259,7 @@ namespace Microsoft.Boogie
               newCmdsBody.Add(c);
             }
 
-            foreach (var cmd in header.Cmds)
-            {
-              if (cmd is MeasureCmd measureCmd)
-              {
-                foreach (var ex in measureCmd.Exprs)
-                {
-                  LocalVariable localVar =
-                    new LocalVariable(
-                      Token.NoToken,
-                      new TypedIdent(Token.NoToken, "old_" + ex, Type.Int));
-
-                  var old = Expr.Ident(localVar);
-                  var decreasing = Expr.Lt(ex, old);
-                  var ac2 = new AssertCmd(Token.NoToken, decreasing);
-                  newCmdsBody.Add(ac2);
-                }
-              }
-              else
-              {
-                newCmdsBody = blockLoopBody.Cmds;
-              }
-            }
-
+            newCmdsBody.Add(deferredAssert);
             blockLoopBody.Cmds = newCmdsBody;
           }
         }
