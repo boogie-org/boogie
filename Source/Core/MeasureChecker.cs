@@ -137,27 +137,22 @@ namespace Microsoft.Boogie
             var formalToActualSubst =
               Substituter.SubstitutionFromDictionary(callCmd.Proc.InParams.Zip(callCmd.Ins).ToDictionary());
 
-            Expr decreasing = Expr.False;
-            Expr equalPrefix = Expr.True;
-
+            var callerMeasures = new List<Expr>();
+            var calleeMeasures = new List<Expr>();
             for (int i = 0; i < callCmd.Proc.Measure.Count; i++)
             {
               var callerMeasure = new OldExpr(
                 callCmd.tok,
                 Substituter.Apply(procToImplSubst, impl.Proc.Measure[i].Condition));
+              callerMeasures.Add(callerMeasure);
 
               var calleeMeasure =
                 Substituter.Apply(formalToActualSubst, callCmd.Proc.Measure[i].Condition);
-
-              decreasing = Expr.Or(
-                decreasing,
-                Expr.And(equalPrefix, Expr.Lt(calleeMeasure, callerMeasure)));
-
-              equalPrefix = Expr.And(equalPrefix, Expr.Eq(calleeMeasure, callerMeasure));
+              calleeMeasures.Add(calleeMeasure);
             }
 
             newCmds.Add(
-              new AssertCmd(callCmd.tok, decreasing)
+              new AssertCmd(callCmd.tok, MeasureLessThanExpr(calleeMeasures, callerMeasures))
               {
                 Description = new MeasureDecreasesDescription()
               });
