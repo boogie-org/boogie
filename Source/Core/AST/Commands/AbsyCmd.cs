@@ -2006,7 +2006,7 @@ namespace Microsoft.Boogie
     }
   }
 
-  public class MeasureCmd : SugaredCmd, ICarriesAttributes
+  public class MeasureCmd : Cmd, ICarriesAttributes
   {
     public List<Expr> Exprs;
     public QKeyValue Attributes { get; set; }
@@ -2078,11 +2078,6 @@ namespace Microsoft.Boogie
       }
 
       stream.WriteLine(";");
-    }
-
-    protected override Cmd ComputeDesugaring(PrintOptions options)
-    {
-      return new StateCmd(tok, new List<Variable>(), new List<Cmd>());
     }
 
     public override Absy StdDispatch(StandardVisitor visitor)
