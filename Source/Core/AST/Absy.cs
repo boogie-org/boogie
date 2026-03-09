@@ -2550,8 +2550,6 @@ namespace Microsoft.Boogie
   {
     public readonly bool Free;
 
-    public ProofObligationDescription Description { get; set; } = new MeasureDecreasesDescription();
-
     private Expr _condition;
 
     public Expr Condition
@@ -2570,25 +2568,7 @@ namespace Microsoft.Boogie
 
     public string Comment;
 
-    private MiningStrategy errorDataEnhanced;
-
-    public MiningStrategy ErrorDataEnhanced
-    {
-      get { return errorDataEnhanced; }
-      set { errorDataEnhanced = value; }
-    }
-
-    public String ErrorMessage
-    {
-      get { return QKeyValue.FindStringAttribute(Attributes, "msg"); }
-    }
-
     public QKeyValue Attributes { get; set; }
-
-    public bool CanAlwaysAssume ()
-    {
-      return Free && Attributes.FindBoolAttribute("always_assume");
-    }
 
     public Measure(IToken token, bool free, Expr condition, string comment, QKeyValue kv)
       : base(token)
@@ -2604,20 +2584,16 @@ namespace Microsoft.Boogie
     public Measure(IToken token, bool free, Expr condition, string comment)
       : this(token, free, condition, comment, null)
     {
-      Contract.Requires(condition != null);
-      Contract.Requires(token != null);
     }
 
     public Measure(bool free, Expr condition)
       : this(Token.NoToken, free, condition, null)
     {
-      Contract.Requires(condition != null);
     }
 
     public Measure(bool free, Expr condition, string comment)
       : this(Token.NoToken, free, condition, comment)
     {
-      Contract.Requires(condition != null);
     }
 
     public void Emit(TokenTextWriter stream, int level)

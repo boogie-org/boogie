@@ -50,7 +50,7 @@ namespace Microsoft.Boogie
 
       foreach (var impl in program.Implementations.Where(impl => impl.Proc.Measure.Count > 0))
       {
-        measureChecker.TransformImplementation(impl);
+        measureChecker.TransformCallCmds(impl);
       }
 
       // Add non-negative requirements for each measure
@@ -122,7 +122,7 @@ namespace Microsoft.Boogie
     // ------------------------------------------------------------
     // Inject measure decreases check
     // ------------------------------------------------------------
-    public void TransformImplementation(Implementation impl)
+    private void TransformCallCmds(Implementation impl)
     {
       var implFormals = impl.InParams.Select(x => (Expr)Expr.Ident(x));
       var procToImplSubst = Substituter.SubstitutionFromDictionary(impl.Proc.InParams.Zip(implFormals).ToDictionary());
@@ -170,7 +170,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    public void TransformMeasureCmds(Program program)
+    private void TransformMeasureCmds(Program program)
     {
       foreach (var impl in program.Implementations)
       {
@@ -179,11 +179,10 @@ namespace Microsoft.Boogie
 
         foreach (var header in graph.Headers)
         {
-          var blockLoopHead = header;
-          var newCmdsHead = new List<Cmd>();
-          AssertCmd deferredAssert = null;
+          var newCmds = new List<Cmd>();
+          Expr deferredAssertExpr = null;
 
-          foreach (var cmd in blockLoopHead.Cmds)
+          foreach (var cmd in header.Cmds)
           {
             if (cmd is MeasureCmd measureCmd)
             {
@@ -192,78 +191,71 @@ namespace Microsoft.Boogie
               foreach (var ex in measureCmd.Exprs)
               {
                 var ge = Expr.Ge(ex, zero);
-                var ac1 = new AssertCmd(measureCmd.tok, ge);
-                newCmdsHead.Add(ac1);
+                var ac1 = new AssertCmd(measureCmd.tok, ge) { Description = new MeasureNonNegativeDescription() };
+                newCmds.Add(ac1);
               }
 
-              int count = 0;
-              Expr decreasing = Expr.False;
-              Expr equalPrefix = Expr.True;
-
-              foreach (var ex in measureCmd.Exprs)
+              var oldMeasureExprs = new List<Expr>();
+              for (int i = 0; i < measureCmd.Exprs.Count; i++)
               {
                 var localVar = new LocalVariable(
                   Token.NoToken,
                   new TypedIdent(
                     Token.NoToken,
-                    $"old_{measureCmd.UniqueId}_{count}",
+                    $"old_{measureCmd.UniqueId}_{i}",
                     Type.Int));
-
                 impl.LocVars.Add(localVar);
-
                 var lhs = new SimpleAssignLhs(Token.NoToken, Expr.Ident(localVar));
-
-                newCmdsHead.Add(
+                newCmds.Add(
                   new AssignCmd(
                     Token.NoToken,
                     new List<AssignLhs> { lhs },
-                    new List<Expr> { ex }));
-
-                var oldMeasure = Expr.Ident(localVar);
-                var newMeasure = ex;
-
-                decreasing = Expr.Or(
-                  decreasing,
-                  Expr.And(equalPrefix, Expr.Lt(newMeasure, oldMeasure)));
-
-                equalPrefix = Expr.And(equalPrefix, Expr.Eq(newMeasure, oldMeasure));
-
-                count++;
+                    new List<Expr> { measureCmd.Exprs[i] }));
+                oldMeasureExprs.Add(Expr.Ident(localVar));
               }
 
-              deferredAssert = new AssertCmd(measureCmd.tok, decreasing)
-              {
-                Description = new MeasureDecreasesDescription()
-              };
+              deferredAssertExpr = MeasureLessThanExpr(measureCmd.Exprs, oldMeasureExprs);
             }
             else
             {
-              newCmdsHead.Add(cmd);
+              newCmds.Add(cmd);
             }
           }
 
-          blockLoopHead.Cmds = newCmdsHead;
+          header.Cmds = newCmds;
 
-          if (deferredAssert == null)
+          if (deferredAssertExpr == null)
           {
             continue;
           }
 
           foreach (var backEdgeNode in graph.BackEdgeNodes(header))
           {
-            var blockLoopBody = backEdgeNode;
-            var newCmdsBody = new List<Cmd>();
-
-            foreach (var c in blockLoopBody.Cmds)
-            {
-              newCmdsBody.Add(c);
-            }
-
-            newCmdsBody.Add(deferredAssert);
-            blockLoopBody.Cmds = newCmdsBody;
+            var deferredAssert = new AssertCmd(backEdgeNode.tok, deferredAssertExpr)
+              {
+                Description = new MeasureDecreasesDescription()
+              };
+            backEdgeNode.Cmds.Add(deferredAssert);
           }
         }
       }
+    }
+
+    // returns the expression for measure1 < measure2
+    private static Expr MeasureLessThanExpr(List<Expr> measure1, List<Expr> measure2)
+    {
+      Debug.Assert(measure1.Count == measure2.Count);
+
+      Expr lessThan = Expr.False;
+      Expr equalPrefix = Expr.True;
+      for (int i = 0; i < measure1.Count; i++)
+      {
+        lessThan = Expr.Or(
+          lessThan,
+          Expr.And(equalPrefix, Expr.Lt(measure1[i], measure2[i])));
+        equalPrefix = Expr.And(equalPrefix, Expr.Eq(measure1[i], measure2[i]));
+      }
+      return lessThan;
     }
   }
 }
