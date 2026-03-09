@@ -2006,85 +2006,6 @@ namespace Microsoft.Boogie
     }
   }
 
-  public class MeasureCmd : Cmd, ICarriesAttributes
-  {
-    public List<Expr> Exprs;
-    public QKeyValue Attributes { get; set; }
-
-    [ContractInvariantMethod]
-    void ObjectInvariant()
-    {
-      Contract.Invariant(Cce.NonNullElements(Exprs));
-    }
-
-    public MeasureCmd(IToken tok, List<Expr> exprs, QKeyValue kv = null)
-      : base(tok)
-    {
-      Contract.Requires(tok != null);
-      Contract.Requires(Cce.NonNullElements(exprs));
-      Exprs = new List<Expr>(exprs);
-      Attributes = kv;
-    }
-
-    // Optional compatibility constructor
-    public MeasureCmd(IToken tok, Expr expr, QKeyValue kv = null)
-      : base(tok)
-    {
-      Contract.Requires(tok != null);
-      Contract.Requires(expr != null);
-      Exprs = new List<Expr> { expr };
-      Attributes = kv;
-    }
-
-    public override void Resolve(ResolutionContext rc)
-    {
-      foreach (var expr in Exprs)
-      {
-        expr.Resolve(rc);
-      }
-      (this as ICarriesAttributes).ResolveAttributes(rc);
-    }
-
-    public override void Typecheck(TypecheckingContext tc)
-    {
-      (this as ICarriesAttributes).TypecheckAttributes(tc);
-
-      foreach (var expr in Exprs)
-      {
-        expr.Typecheck(tc);
-        Contract.Assert(expr.Type != null);
-        if (!expr.Type.Unify(Type.Int))
-        {
-          tc.Error(this, "each measure must be of type int");
-        }
-      }
-    }
-
-    public override void AddAssignedIdentifiers(List<IdentifierExpr> vars)
-    {
-    }
-
-    public override void Emit(TokenTextWriter stream, int level)
-    {
-      stream.Write(this, level, "measure ");
-      Cmd.EmitAttributes(stream, Attributes);
-
-      string sep = "";
-      foreach (var expr in Exprs)
-      {
-        stream.Write(sep);
-        sep = ", ";
-        expr.Emit(stream);
-      }
-
-      stream.WriteLine(";");
-    }
-
-    public override Absy StdDispatch(StandardVisitor visitor)
-    {
-      return visitor.VisitMeasureCmd(this);
-    }
-  }
   /// <summary>
   /// An AssertCmd that is introduced in translation from an ensures
   /// declaration.
@@ -2162,6 +2083,86 @@ namespace Microsoft.Boogie
     public override Absy StdDispatch(StandardVisitor visitor)
     {
       return visitor.VisitAssumeCmd(this);
+    }
+  }
+
+  public class MeasureCmd : Cmd, ICarriesAttributes
+  {
+    public List<Expr> Exprs;
+    public QKeyValue Attributes { get; set; }
+
+    [ContractInvariantMethod]
+    void ObjectInvariant()
+    {
+      Contract.Invariant(Cce.NonNullElements(Exprs));
+    }
+
+    public MeasureCmd(IToken tok, List<Expr> exprs, QKeyValue kv = null)
+      : base(tok)
+    {
+      Contract.Requires(tok != null);
+      Contract.Requires(Cce.NonNullElements(exprs));
+      Exprs = new List<Expr>(exprs);
+      Attributes = kv;
+    }
+
+    // Optional compatibility constructor
+    public MeasureCmd(IToken tok, Expr expr, QKeyValue kv = null)
+      : base(tok)
+    {
+      Contract.Requires(tok != null);
+      Contract.Requires(expr != null);
+      Exprs = new List<Expr> { expr };
+      Attributes = kv;
+    }
+
+    public override void Resolve(ResolutionContext rc)
+    {
+      foreach (var expr in Exprs)
+      {
+        expr.Resolve(rc);
+      }
+      (this as ICarriesAttributes).ResolveAttributes(rc);
+    }
+
+    public override void Typecheck(TypecheckingContext tc)
+    {
+      (this as ICarriesAttributes).TypecheckAttributes(tc);
+
+      foreach (var expr in Exprs)
+      {
+        expr.Typecheck(tc);
+        Contract.Assert(expr.Type != null);
+        if (!expr.Type.Unify(Type.Int))
+        {
+          tc.Error(this, "each measure must be of type int");
+        }
+      }
+    }
+
+    public override void AddAssignedIdentifiers(List<IdentifierExpr> vars)
+    {
+    }
+
+    public override void Emit(TokenTextWriter stream, int level)
+    {
+      stream.Write(this, level, "measure ");
+      Cmd.EmitAttributes(stream, Attributes);
+
+      string sep = "";
+      foreach (var expr in Exprs)
+      {
+        stream.Write(sep);
+        sep = ", ";
+        expr.Emit(stream);
+      }
+
+      stream.WriteLine(";");
+    }
+
+    public override Absy StdDispatch(StandardVisitor visitor)
+    {
+      return visitor.VisitMeasureCmd(this);
     }
   }
 
