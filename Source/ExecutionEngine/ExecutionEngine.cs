@@ -175,8 +175,7 @@ namespace Microsoft.Boogie
         Options.PrintUnstructured = oldPrintUnstructured;
       }
 
-     
-      mv.Transform(program, Options);
+      MeasureChecker.Transform(program, Options);
 
       EliminateDeadVariables(program);
 

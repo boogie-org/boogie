@@ -2009,15 +2009,12 @@ namespace Microsoft.Boogie
   public class MeasureCmd : SugaredCmd, ICarriesAttributes
   {
     public List<Expr> Exprs;
-    public List<Expr> OrigExprs;
-    public Dictionary<Variable, Expr> IncarnationMap;
     public QKeyValue Attributes { get; set; }
 
     [ContractInvariantMethod]
     void ObjectInvariant()
     {
       Contract.Invariant(Cce.NonNullElements(Exprs));
-      Contract.Invariant(Cce.NonNullElements(OrigExprs));
     }
 
     public MeasureCmd(IToken tok, List<Expr> exprs, QKeyValue kv = null)
@@ -2026,7 +2023,6 @@ namespace Microsoft.Boogie
       Contract.Requires(tok != null);
       Contract.Requires(Cce.NonNullElements(exprs));
       Exprs = new List<Expr>(exprs);
-      OrigExprs = new List<Expr>(exprs);
       Attributes = kv;
     }
 
@@ -2037,7 +2033,6 @@ namespace Microsoft.Boogie
       Contract.Requires(tok != null);
       Contract.Requires(expr != null);
       Exprs = new List<Expr> { expr };
-      OrigExprs = new List<Expr> { expr };
       Attributes = kv;
     }
 
