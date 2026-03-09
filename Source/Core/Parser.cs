@@ -1554,12 +1554,12 @@ out List<Variable> ins, out List<Variable> outs, out QKeyValue kv) {
 			Expect(10);
 		} else if (la.kind == 49) {
 			Get();
-			x = t; 
+			x = t; List<Expr> es; 
 			while (la.kind == 26) {
 				Attribute(ref kv);
 			}
-			Proposition(out e);
-			c = new MeasureCmd(x, e, kv); 
+			Expressions(out es);
+			c = new MeasureCmd(x, es, kv); 
 			Expect(10);
 		} else if (la.kind == 66) {
 			Get();
@@ -1821,6 +1821,17 @@ out List<Variable> ins, out List<Variable> outs, out QKeyValue kv) {
 		} else SynErr(152);
 	}
 
+	void Expressions(out List<Expr> es) {
+		Contract.Ensures(Contract.ValueAtReturn(out es) != null); Expr e; es = new List<Expr>(); 
+		Expression(out e);
+		es.Add(e); 
+		while (la.kind == 14) {
+			Get();
+			Expression(out e);
+			es.Add(e); 
+		}
+	}
+
 	void MapAssignIndex(out IToken x, out List<Expr> indexes) {
 		Contract.Ensures(Contract.ValueAtReturn(out x) != null); Contract.Ensures(Cce.NonNullElements(Contract.ValueAtReturn(out indexes))); indexes = new List<Expr> ();
 		Expr e;
@@ -1900,17 +1911,6 @@ out List<Variable> ins, out List<Variable> outs, out QKeyValue kv) {
 			Expect(12);
 			c = new CallCmd(x, first.val, es, ids, kv); ((CallCmd) c).IsFree = isFree; ((CallCmd) c).IsAsync = isAsync; 
 		} else SynErr(153);
-	}
-
-	void Expressions(out List<Expr> es) {
-		Contract.Ensures(Contract.ValueAtReturn(out es) != null); Expr e; es = new List<Expr>(); 
-		Expression(out e);
-		es.Add(e); 
-		while (la.kind == 14) {
-			Get();
-			Expression(out e);
-			es.Add(e); 
-		}
 	}
 
 	void ImpliesExpression(bool noExplies, out Expr e0) {

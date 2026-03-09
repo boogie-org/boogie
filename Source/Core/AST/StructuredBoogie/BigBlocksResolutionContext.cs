@@ -445,10 +445,13 @@ class BigBlocksResolutionContext
             {
               ssHead.Add(inv);
             }
+
+            var list_measures = new List<Expr>();
             foreach (Measure mea in whileCmd.Measures)
             {
-               ssHead.Add(new MeasureCmd(whileCmd.tok, mea.Condition));
+               list_measures.Add(mea.Condition);
             }
+            ssHead.Add(new MeasureCmd(whileCmd.tok, list_measures));
 
             block = new Block(whileCmd.tok, loopHeadLabel, ssHead,
               new GotoCmd(whileCmd.tok, new List<string> {loopDoneLabel, loopBodyLabel}));
