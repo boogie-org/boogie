@@ -9,6 +9,7 @@ procedure one()
     n := 0;
     while(n <= 10)
     invariant x > 0;
+    invariant n >= 0;
     measure (x+1);
     measure (n);
     {

@@ -183,30 +183,29 @@ namespace Microsoft.Boogie
             {
               var zero = new LiteralExpr(Token.NoToken, BigNum.ZERO);
 
-              foreach (var ex in measureCmd.Exprs)
-              {
-                var ge = Expr.Ge(ex, zero);
-                var ac1 = new AssertCmd(measureCmd.tok, ge) { Description = new MeasureNonNegativeDescription() };
-                newCmds.Add(ac1);
-              }
-
               var oldMeasureExprs = new List<Expr>();
-              for (int i = 0; i < measureCmd.Exprs.Count; i++)
+              foreach (var expr in measureCmd.Exprs)
               {
                 var localVar = new LocalVariable(
                   Token.NoToken,
                   new TypedIdent(
                     Token.NoToken,
-                    $"old_{measureCmd.UniqueId}_{i}",
+                    $"old_{measureCmd.UniqueId}_{expr.UniqueId}",
                     Type.Int));
                 impl.LocVars.Add(localVar);
+
                 var lhs = new SimpleAssignLhs(Token.NoToken, Expr.Ident(localVar));
                 newCmds.Add(
                   new AssignCmd(
                     Token.NoToken,
                     new List<AssignLhs> { lhs },
-                    new List<Expr> { measureCmd.Exprs[i] }));
-                oldMeasureExprs.Add(Expr.Ident(localVar));
+                    new List<Expr> { expr }));
+
+                var localVarExpr = Expr.Ident(localVar);
+                oldMeasureExprs.Add(localVarExpr);
+                var ge = Expr.Ge(localVarExpr, zero);
+                var ac = new AssertCmd(expr.tok, ge) { Description = new MeasureNonNegativeDescription() };
+                newCmds.Add(ac);
               }
 
               deferredAssertExpr = MeasureLessThanExpr(measureCmd.Exprs, oldMeasureExprs);
