@@ -2008,35 +2008,60 @@ namespace Microsoft.Boogie
 
   public class MeasureCmd : SugaredCmd, ICarriesAttributes
   {
-    public Expr Expr;
-    public Expr OrigExpr;
+    public List<Expr> Exprs;
+    public List<Expr> OrigExprs;
     public Dictionary<Variable, Expr> IncarnationMap;
     public QKeyValue Attributes { get; set; }
 
+    [ContractInvariantMethod]
+    void ObjectInvariant()
+    {
+      Contract.Invariant(Cce.NonNullElements(Exprs));
+      Contract.Invariant(Cce.NonNullElements(OrigExprs));
+    }
+
+    public MeasureCmd(IToken tok, List<Expr> exprs, QKeyValue kv = null)
+      : base(tok)
+    {
+      Contract.Requires(tok != null);
+      Contract.Requires(Cce.NonNullElements(exprs));
+      Exprs = new List<Expr>(exprs);
+      OrigExprs = new List<Expr>(exprs);
+      Attributes = kv;
+    }
+
+    // Optional compatibility constructor
     public MeasureCmd(IToken tok, Expr expr, QKeyValue kv = null)
       : base(tok)
     {
       Contract.Requires(tok != null);
       Contract.Requires(expr != null);
-      Expr = expr;
-      OrigExpr = expr;
+      Exprs = new List<Expr> { expr };
+      OrigExprs = new List<Expr> { expr };
       Attributes = kv;
     }
 
     public override void Resolve(ResolutionContext rc)
     {
-      Expr.Resolve(rc);
+      foreach (var expr in Exprs)
+      {
+        expr.Resolve(rc);
+      }
       (this as ICarriesAttributes).ResolveAttributes(rc);
     }
 
     public override void Typecheck(TypecheckingContext tc)
     {
       (this as ICarriesAttributes).TypecheckAttributes(tc);
-      Expr.Typecheck(tc);
-      Contract.Assert(Expr.Type != null);
-      if (!Expr.Type.Unify(Type.Int))
+
+      foreach (var expr in Exprs)
       {
-        tc.Error(this, "measure must be of type int");
+        expr.Typecheck(tc);
+        Contract.Assert(expr.Type != null);
+        if (!expr.Type.Unify(Type.Int))
+        {
+          tc.Error(this, "each measure must be of type int");
+        }
       }
     }
 
@@ -2048,7 +2073,15 @@ namespace Microsoft.Boogie
     {
       stream.Write(this, level, "measure ");
       Cmd.EmitAttributes(stream, Attributes);
-      Expr.Emit(stream);
+
+      string sep = "";
+      foreach (var expr in Exprs)
+      {
+        stream.Write(sep);
+        sep = ", ";
+        expr.Emit(stream);
+      }
+
       stream.WriteLine(";");
     }
 
@@ -2062,7 +2095,6 @@ namespace Microsoft.Boogie
       return visitor.VisitMeasureCmd(this);
     }
   }
-  
   /// <summary>
   /// An AssertCmd that is introduced in translation from an ensures
   /// declaration.

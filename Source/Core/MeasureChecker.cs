@@ -22,106 +22,7 @@ namespace Microsoft.Boogie
       TransformMeasureCmds(program);
     }
 
-    public static void TransformMeasureCmds(Program program)
-    {
-      foreach (var impl in program.Implementations)
-      {
-        Dictionary<string, List<Expr>> map = new Dictionary<string, List<Expr>>();
-
-        foreach (var block in impl.Blocks)
-        {
-          var x = block.Label;
-          var label_name = x.Split('_')[0];
-
-          map[label_name] = new List<Expr>();
-        }
-
-        foreach (var block in impl.Blocks)
-        {
-          var newCmds = new List<Cmd>();
-          var x = block.Label;
-          var label_name = x.Split('_')[0];
-
-          if (block.Label.Contains("LoopHead"))
-          {
-            foreach (var cmd in block.Cmds)
-            {
-              if (cmd is MeasureCmd measureCmd)
-              {
-                map[label_name].Add(measureCmd.Expr);
-
-                var zero = new LiteralExpr(Token.NoToken, BigNum.ZERO);
-                var ge = Expr.Ge(measureCmd.Expr, zero);
-                var ac1 = new AssertCmd(measureCmd.tok, ge);
-                newCmds.Add(ac1);
-
-                var newLocalVars = new List<Variable>();
-
-                LocalVariable localVar =
-                  new LocalVariable(
-                    Token.NoToken,
-                    new TypedIdent(Token.NoToken, "old_" + measureCmd.Expr, Type.Int));
-
-                newLocalVars.Add(localVar);
-
-                foreach (var k in impl.LocVars)
-                {
-                  newLocalVars.Add(k);
-                }
-
-                impl.LocVars = newLocalVars;
-
-                var lhs = new SimpleAssignLhs(Token.NoToken, Expr.Ident(localVar));
-
-                newCmds.Add(
-                  new AssignCmd(
-                    Token.NoToken,
-                    new List<AssignLhs> { lhs },
-                    new List<Expr> { measureCmd.Expr }));
-              }
-              else
-              {
-                newCmds.Add(cmd);
-              }
-            }
-          }
-          else if (block.Label.Contains("LoopBody"))
-          {
-            var x2 = block.Label;
-
-            foreach (var c in block.Cmds)
-            {
-              newCmds.Add(c);
-            }
-
-            var label_name2 = x.Split('_')[0];
-            if (map.ContainsKey(label_name2))
-            {
-              foreach (var val in map[label_name2])
-              {
-                LocalVariable localVar =
-                  new LocalVariable(
-                    Token.NoToken,
-                    new TypedIdent(Token.NoToken, "old_" + val, Type.Int));
-
-                var old = Expr.Ident(localVar);
-                var decreasing = Expr.Lt(val, old);
-                var ac2 = new AssertCmd(Token.NoToken, decreasing);
-                newCmds.Add(ac2);
-              }
-            }
-          }
-          else
-          {
-            newCmds = block.Cmds;
-          }
-
-          block.Cmds = newCmds;
-        }
-      }
-    }
-
-    public static void Transform(Program program, CoreOptions options)
+    public void Transform(Program program, CoreOptions options)
     {
       var measureChecker = new MeasureChecker(program, options);
       Debug.Assert(measureChecker.checkingContext.ErrorCount == 0);
@@ -223,6 +124,104 @@ namespace Microsoft.Boogie
           newCmds.Add(cmd);
         }
         block.Cmds = newCmds;
+      }
+    }
+
+    public void TransformMeasureCmds(Program program)
+    {
+      foreach (var impl in program.Implementations)
+      {
+        var graph = Program.GraphFromImpl(impl);
+        graph.ComputeLoops();
+        Dictionary<string, List<Expr>> map = new Dictionary<string, List<Expr>>();
+
+        foreach (var header in graph.Headers)
+        {
+          foreach (var backEdgeNode in graph.BackEdgeNodes(header))
+          {
+            var block_loopHead = header;
+            var block_loopBody = backEdgeNode;
+
+            var newCmdsHead = new List<Cmd>();
+            var newCmdsBody = new List<Cmd>();
+
+            foreach (var cmd in block_loopHead.Cmds)
+            {
+              if (cmd is MeasureCmd measureCmd)
+              {
+                var zero = new LiteralExpr(Token.NoToken, BigNum.ZERO);
+                foreach (var ex in measureCmd.Exprs)
+                {
+                  var ge = Expr.Ge(ex, zero);
+                  var ac1 = new AssertCmd(measureCmd.tok, ge);
+                  newCmdsHead.Add(ac1);
+                }
+
+                var newLocalVars = new List<Variable>();
+
+                foreach (var ex in measureCmd.Exprs)
+                {
+                  LocalVariable localVar =
+                    new LocalVariable(
+                      Token.NoToken,
+                      new TypedIdent(Token.NoToken, "old_" + ex, Type.Int));
+
+                  newLocalVars.Add(localVar);
+
+                  foreach (var k in impl.LocVars)
+                  {
+                    newLocalVars.Add(k);
+                  }
+
+                  impl.LocVars = newLocalVars;
+
+                  var lhs = new SimpleAssignLhs(Token.NoToken, Expr.Ident(localVar));
+
+                  newCmdsHead.Add(
+                    new AssignCmd(
+                      Token.NoToken,
+                      new List<AssignLhs> { lhs },
+                      new List<Expr> { ex }));
+                }
+              }
+              else
+              {
+                newCmdsHead.Add(cmd);
+              }
+            }
+
+            foreach (var c in block_loopBody.Cmds)
+            {
+              newCmdsBody.Add(c);
+            }
+
+            foreach (var cmd in block_loopHead.Cmds)
+            {
+              if (cmd is MeasureCmd measureCmd)
+              {
+                foreach (var ex in measureCmd.Exprs)
+                {
+                  LocalVariable localVar =
+                    new LocalVariable(
+                      Token.NoToken,
+                      new TypedIdent(Token.NoToken, "old_" + ex, Type.Int));
+
+                  var old = Expr.Ident(localVar);
+                  var decreasing = Expr.Lt(ex, old);
+                  var ac2 = new AssertCmd(Token.NoToken, decreasing);
+                  newCmdsBody.Add(ac2);
+                }
+              }
+              else
+              {
+                newCmdsBody = block_loopBody.Cmds;
+              }
+            }
+
+            block_loopHead.Cmds = newCmdsHead;
+            block_loopBody.Cmds = newCmdsBody;
+          }
+        }
       }
     }
   }

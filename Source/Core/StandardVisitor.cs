@@ -461,11 +461,13 @@ namespace Microsoft.Boogie
 
     public virtual Cmd VisitMeasureCmd(MeasureCmd node)
     {
-      node.Expr = this.VisitExpr(node.Expr);
-      if (node.OrigExpr != null)
+      node.Exprs = node.Exprs.Select(e => this.VisitExpr(e)).ToList();
+
+      if (node.OrigExprs != null)
       {
-        node.OrigExpr = this.VisitExpr(node.OrigExpr);
+        node.OrigExprs = node.OrigExprs.Select(e => this.VisitExpr(e)).ToList();
       }
+
       VisitAttributes(node);
       return node;
     }
@@ -1745,12 +1747,20 @@ namespace Microsoft.Boogie
       this.VisitExpr(node.Expr);
       return node;
     }
+
     public override Cmd VisitMeasureCmd(MeasureCmd node)
     {
-      this.VisitExpr(node.Expr);
-      if (node.OrigExpr != null)
+      for (int i = 0; i < node.Exprs.Count; i++)
       {
-        this.VisitExpr(node.OrigExpr);
+        node.Exprs[i] = (Expr)this.VisitExpr(node.Exprs[i]);
+      }
+
+      if (node.OrigExprs != null)
+      {
+        for (int i = 0; i < node.OrigExprs.Count; i++)
+        {
+          node.OrigExprs[i] = (Expr)this.VisitExpr(node.OrigExprs[i]);
+        }
       }
       return node;
     }

@@ -1204,9 +1204,9 @@ LabelOrCmd<out Cmd c, out IToken label>
     { Attribute<ref kv> }
     Proposition<out e>    (. c = new AssumeCmd(x, e, kv); .)
     ";"
-  | "measure"              (. x = t; .)
+  | "measure"              (. x = t; List<Expr> es; .)
     { Attribute<ref kv> }
-    Proposition<out e>    (. c = new MeasureCmd(x, e, kv); .)
+    Expressions<out es>    (. c = new MeasureCmd(x, es, kv); .)
     ";"
   | "havoc"               (. x = t; .)
     Idents<out xs> ";"    (. ids = new List<IdentifierExpr>();
