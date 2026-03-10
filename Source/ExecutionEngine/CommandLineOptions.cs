@@ -126,6 +126,7 @@ namespace Microsoft.Boogie
     }
 
     public bool PrintLambdaLifting { get; set; }
+    public bool PrintMeasureDesugaring { get; set; }
     public bool FreeVarLambdaLifting { get; set; }
     public string ProverLogFilePath { get; set; }
     public bool ProverLogFileAppend { get; set; }
@@ -1334,6 +1335,7 @@ namespace Microsoft.Boogie
 
           if (ps.CheckBooleanFlag("printDesugared", x => printDesugarings = x) ||
               ps.CheckBooleanFlag("printLambdaLifting", x => PrintLambdaLifting = x) ||
+              ps.CheckBooleanFlag("printMeasureDesugaring", x => PrintMeasureDesugaring = x) ||
               ps.CheckBooleanFlag("printInstrumented", x => printInstrumented = x) ||
               ps.CheckBooleanFlag("printPassive", x => UseResolvedProgram.Add(PrintPassiveProgram)) ||
               ps.CheckBooleanFlag("printWithUniqueIds", x => printWithUniqueAstIds = x) ||
@@ -1794,6 +1796,8 @@ namespace Microsoft.Boogie
                 with /print option, desugars calls
   /printLambdaLifting
                 with /print option, desugars lambda lifting
+  /printMeasureDesugaring
+                with /print option, desugars measure annotations
   /freeVarLambdaLifting
                 Boogie's lambda lifting transforms the bodies of lambda
                 expressions into templates with holes. By default, holes
