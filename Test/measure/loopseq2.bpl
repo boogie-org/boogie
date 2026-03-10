@@ -3,7 +3,6 @@
 
 var x: int;
 
-
 procedure one() 
 {
     var n: int;

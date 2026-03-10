@@ -1,0 +1,2 @@
+looptype.bpl(11,2): Error: each measure must be of type int
+1 type checking errors detected in looptype.bpl

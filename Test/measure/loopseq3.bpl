@@ -2,36 +2,25 @@
 // RUN: %diff "%s.expect" "%t"
 
 var x: int;
+var y: bool;
 
 procedure one() 
-measure x;
-modifies x;
 {
-    if (x <= 1){
-        return;
+    var n: int;
+    n := 10;
+    while(n >= 1)
+    invariant n >= 0;
+    measure n;
+    {
+        n := n - 1;
     }
 
-        x := x - 1;
-        call one();
+    n := 100;
+    while(n >= 1)
+    invariant n >= 0;
+    measure n+1;
+    measure n;
+    {
+        n := n - 1;
+    }
 }
-
-
-
-// // RUN: %parallel-boogie "%s" > "%t"
-// // RUN: %diff "%s.expect" "%t"
-
-// var x: int;
-// var y: int;
-// var z: bool;
-
-// procedure one(tid: int)
-// measure x;
-// modifies x;
-// {
-//     if (x <= 0){
-//         return; 
-//     }
-//     x := x - 1; 
-//     call one(2);
-// }
-
