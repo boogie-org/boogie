@@ -140,10 +140,10 @@ namespace Microsoft.Boogie
         programId = "main_program_id";
       }
 
-      if (Options.PrintFile != null) {
+      if (Options.PrintFile != null && !Options.PrintMeasureDesugaring) {
         PrintBplFile(Options.PrintFile, program, false, true, Options.PrettyPrint);
       }
-      
+
       PipelineOutcome outcome = ResolveAndTypecheck(program, bplFileName, out var civlTypeChecker);
       if (outcome != PipelineOutcome.ResolvedAndTypeChecked) {
         return true;
@@ -174,7 +174,14 @@ namespace Microsoft.Boogie
         Options.PrintUnstructured = oldPrintUnstructured;
       }
 
-      MeasureChecker.Transform(program, Options);
+      MeasureDesugar.Desugar(Options, program);
+      if (Options.PrintFile != null && Options.PrintMeasureDesugaring)
+      {
+        int oldPrintUnstructured = Options.PrintUnstructured;
+        Options.PrintUnstructured = 1;
+        PrintBplFile(Options.PrintFile, program, false, true, Options.PrettyPrint);
+        Options.PrintUnstructured = oldPrintUnstructured;
+      }
 
       EliminateDeadVariables(program);
 
