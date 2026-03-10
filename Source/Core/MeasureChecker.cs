@@ -1,8 +1,9 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using Microsoft.Boogie.GraphUtil;
 using Microsoft.BaseTypes;
-using System.Diagnostics;
 
 namespace Microsoft.Boogie
 {
@@ -15,8 +16,72 @@ namespace Microsoft.Boogie
     public MeasureChecker(Program program, CoreOptions options)
     {
       this.program = program;
+      CheckMeasure(program);
       callGraph = Program.BuildTransitiveCallGraph(options, program);
       CheckRecursiveCalls();
+    }
+
+    public void CheckMeasure(Program program)
+    {
+      // measure command only in loop head
+      foreach (var impl in program.Implementations)
+      {
+        foreach (var block in impl.Blocks)
+        {
+          var countMeasure = 0;
+          foreach (var cmd in block.Cmds)
+          {
+            if (cmd is MeasureCmd mc)
+            {
+              if (!block.Label.Contains("LoopHead"))
+              {
+                checkingContext.Error(cmd.tok, $"You cannot have measure outside loop head");
+              }
+              else
+              {
+                countMeasure++;
+              }
+            }
+          }
+
+          if (countMeasure > 1)
+          {
+            checkingContext.Error(block.tok, $"Loop head can contain only one measure");
+          }
+        }
+
+        var graph = Program.GraphFromImpl(impl);
+        graph.ComputeLoops();
+
+        foreach (var header in graph.Headers)
+        {
+          foreach (var backEdgeNode in graph.BackEdgeNodes(header))
+          {
+            foreach (var cmd in header.Cmds)
+            {
+              if (cmd is MeasureCmd measureCmd)
+              {
+                foreach (var cmd2 in header.Cmds)
+                {
+                  if (cmd2 is AssignCmd ac)
+                  {
+                    foreach (var i in measureCmd.Exprs)
+                    {
+                      foreach (var k in ac.Lhss)
+                      {
+                        if (k.AsExpr.Equals(i))
+                        {
+                          checkingContext.Error(cmd.tok, $"Cannot update measure in loop head");
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
 
     public static void Transform(Program program, CoreOptions options)
@@ -38,7 +103,6 @@ namespace Microsoft.Boogie
       }
 
       measureChecker.TransformMeasureCmds(program);
-      int x = 3;
     }
 
     private bool IsRecursiveCall(Procedure callerProc, CallCmd callCmd)
@@ -93,6 +157,7 @@ namespace Microsoft.Boogie
         var ge = Expr.Ge(m.Condition, zero);
         node.Requires.Add(new Requires(m.tok, false, ge) { Description = new MeasureNonNegativeDescription() });
       }
+
       node.Measure = [];
     }
 
@@ -203,9 +268,9 @@ namespace Microsoft.Boogie
           foreach (var backEdgeNode in graph.BackEdgeNodes(header))
           {
             var deferredAssert = new AssertCmd(backEdgeNode.tok, deferredAssertExpr)
-              {
-                Description = new MeasureDecreasesDescription()
-              };
+            {
+              Description = new MeasureDecreasesDescription()
+            };
             backEdgeNode.Cmds.Add(deferredAssert);
           }
         }
@@ -226,6 +291,7 @@ namespace Microsoft.Boogie
           Expr.And(equalPrefix, Expr.Lt(measure1[i], measure2[i])));
         equalPrefix = Expr.And(equalPrefix, Expr.Eq(measure1[i], measure2[i]));
       }
+
       return lessThan;
     }
   }
