@@ -15,32 +15,8 @@ namespace Microsoft.Boogie
     public MeasureChecker(Program program, CoreOptions options)
     {
       this.program = program;
-      TypeCheckMeasureCmd(program);
       callGraph = Program.BuildTransitiveCallGraph(options, program);
       CheckRecursiveCalls();
-    }
-
-    private void TypeCheckMeasureCmd(Program program)
-    {
-      foreach (var impl in program.Implementations)
-      {
-        foreach (var block in impl.Blocks)
-        {
-          foreach (var cmd in block.Cmds)
-          {
-            if (cmd is MeasureCmd mc)
-            {
-              foreach (var ex in mc.Exprs)
-              {
-                if (!ex.Type.IsInt)
-                {
-                  checkingContext.Error(mc.tok, $"Measure expression can only be an integer");
-                }
-              }
-            }
-          }
-        }
-      }
     }
 
     public static void Transform(Program program, CoreOptions options)
@@ -62,6 +38,7 @@ namespace Microsoft.Boogie
       }
 
       measureChecker.TransformMeasureCmds(program);
+      int x = 3;
     }
 
     private bool IsRecursiveCall(Procedure callerProc, CallCmd callCmd)
