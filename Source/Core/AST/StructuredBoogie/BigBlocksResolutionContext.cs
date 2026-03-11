@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics.Contracts;
 using System.Linq;
 using VCGeneration;
@@ -444,13 +445,16 @@ class BigBlocksResolutionContext
             {
               ssHead.Add(inv);
             }
-
-            var listMeasures = new List<Expr>();
-            foreach (Measure m in whileCmd.Measures)
+            
+            if (whileCmd.Measures.Count != 0)
             {
-              listMeasures.Add(m.Condition);
+              var listMeasures = new List<Expr>();
+              foreach (Measure m in whileCmd.Measures)
+              {
+                listMeasures.Add(m.Condition);
+              }
+              ssHead.Add(new MeasureCmd(whileCmd.tok, listMeasures));
             }
-            ssHead.Add(new MeasureCmd(whileCmd.tok, listMeasures));
 
             block = new Block(whileCmd.tok, loopHeadLabel, ssHead,
               new GotoCmd(whileCmd.tok, new List<string> {loopDoneLabel, loopBodyLabel}));
@@ -612,3 +616,5 @@ class BigBlocksResolutionContext
     }
   }
 }
+
+

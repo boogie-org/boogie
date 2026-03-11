@@ -1,7 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Threading;
 using Microsoft.Boogie.GraphUtil;
 using Microsoft.BaseTypes;
 
@@ -23,9 +22,37 @@ namespace Microsoft.Boogie
 
     public void CheckMeasure(Program program)
     {
-      // measure command only in loop head
       foreach (var impl in program.Implementations)
       {
+        var graph = Program.GraphFromImpl(impl);
+        graph.ComputeLoops();
+
+        var listHeads = new List<Block>();
+        foreach (var header in graph.Headers)
+        {
+          listHeads.Add(header);
+
+          var afterMeasure = false;
+          foreach (var cmd in header.Cmds)
+          {
+            if (cmd is MeasureCmd measureCmd)
+            {
+              foreach (var cmd2 in header.Cmds)
+              {
+                if (cmd2 is MeasureCmd mc)
+                {
+                  afterMeasure = true;
+                }
+
+                if (cmd2 is AssignCmd ac && afterMeasure)
+                {
+                  checkingContext.Error(cmd.tok, $"Cannot update measure in loop head");
+                }
+              }
+            }
+          }
+        }
+
         foreach (var block in impl.Blocks)
         {
           var countMeasure = 0;
@@ -33,7 +60,7 @@ namespace Microsoft.Boogie
           {
             if (cmd is MeasureCmd mc)
             {
-              if (!block.Label.Contains("LoopHead"))
+              if (!listHeads.Contains(block))
               {
                 checkingContext.Error(cmd.tok, $"You cannot have measure outside loop head");
               }
@@ -47,38 +74,6 @@ namespace Microsoft.Boogie
           if (countMeasure > 1)
           {
             checkingContext.Error(block.tok, $"Loop head can contain only one measure");
-          }
-        }
-
-        var graph = Program.GraphFromImpl(impl);
-        graph.ComputeLoops();
-
-        foreach (var header in graph.Headers)
-        {
-          foreach (var backEdgeNode in graph.BackEdgeNodes(header))
-          {
-            foreach (var cmd in header.Cmds)
-            {
-              if (cmd is MeasureCmd measureCmd)
-              {
-                foreach (var cmd2 in header.Cmds)
-                {
-                  if (cmd2 is AssignCmd ac)
-                  {
-                    foreach (var i in measureCmd.Exprs)
-                    {
-                      foreach (var k in ac.Lhss)
-                      {
-                        if (k.AsExpr.Equals(i))
-                        {
-                          checkingContext.Error(cmd.tok, $"Cannot update measure in loop head");
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
           }
         }
       }
