@@ -140,7 +140,7 @@ namespace Microsoft.Boogie
         programId = "main_program_id";
       }
 
-      if (Options.PrintFile != null && !Options.PrintMeasureDesugaring) {
+      if (Options.PrintFile != null) {
         PrintBplFile(Options.PrintFile, program, false, true, Options.PrettyPrint);
       }
 
@@ -174,7 +174,7 @@ namespace Microsoft.Boogie
         Options.PrintUnstructured = oldPrintUnstructured;
       }
 
-      MeasureDesugar.Desugar(Options, program);
+      MeasureChecker.Transform(program, Options);
       if (Options.PrintFile != null && Options.PrintMeasureDesugaring)
       {
         int oldPrintUnstructured = Options.PrintUnstructured;
