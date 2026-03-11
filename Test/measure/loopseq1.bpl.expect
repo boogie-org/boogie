@@ -1,10 +1,7 @@
-loopseq1.bpl(11,5): Error: this loop invariant could not be proved on entry
-Execution trace:
-    loopseq1.bpl(9,7): anon0
-loopseq1.bpl(16,11): Error: measure could not be proved to decrease for this call
+loopseq1.bpl(14,11): Error: measure could not be proved to decrease for this call
 Execution trace:
     loopseq1.bpl(9,7): anon0
     loopseq1.bpl(10,5): anon2_LoopHead
-    loopseq1.bpl(16,11): anon2_LoopBody
+    loopseq1.bpl(14,11): anon2_LoopBody
 
-Boogie program verifier finished with 0 verified, 2 errors
+Boogie program verifier finished with 0 verified, 1 error

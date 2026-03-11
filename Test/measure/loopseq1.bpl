@@ -8,10 +8,8 @@ procedure one()
     var n: int;
     n := 0;
     while(n <= 10)
-    invariant x > 0;
     invariant n >= 0;
-    measure (x+1);
-    measure (n);
+    measure (n+1);
     {
         n := n + 1;
     }
@@ -19,3 +17,4 @@ procedure one()
 
 
 
+    
