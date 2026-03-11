@@ -1,5 +1,5 @@
-// Boogie program verifier version 3.5.6.0, Copyright (c) 2003-2014, Microsoft.
-// Command Line Options: loopseq2.bpl /print:un.bpl /printMeasureDesugaring
+// RUN: %parallel-boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 
 var x: int;
 
