@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Diagnostics.Contracts;
 using System.Linq;
 using VCGeneration;
@@ -448,11 +447,7 @@ class BigBlocksResolutionContext
             
             if (whileCmd.Measures.Count != 0)
             {
-              var listMeasures = new List<Expr>();
-              foreach (Measure m in whileCmd.Measures)
-              {
-                listMeasures.Add(m.Condition);
-              }
+              var listMeasures = whileCmd.Measures.Select(m => m.Condition).ToList();
               ssHead.Add(new MeasureCmd(whileCmd.tok, listMeasures));
             }
 
