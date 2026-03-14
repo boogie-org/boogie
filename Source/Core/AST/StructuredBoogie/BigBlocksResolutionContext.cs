@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
@@ -445,6 +444,12 @@ class BigBlocksResolutionContext
             {
               ssHead.Add(inv);
             }
+            
+            if (whileCmd.Measures.Count != 0)
+            {
+              var listMeasures = whileCmd.Measures.Select(m => m.Condition).ToList();
+              ssHead.Add(new MeasureCmd(whileCmd.tok, listMeasures));
+            }
 
             block = new Block(whileCmd.tok, loopHeadLabel, ssHead,
               new GotoCmd(whileCmd.tok, new List<string> {loopDoneLabel, loopBodyLabel}));
@@ -606,3 +611,5 @@ class BigBlocksResolutionContext
     }
   }
 }
+
+

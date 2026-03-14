@@ -1,4 +1,4 @@
-seq1.bpl(9,5): Error: measure could not be proved to decrease for this call
+seq1.bpl(9,5): Error: measure could not be proved to decrease
 Execution trace:
     seq1.bpl(9,5): anon0
 

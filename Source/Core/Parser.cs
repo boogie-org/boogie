@@ -1552,6 +1552,15 @@ out List<Variable> ins, out List<Variable> outs, out QKeyValue kv) {
 			Proposition(out e);
 			c = new AssumeCmd(x, e, kv); 
 			Expect(10);
+		} else if (la.kind == 49) {
+			Get();
+			x = t; List<Expr> es; 
+			while (la.kind == 26) {
+				Attribute(ref kv);
+			}
+			Expressions(out es);
+			c = new MeasureCmd(x, es, kv); 
+			Expect(10);
 		} else if (la.kind == 66) {
 			Get();
 			x = t; 
@@ -1651,6 +1660,7 @@ out List<Variable> ins, out List<Variable> outs, out QKeyValue kv) {
 		Contract.Ensures(Contract.ValueAtReturn(out wcmd) != null); IToken x;  Token z;
 		Expr guard;  Expr e;  Cmd cmd;  bool isFree;
 		List<PredicateCmd> invariants = new List<PredicateCmd>();
+		List<Measure> measures = new List<Measure>();
 		List<CallCmd> yields = new List<CallCmd>();
 		StmtList body;
 		QKeyValue kv = null;
@@ -1659,36 +1669,52 @@ out List<Variable> ins, out List<Variable> outs, out QKeyValue kv) {
 		x = t; 
 		Guard(out guard);
 		Contract.Assume(guard == null || Cce.Owner.None(guard)); 
-		while (la.kind == 36 || la.kind == 51) {
+		while (la.kind == 36 || la.kind == 49 || la.kind == 51) {
 			isFree = false; z = la/*lookahead token*/; 
-			if (la.kind == 51) {
-				Get();
-				isFree = true;  
-			}
-			Expect(36);
-			while (la.kind == 26) {
-				Attribute(ref kv);
-			}
-			if (StartOf(19)) {
-				Expression(out e);
-				if (isFree) {
-				 invariants.Add(new AssumeCmd(z, e, kv));
-				} else {
-				 invariants.Add(new AssertCmd(z, e, kv));
+			if (la.kind == 36 || la.kind == 51) {
+				if (la.kind == 51) {
+					Get();
+					isFree = true; 
 				}
+				Expect(36);
+				z = t; 
+				while (la.kind == 26) {
+					Attribute(ref kv);
+				}
+				if (StartOf(19)) {
+					Expression(out e);
+					if (isFree) {
+					 invariants.Add(new AssumeCmd(z, e, kv));
+					} else {
+					 invariants.Add(new AssertCmd(z, e, kv));
+					}
+					kv = null;
+					isFree = false;
+					
+				} else if (la.kind == 51 || la.kind == 69 || la.kind == 70) {
+					CallCmd(true, out cmd);
+					yields.Add((CallCmd)cmd);
+					kv = null;
+					isFree = false;
+					
+				} else SynErr(150);
+				Expect(10);
+			} else {
+				Get();
+				z = t; 
+				while (la.kind == 26) {
+					Attribute(ref kv);
+				}
+				Proposition(out e);
+				measures.Add(new Measure(z, false, e, null, kv));
 				kv = null;
 				
-			} else if (la.kind == 51 || la.kind == 69 || la.kind == 70) {
-				CallCmd(true, out cmd);
-				yields.Add((CallCmd)cmd);
-				kv = null;
-				
-			} else SynErr(150);
-			Expect(10);
+				Expect(10);
+			}
 		}
 		Expect(26);
 		StmtList(out body);
-		wcmd = new WhileCmd(x, guard, invariants, yields, body); 
+		wcmd = new WhileCmd(x, guard, invariants, measures, yields, body); 
 	}
 
 	void BreakCmd(out BreakCmd bcmd) {
@@ -1795,6 +1821,17 @@ out List<Variable> ins, out List<Variable> outs, out QKeyValue kv) {
 		} else SynErr(152);
 	}
 
+	void Expressions(out List<Expr> es) {
+		Contract.Ensures(Contract.ValueAtReturn(out es) != null); Expr e; es = new List<Expr>(); 
+		Expression(out e);
+		es.Add(e); 
+		while (la.kind == 14) {
+			Get();
+			Expression(out e);
+			es.Add(e); 
+		}
+	}
+
 	void MapAssignIndex(out IToken x, out List<Expr> indexes) {
 		Contract.Ensures(Contract.ValueAtReturn(out x) != null); Contract.Ensures(Cce.NonNullElements(Contract.ValueAtReturn(out indexes))); indexes = new List<Expr> ();
 		Expr e;
@@ -1874,17 +1911,6 @@ out List<Variable> ins, out List<Variable> outs, out QKeyValue kv) {
 			Expect(12);
 			c = new CallCmd(x, first.val, es, ids, kv); ((CallCmd) c).IsFree = isFree; ((CallCmd) c).IsAsync = isAsync; 
 		} else SynErr(153);
-	}
-
-	void Expressions(out List<Expr> es) {
-		Contract.Ensures(Contract.ValueAtReturn(out es) != null); Expr e; es = new List<Expr>(); 
-		Expression(out e);
-		es.Add(e); 
-		while (la.kind == 14) {
-			Get();
-			Expression(out e);
-			es.Add(e); 
-		}
 	}
 
 	void ImpliesExpression(bool noExplies, out Expr e0) {
@@ -2772,8 +2798,8 @@ out QKeyValue kv, out Trigger trig, out Expr body) {
 		{_x,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_T,_T,_T, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_T,_T,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
 		{_x,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _x,_x,_x,_x, _T,_T,_T,_T, _x,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_T,_T,_T, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_T,_T,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
 		{_x,_T,_T,_T, _T,_T,_T,_T, _x,_x,_x,_T, _x,_x,_x,_x, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_T,_T,_T, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _x,_x,_x,_x, _T,_T,_T,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _x,_x,_x,_x, _x,_T,_T,_T, _T,_T,_T,_T, _T,_T,_T,_T, _T,_T,_T,_T, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
-		{_x,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_T,_T,_T, _T,_x,_x,_x, _x,_x,_x,_T, _x,_T,_T,_T, _x,_T,_x,_T, _T,_T,_T,_T, _T,_T,_T,_x, _x,_T,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
-		{_x,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_T,_T,_T, _T,_x,_x,_x, _x,_x,_x,_T, _x,_x,_x,_x, _x,_x,_x,_x, _T,_T,_T,_T, _T,_T,_T,_x, _x,_T,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
+		{_x,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_T,_T,_T, _T,_x,_x,_x, _x,_T,_x,_T, _x,_T,_T,_T, _x,_T,_x,_T, _T,_T,_T,_T, _T,_T,_T,_x, _x,_T,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
+		{_x,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_T,_T,_T, _T,_x,_x,_x, _x,_T,_x,_T, _x,_x,_x,_x, _x,_x,_x,_x, _T,_T,_T,_T, _T,_T,_T,_x, _x,_T,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
 		{_x,_T,_T,_T, _T,_T,_T,_T, _x,_x,_x,_T, _x,_x,_x,_x, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_T,_T,_T, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _x,_x,_x,_x, _T,_T,_T,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _x,_x,_x,_x, _x,_T,_T,_T, _T,_T,_T,_T, _T,_T,_T,_T, _T,_T,_T,_T, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
 		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},
 		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x},

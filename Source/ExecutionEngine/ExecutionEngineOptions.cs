@@ -15,7 +15,7 @@ public interface ExecutionEngineOptions : HoudiniOptions, ConcurrencyOptions
   bool TraceProofObligations { get; }
   string PrintFile { get; }
   List<Action<ExecutionEngineOptions, ProcessedProgram>> UseResolvedProgram { get; }
-
+  public bool PrintMeasureDesugaring { get; set; }
   string PrintCFGPrefix { get; }
   string CivlDesugaredFile { get; }
   bool CoalesceBlocks { get; }

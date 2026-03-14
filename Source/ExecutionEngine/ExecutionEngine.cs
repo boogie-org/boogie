@@ -143,7 +143,7 @@ namespace Microsoft.Boogie
       if (Options.PrintFile != null) {
         PrintBplFile(Options.PrintFile, program, false, true, Options.PrettyPrint);
       }
-      
+
       PipelineOutcome outcome = ResolveAndTypecheck(program, bplFileName, out var civlTypeChecker);
       if (outcome != PipelineOutcome.ResolvedAndTypeChecked) {
         return true;
@@ -175,6 +175,13 @@ namespace Microsoft.Boogie
       }
 
       MeasureChecker.Transform(program, Options);
+      if (Options.PrintFile != null && Options.PrintMeasureDesugaring)
+      {
+        int oldPrintUnstructured = Options.PrintUnstructured;
+        Options.PrintUnstructured = 1;
+        PrintBplFile(Options.PrintFile, program, false, true, Options.PrettyPrint);
+        Options.PrintUnstructured = oldPrintUnstructured;
+      }
 
       EliminateDeadVariables(program);
 

@@ -1,0 +1,2 @@
+loopseq5.bpl(19,4): Error: Assignment must come after the measure command in loop head
+1 type checking errors detected in loopseq5.bpl
