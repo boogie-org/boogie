@@ -29,9 +29,9 @@ namespace Microsoft.Boogie
         // and added to program.TopLevelDeclarations; hence converting the enumeration to a new list.
         foreach (Implementation impl in program.Implementations.Where(impl => impl.Proc is YieldProcedureDecl).ToList())
         {
+          // create copies of all implementations that exist at layerNum
           var yieldProcedureDecl = (YieldProcedureDecl)impl.Proc;
-          if (yieldProcedureDecl.Layer > layerNum ||
-              yieldProcedureDecl.Layer == layerNum && !yieldProcedureDecl.MoverType.HasValue)
+          if (yieldProcedureDecl.Layer >= layerNum)
           {
             duplicator.VisitImplementation(impl);
           }
@@ -64,8 +64,10 @@ namespace Microsoft.Boogie
         // and added to program.TopLevelDeclarations; hence converting the enumeration to a new list.
         foreach (Implementation impl in program.Implementations.Where(impl => impl.Proc is YieldProcedureDecl).ToList())
         {
+          // create copies of all implementations for which refinement checking is needed
+          // these implementations disappear at layerNum and their procedures are not movers
           var yieldProcedureDecl = (YieldProcedureDecl)impl.Proc;
-          if (yieldProcedureDecl.Layer == layerNum)
+          if (yieldProcedureDecl.Layer == layerNum && !yieldProcedureDecl.MoverType.HasValue)
           {
             duplicator.VisitImplementation(impl);
           }
