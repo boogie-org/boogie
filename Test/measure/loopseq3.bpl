@@ -8,7 +8,7 @@ procedure one()
 {
     var n: int;
     n := 10;
-    while(n >= 1)
+    while (n >= 1)
     invariant n >= 0;
     measure n;
     {
@@ -16,7 +16,7 @@ procedure one()
     }
 
     n := 100;
-    while(n >= 1)
+    while (n >= 1)
     invariant n >= 0;
     measure n+1;
     measure n;

@@ -75,10 +75,10 @@ public class PreconditionDescription : ProofObligationDescription
 public class MeasureDecreasesDescription : ProofObligationDescription
 {
   public override string SuccessDescription =>
-    "measure decreases for this call";
+    "measure decreases";
 
   public override string FailureDescription =>
-    "measure could not be proved to decrease for this call";
+    "measure could not be proved to decrease";
 
   public override string ShortDescription => "measure decreases";
 }

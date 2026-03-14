@@ -9,7 +9,7 @@ procedure one(tid: int)
 measure x;
 modifies x;
 {
-    if (x <= 0){
+    if (x <= 0) {
         return; 
     }
     x := x - 1; 
