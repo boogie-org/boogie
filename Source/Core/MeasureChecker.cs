@@ -15,65 +15,54 @@ namespace Microsoft.Boogie
     public MeasureChecker(Program program, CoreOptions options)
     {
       this.program = program;
-      CheckMeasure(program);
+      CheckMeasureCmds(program);
       callGraph = Program.BuildTransitiveCallGraph(options, program);
       CheckRecursiveCalls();
     }
 
-    public void CheckMeasure(Program program)
+    public void CheckMeasureCmds(Program program)
     {
       foreach (var impl in program.Implementations)
       {
         var graph = Program.GraphFromImpl(impl);
         graph.ComputeLoops();
 
-        var listHeads = new List<Block>();
+        var headers = new List<Block>();
         foreach (var header in graph.Headers)
         {
-          listHeads.Add(header);
+          headers.Add(header);
 
-          var afterMeasure = false;
+          var measureCount = header.Cmds.OfType<MeasureCmd>().Count();
+          if (measureCount == 0)
+          {
+            continue;
+          }
+          if (measureCount > 1)
+          {
+            checkingContext.Error(header.tok, $"Loop head may contain at most one measure");
+            continue;
+          }
+
+          var afterAssignment = false;
           foreach (var cmd in header.Cmds)
           {
-            if (cmd is MeasureCmd measureCmd)
+            if (cmd is AssignCmd)
             {
-              foreach (var cmd2 in header.Cmds)
-              {
-                if (cmd2 is MeasureCmd mc)
-                {
-                  afterMeasure = true;
-                }
-
-                if (cmd2 is AssignCmd ac && afterMeasure)
-                {
-                  checkingContext.Error(cmd.tok, $"Cannot update measure in loop head");
-                }
-              }
+              afterAssignment = true;
+            }
+            else if (afterAssignment && cmd is MeasureCmd)
+            {
+              checkingContext.Error(cmd.tok, $"Assignment must come after the measure command in loop head");
+              break;
             }
           }
         }
 
-        foreach (var block in impl.Blocks)
+        foreach (var block in impl.Blocks.Where(block => !headers.Contains(block)))
         {
-          var countMeasure = 0;
-          foreach (var cmd in block.Cmds)
+          foreach (var cmd in block.Cmds.OfType<MeasureCmd>())
           {
-            if (cmd is MeasureCmd mc)
-            {
-              if (!listHeads.Contains(block))
-              {
-                checkingContext.Error(cmd.tok, $"You cannot have measure outside loop head");
-              }
-              else
-              {
-                countMeasure++;
-              }
-            }
-          }
-
-          if (countMeasure > 1)
-          {
-            checkingContext.Error(block.tok, $"Loop head can contain only one measure");
+            checkingContext.Error(cmd.tok, $"Measure command must not occur outside a loop head");
           }
         }
       }
