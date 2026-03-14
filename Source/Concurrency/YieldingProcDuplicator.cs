@@ -52,12 +52,13 @@ namespace Microsoft.Boogie
         var requires = VisitRequiresSeq(node.Requires);
         var preserves = VisitRequiresSeq(node.Preserves);
         var ensures = VisitEnsuresSeq(node.Ensures);
-        var measure = doRefinementCheck ? VisitMeasureSeq(node.Measure) : [];
-        if (node.MoverType.HasValue && layerNum == node.Layer && !doRefinementCheck)
+        var measure = VisitMeasureSeq(node.Measure);
+        if (doRefinementCheck)
         {
           requires = requires.Select(req => new Requires(req.tok, true, req.Condition, req.Comment, req.Attributes)).ToList();
           preserves = preserves.Select(req => new Requires(req.tok, true, req.Condition, req.Comment, req.Attributes)).ToList();
           ensures = ensures.Select(ens => new Ensures(ens.tok, true, ens.Condition, ens.Comment, ens.Attributes)).ToList();
+          measure = [];
         }
         requires.AddRange(preserves);
         ensures.AddRange(preserves.Select(req => new Ensures(req.tok, req.Free, req.Condition, req.Comment, req.Attributes)));
@@ -72,7 +73,7 @@ namespace Microsoft.Boogie
           [],
           ensures,
           measure,
-          (node.MoverType.HasValue && node.Layer == layerNum
+          (IsMoverAtCurrentLayer(node)
             ? node.ModifiedVars.Select(Expr.Ident)
             : civlTypeChecker.GlobalVariables.Select(v => Expr.Ident(v))).ToList()
           );
@@ -212,6 +213,11 @@ namespace Microsoft.Boogie
       return newCmdSeq;
     }
 
+    private bool IsMoverAtCurrentLayer(YieldProcedureDecl node)
+    {
+      return node.MoverType.HasValue && node.Layer == layerNum;
+    }
+
     private void AddParallelCall(List<CallCmd> callCmds, Absy absy)
     {
       var parCallCmd = new ParCallCmd(absy.tok, callCmds);
@@ -265,26 +271,37 @@ namespace Microsoft.Boogie
         var callLayerRange = newCall.LayerRange;
         if (callLayerRange.Contains(layerNum))
         {
-          bool makeAssume = layerNum == enclosingYieldingProc.Layer && !doRefinementCheck;
+          // gate of a pure action called directly by a yielding procedure must be checked if:
+          // - refinement checking is being done
+          // - action is being invoked from a mover procedure at its disappearing layer
+          // - implementation exists at layers beyond the current layer
+          bool makeAssert = doRefinementCheck || IsMoverAtCurrentLayer(enclosingYieldingProc) || layerNum < enclosingYieldingProc.Layer;
           if (newCall.Proc is ActionDecl actionDecl)
           {
+            Debug.Assert(actionDecl.IsPure);
             var pureAction = civlTypeChecker.Action(actionDecl);
             newCall.Proc = pureAction.Impl.Proc;
-            InjectGate(pureAction, newCall, makeAssume);
+            InjectGate(pureAction, newCall, makeAssert);
             newCmdSeq.Add(newCall);
           }
           else if (CivlPrimitives.IsPrimitive(newCall.Proc))
           {
             var cmds = linearRewriter.RewriteCallCmd(newCall).Select(cmd =>
-              cmd is AssertCmd assertCmd && makeAssume
+              cmd is AssertCmd assertCmd && !makeAssert
               ? new AssumeCmd(assertCmd.tok, assertCmd.Expr, assertCmd.Attributes)
               : cmd
             );
             newCmdSeq.AddRange(cmds);
           }
+          else if (newCall.Proc is Procedure proc)
+          {
+            Debug.Assert(proc.IsPure);
+            DesugarPureCall(newCall);
+          }
           else
           {
-            DesugarPureCall(newCall);
+            // unreachable
+            Debug.Assert(false);
           }
         }
         return;
@@ -463,7 +480,10 @@ namespace Microsoft.Boogie
     {
       var calleeRefinedAction = PrepareNewCall(newCall, calleeActionProc);
       InjectPreconditions(calleeRefinedAction, newCall);
-      InjectGate(calleeRefinedAction, newCall, !doRefinementCheck);
+      // gate of an action invoked indirectly via refinement of a yielding procedure must be checked if:
+      // - refinement checking is being done
+      // - action is being invoked from a mover procedure at its disappearing layer
+      InjectGate(calleeRefinedAction, newCall, doRefinementCheck || IsMoverAtCurrentLayer(enclosingYieldingProc));
       newCmdSeq.Add(newCall);
     }
 
@@ -482,7 +502,7 @@ namespace Microsoft.Boogie
       newCmdSeq.AddRange(action.Preconditions(layerNum, subst));
     }
 
-    private void InjectGate(Action action, CallCmd callCmd, bool assume)
+    private void InjectGate(Action action, CallCmd callCmd, bool makeAssert)
     {
       if (action.Gate.Count == 0)
       {
@@ -504,13 +524,13 @@ namespace Microsoft.Boogie
       foreach (AssertCmd assertCmd in action.Gate)
       {
         var expr = Substituter.Apply(subst, assertCmd.Expr);
-        if (assume)
+        if (makeAssert)
         {
-          newCmdSeq.Add(new AssumeCmd(assertCmd.tok, expr));
+          newCmdSeq.Add(CmdHelper.AssertGateCmd(assertCmd.tok, callCmd, expr));
         }
         else
         {
-          newCmdSeq.Add(CmdHelper.AssertGateCmd(assertCmd.tok, callCmd, expr));
+          newCmdSeq.Add(new AssumeCmd(assertCmd.tok, expr));
         }
       }
 
@@ -577,11 +597,7 @@ namespace Microsoft.Boogie
       decls.AddRange(newImpls);
       decls.AddRange(asyncCallPreconditionCheckers.Values);
       decls.AddRange(noRequiresPureProcedures.Values);
-      decls.AddRange(YieldingProcInstrumentation.TransformImplementations(
-        civlTypeChecker,
-        layerNum,
-        absyMap,
-        doRefinementCheck));
+      decls.AddRange(YieldingProcInstrumentation.TransformImplementations(civlTypeChecker, layerNum, absyMap, doRefinementCheck));
       return decls;
     }
   }
