@@ -137,14 +137,14 @@ namespace Microsoft.Boogie
 
     private List<Cmd> newCmdSeq;
 
-    private Dictionary<string, Variable> addedLocalVariables;
+    private Dictionary<Variable, Variable> addedLocalVariables;
 
     public override Implementation VisitImplementation(Implementation impl)
     {
       enclosingYieldingProc = (YieldProcedureDecl)impl.Proc;
       Debug.Assert(layerNum <= enclosingYieldingProc.Layer);
 
-      addedLocalVariables = new Dictionary<string, Variable>();
+      addedLocalVariables = new Dictionary<Variable, Variable>();
 
       Implementation newImpl = base.VisitImplementation(impl);
       newImpl.Name = newImpl.Proc.Name;
@@ -243,23 +243,42 @@ namespace Microsoft.Boogie
       return !isCallSkippable;
     }
 
-    // Create a duplicate of callCmd and update the outputs of callCmd to fresh local variables.
+    // Create fresh local variables to store the inputs of callCmd and replace the inputs with these variables.
+    // Create a duplicate of the modified callCmd and update the outputs of callCmd to fresh local variables.
     // The duplicate call, returned by this method, is rewritten to call the refined action.
     // The original callCmd with rewritten outputs is used as normal in the parallel call that models
     // the yield after the call to the refined action.
     // Assumes constraining each output to the corresponding fresh output are added after the parallel call.
     private CallCmd PrepareCallCmd(CallCmd callCmd)
     {
+      var freshIns = new List<Expr>();
+      for (int i = 0; i < callCmd.Ins.Count; i++)
+      {
+        var formal = callCmd.Proc.InParams[i];
+        if (!addedLocalVariables.TryGetValue(formal, out Variable copyVar))
+        {
+          // make name unique using the UniqueIds of the formal call input and callCmd
+          copyVar = civlTypeChecker.LocalVariable($"{formal.Name}_{formal.UniqueId}_{callCmd.UniqueId}", callCmd.Ins[i].Type);
+          addedLocalVariables[formal] = copyVar;
+        }
+        freshIns.Add(Expr.Ident(copyVar));
+        newCmdSeq.Add(CmdHelper.AssignCmd(copyVar, callCmd.Ins[i]));
+      }
+      callCmd.Ins = freshIns;
+
       var copyCallCmd = (CallCmd)VisitCallCmd(callCmd);
       var freshOuts = new List<IdentifierExpr>();
-      copyCallCmd.Outs.ForEach(ie => {
-        if (!addedLocalVariables.TryGetValue(ie.Decl.Name, out Variable copyVar))
+      for (int i = 0; i < callCmd.Outs.Count; i++)
+      {
+        var formal = callCmd.Proc.OutParams[i];
+        if (!addedLocalVariables.TryGetValue(formal, out Variable copyVar))
         {
-          copyVar = civlTypeChecker.LocalVariable($"{ie.Decl.Name}_{callCmd.UniqueId}", ie.Type);
-          addedLocalVariables[ie.Decl.Name] = copyVar;
+          // make name unique using the UniqueIds of the formal call output and callCmd
+          copyVar = civlTypeChecker.LocalVariable($"{formal.Name}_{formal.UniqueId}_{callCmd.UniqueId}", callCmd.Outs[i].Type);
+          addedLocalVariables[formal] = copyVar;
         }
         freshOuts.Add(Expr.Ident(copyVar));
-      });
+      }
       callCmd.Outs = freshOuts;
       return copyCallCmd;
     }
@@ -332,7 +351,7 @@ namespace Microsoft.Boogie
         }
         else
         {
-          if (yieldingProc.MoverType.HasValue && yieldingProc.Layer == layerNum)
+          if (IsMoverAtCurrentLayer(yieldingProc))
           {
             // synchronize the called mover procedure
             AddDuplicateCall(newCall, false);
@@ -420,7 +439,7 @@ namespace Microsoft.Boogie
         if (callCmd.Proc is YieldProcedureDecl yieldingProc)
         {
           Debug.Assert(layerNum <= yieldingProc.Layer || !yieldingProc.MoverType.HasValue);
-          if (layerNum > yieldingProc.Layer || layerNum == yieldingProc.Layer && yieldingProc.MoverType.HasValue)
+          if (layerNum > yieldingProc.Layer || IsMoverAtCurrentLayer(yieldingProc))
           {
             ProcessPendingCallCmds();
             ProcessCallCmd(callCmd);
