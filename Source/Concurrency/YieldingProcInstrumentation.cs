@@ -348,10 +348,8 @@ namespace Microsoft.Boogie
       {
         // Add disjointness assumptions at loop headers and after each parallel call
         // for each duplicate implementation of yielding procedures.
-        // Disjointness assumptions after yields are added inside TransformImpl which is called for 
-        // all implementations except for a mover procedure at its disappearing layer.
-        // But this is fine because a mover procedure at its disappearing layer does not have a yield in it.
-        // For mover procedures, simply add disjointness assumptions at the beginning of the first block.
+        // Additionally, for each mover procedure at its disappearing layer,
+        // add disjointness assumptions at the beginning of the first block.
         linearPermissionInstrumentation.AddDisjointnessAndWellFormedAssumptions(impl);
         var yieldingProc = GetYieldingProc(impl);
         if (yieldingProc.MoverType.HasValue && yieldingProc.Layer == layerNum)
@@ -360,6 +358,8 @@ namespace Microsoft.Boogie
         }
         else
         {
+          // TransformImpl is called for all implementations except for a mover procedure at its disappearing layer.
+          // This is fine because a mover procedure at its disappearing layer does not have a yield in it.
           TransformImpl(impl, implToPreconditions[impl]);
         }
       }
