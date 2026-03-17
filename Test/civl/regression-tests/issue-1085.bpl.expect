@@ -1,0 +1,10 @@
+issue-1085.bpl(4,28): Error: On some path no yield-to-yield fragment matched the refined atomic action
+Execution trace:
+    issue-1085.bpl(12,7): anon0
+    issue-1085.bpl(12,7): anon0_1
+    issue-1085.bpl(21,30): inline$AnonymousAction_169$0$anon0
+    issue-1085.bpl(12,7): anon0_1$1
+    issue-1085.bpl(12,7): anon0_0
+    (0,0): Civl_ReturnChecker
+
+Boogie program verifier finished with 3 verified, 1 error

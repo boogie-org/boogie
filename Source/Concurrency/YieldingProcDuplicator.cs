@@ -135,6 +135,8 @@ namespace Microsoft.Boogie
 
     private YieldProcedureDecl enclosingYieldingProc;
 
+    private Absy lastAbsy;
+
     private List<Cmd> newCmdSeq;
 
     private Dictionary<Variable, Variable> addedLocalVariables;
@@ -157,8 +159,13 @@ namespace Microsoft.Boogie
 
     public override Block VisitBlock(Block node)
     {
-      var block = base.VisitBlock(node);
+      var block = (Block) node.Clone();
+      // set lastAbsy and absyMap before visiting commands inside the block
+      lastAbsy = block;
       absyMap[block] = node;
+      block.Cmds = this.VisitCmdSeq(block.Cmds);
+      block.TransferCmd = (TransferCmd) this.Visit(block.TransferCmd);
+      lastAbsy = null;
       return block;
     }
 
@@ -173,17 +180,9 @@ namespace Microsoft.Boogie
       return doRefinementCheck ? new AssumeCmd(node.tok, assertCmd.Expr, node.Attributes) : assertCmd;
     }
 
-    public override Cmd VisitCallCmd(CallCmd call)
-    {
-      var newCall = (CallCmd) base.VisitCallCmd(call);
-      absyMap[newCall] = call;
-      return newCall;
-    }
-
     public override Cmd VisitParCallCmd(ParCallCmd parCall)
     {
       var newParCall = (ParCallCmd) base.VisitParCallCmd(parCall);
-      absyMap[newParCall] = parCall;
       foreach (var newCall in newParCall.CallCmds)
       {
         absyMap[newCall] = parCall;
@@ -197,6 +196,7 @@ namespace Microsoft.Boogie
       foreach (var cmd in cmdSeq)
       {
         Cmd newCmd = (Cmd) Visit(cmd);
+        absyMap[newCmd] = cmd;
         if (newCmd is CallCmd)
         {
           ProcessCallCmd((CallCmd) newCmd);
@@ -209,6 +209,7 @@ namespace Microsoft.Boogie
         {
           newCmdSeq.Add(newCmd);
         }
+        lastAbsy = newCmd;
       }
       return newCmdSeq;
     }
@@ -383,7 +384,10 @@ namespace Microsoft.Boogie
         {
           if (doRefinementCheck && NeedsRefinementChecking(newCall))
           {
-            AddParallelCall([], newCall);
+            // The empty parallel call models the yield just before the inlined atomic action.
+            // Pass in lastAbsy to ensure that the disjointness assumptions at this yield
+            // are based on variables available before (and not after).
+            AddParallelCall([], lastAbsy);
             var copyCall = PrepareCallCmd(newCall);
             AddActionCall(copyCall, yieldingProc);
             AddDuplicateCall(newCall, true);
@@ -421,7 +425,10 @@ namespace Microsoft.Boogie
         CallCmd callCmd = doRefinementCheck ? callCmds.Find(NeedsRefinementChecking) : null;
         if (callCmd != null)
         {
-          AddParallelCall([], callCmd);
+          // The empty parallel call models the yield just before the inlined atomic action.
+          // Pass in lastAbsy to ensure that the disjointness assumptions at this yield
+          // are based on variables available before (and not after).
+          AddParallelCall([], lastAbsy);
           var copyCall = PrepareCallCmd(callCmd);
           AddActionCall(copyCall, (YieldProcedureDecl)callCmd.Proc);
           AddParallelCallWrapper();
