@@ -4291,6 +4291,10 @@ namespace Microsoft.Boogie
           E1.Type.Unify(new BvTypeProxy(this.tok, "concat1", 0)))
       {
         Type = new BvTypeProxy(this.tok, "concat", E0.Type, E1.Type);
+        if (TypeProxy.FollowProxy(E0.Type) is BvType && TypeProxy.FollowProxy(E1.Type) is BvType)
+        {
+          Type = Type.GetBvType(E0.Type.BvBits + E1.Type.BvBits);
+        }
       }
       else
       {
