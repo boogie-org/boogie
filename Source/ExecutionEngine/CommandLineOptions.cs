@@ -417,7 +417,7 @@ namespace Microsoft.Boogie
 
     public TextWriter ModelWriter { get; private set; }
 
-    public bool ExpandLambdas { get; set; } = true; // not useful from command line, only to be set to false programatically
+    public bool ExpandLambdas { get; set; } = true; // not useful from command line, only to be set to false programmatically
 
     public bool InferModifies {
       get => inferModifies;
@@ -2042,10 +2042,10 @@ namespace Microsoft.Boogie
                 Timeout in seconds for the single last
                 assertion in the keep going mode. Defaults to 30s.
   /vcsPathJoinMult:<f>
-                If more than one path join at a block, by how much
-                multiply the number of paths in that block, to accomodate
-                for the fact that the prover will learn something on one
-                paths, before proceeding to another. Defaults to 0.8.
+                If more than one path joins at a block, by how much to
+                multiply the number of paths in that block, to accommodate
+                the fact that the prover will learn something on one
+                path, before proceeding to another. Defaults to 0.8.
   /vcsPathCostMult:<f1>
   /vcsAssumeMult:<f2>
                 The cost of a block is

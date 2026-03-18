@@ -51,7 +51,7 @@ namespace Microsoft.Boogie
     protected const string maintainedSuffix = "maintained";
 
     /// <summary>
-    /// This suffix indicates that an ID string represents the asssumption
+    /// This suffix indicates that an ID string represents the assumption
     /// of a specific loop invariant in the body of the loop.
     /// </summary>
     protected const string assumeInBodySuffix = "assume_in_body";

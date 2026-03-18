@@ -898,14 +898,14 @@ namespace Microsoft.Boogie.Houdini
     private Program prog;
     private IEnumerable<string> AnnotationIdentifiers;
     private IInterproceduralReachabilityGraph reachabilityGraph;
-    private Dictionary<string, HashSet<object>> annotationToOccurences;
+    private Dictionary<string, HashSet<object>> annotationToOccurrences;
 
     internal AnnotationReachabilityChecker(CoreOptions options, Program prog, IEnumerable<string> AnnotationIdentifiers)
     {
       this.prog = prog;
       this.AnnotationIdentifiers = AnnotationIdentifiers;
       this.reachabilityGraph = new InterproceduralReachabilityGraph(prog, options);
-      this.annotationToOccurences = new Dictionary<string, HashSet<object>>();
+      this.annotationToOccurrences = new Dictionary<string, HashSet<object>>();
 
       // Add all annotation occurrences in blocks
       foreach (Block b in prog.Blocks())
@@ -967,19 +967,19 @@ namespace Microsoft.Boogie.Houdini
     private void AddAnnotationOccurrence(string c, object o)
     {
       Debug.Assert(o is Block || o is Tuple<string, PrePost>);
-      if (!annotationToOccurences.ContainsKey(c))
+      if (!annotationToOccurrences.ContainsKey(c))
       {
-        annotationToOccurences[c] = new HashSet<object>();
+        annotationToOccurrences[c] = new HashSet<object>();
       }
 
-      annotationToOccurences[c].Add(o);
+      annotationToOccurrences[c].Add(o);
     }
 
     public bool MayReach(string c, string d)
     {
-      foreach (object cOccurrence in annotationToOccurences[c])
+      foreach (object cOccurrence in annotationToOccurrences[c])
       {
-        foreach (object dOccurrence in annotationToOccurences[d])
+        foreach (object dOccurrence in annotationToOccurrences[d])
         {
           if (OccurrencesMayReach(cOccurrence, dOccurrence))
           {

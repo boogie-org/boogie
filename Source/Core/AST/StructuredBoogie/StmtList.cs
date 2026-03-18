@@ -63,18 +63,18 @@ public class StmtList
   public void Emit(TokenTextWriter stream, int level)
   {
     Contract.Requires(stream != null);
-    bool needSeperator = false;
+    bool needSeparator = false;
     foreach (BigBlock b in BigBlocks)
     {
       Contract.Assert(b != null);
       Contract.Assume(Cce.IsPeerConsistent(b));
-      if (needSeperator)
+      if (needSeparator)
       {
         stream.WriteLine();
       }
 
       b.Emit(stream, level);
-      needSeperator = true;
+      needSeparator = true;
     }
   }
 

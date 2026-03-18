@@ -154,9 +154,9 @@ namespace Microsoft.Boogie
     }
 
     /// <summary>
-    /// Gets the metatdata at specified index.
+    /// Gets the metadata at specified index.
     /// ArgumentOutOfRange exception is raised if it is not available.
-    /// InvalidCastExcpetion is raised if the metadata is available but the wrong type was requested.
+    /// InvalidCastException is raised if the metadata is available but the wrong type was requested.
     /// </summary>
     /// <returns>The stored metadata of type T</returns>
     /// <param name="index">The index of the metadata</param>
@@ -202,7 +202,7 @@ namespace Microsoft.Boogie
     }
 
     /// <summary>
-    /// Sets the metadata for this instace at a specified index.
+    /// Sets the metadata for this instance at a specified index.
     /// </summary>
     /// <param name="index">The index of the metadata</param>
     /// <param name="value">The value to set</param>
@@ -479,7 +479,7 @@ namespace Microsoft.Boogie
     }
 
     /// <summary>
-    /// Reset the abstract stated computed before
+    /// Reset the abstract state computed before
     /// </summary>
     public virtual void ResetAbstractInterpretationState()
     {

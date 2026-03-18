@@ -381,7 +381,7 @@ public class SmokeTester
       {
         // we're not going any further
         // it's clear the user expected unreachable code here
-        // it's not clear where did he expect it, maybe it would be right to insert
+        // it's not clear where they expected it, maybe it would be right to insert
         // a check just one command before
         if (IsFalse(assrt.Expr))
         {
