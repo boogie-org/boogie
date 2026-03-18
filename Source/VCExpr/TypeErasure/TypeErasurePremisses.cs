@@ -1071,7 +1071,7 @@ namespace Microsoft.Boogie.TypeErasure
         axiom = VCExpressionGenerator.True;
       Contract.Assert(axiom != null);
 
-      // first non-interference criterium: the queried location is
+      // first non-interference criterion: the queried location is
       // different from the assigned location
       for (int i = 0; i < arity; ++i)
       {

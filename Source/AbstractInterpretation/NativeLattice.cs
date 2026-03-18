@@ -147,7 +147,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
       Contract.Requires(lattice != null);
 
       // Gather all the axioms to create the initial lattice element
-      // Differently stated, it is the \alpha from axioms (i.e. first order formulae) to the underlyng abstract domain
+      // Differently stated, it is the \alpha from axioms (i.e. first order formulae) to the underlying abstract domain
       var initialElement = lattice.Top;
       Contract.Assert(initialElement != null);
       foreach (var ax in program.Axioms)

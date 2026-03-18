@@ -556,7 +556,7 @@ namespace Microsoft.Boogie
       List<TypeVariable> resultFreeVars = FreeVariablesIn(actualResults);
       if (previousErrorCount != tc.ErrorCount)
       {
-        // errors occured when matching the formal arguments
+        // errors occurred when matching the formal arguments
         // in case we have been able to substitute all type parameters,
         // we can still return the result type and hope that the
         // type checking proceeds in a meaningful manner

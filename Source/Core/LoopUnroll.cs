@@ -39,7 +39,7 @@ namespace Microsoft.Boogie
       return lu.newBlockSeqGlobal;
     }
 
-    // This is supposed to "undo" to effect of loop unrolling
+    // This is supposed to "undo" the effect of loop unrolling
     // on block labels. It essentially removes the "#num" from the end 
     // of lab, if there is something like this
     public static string sanitizeLabel(string lab)

@@ -2588,13 +2588,13 @@ namespace Microsoft.Boogie
 
           break;
         case Opcode.RealDiv:
-          // TODO: add partial evaluation fro real division
+          // TODO: add partial evaluation for real division
           break;
         case Opcode.FloatDiv:
           //TODO: add float division
           break;
         case Opcode.Pow:
-          // TODO: add partial evaluation fro real exponentiation
+          // TODO: add partial evaluation for real exponentiation
           break;
         case Opcode.Lt:
           if (e1 is BigNum && e2 is BigNum)
@@ -3110,7 +3110,7 @@ namespace Microsoft.Boogie
       Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
       Contract.Assume(args.Count == Arity + 1);
 
-      // FIXME: Wny are we passing a copy?
+      // FIXME: Why are we passing a copy?
       List<Expr> actualArgs = new List<Expr>();
       for (int i = 1; i < args.Count; ++i)
       {
@@ -3241,7 +3241,7 @@ namespace Microsoft.Boogie
         MapSelect.Typecheck(Cce.NonNull(Cce.NonNull(args[0]).Type), Cce.NonNull(args[0]),
           selectArgs, out tpInstantiation, tc, typeCheckingSubject, opName);
 
-      // check the the rhs has the right type
+      // check the rhs has the right type
       if (resultType == null)
       {
         // error messages have already been created by MapSelect.Typecheck
@@ -3886,7 +3886,7 @@ namespace Microsoft.Boogie
 
     public override void ComputeFreeVariables(Set /*Variable*/ freeVars)
     {
-      // Treat a BlockEexpr as if it has no free variables at all
+      // Treat a BlockExpr as if it has no free variables at all
     }
 
     public override void Emit(TokenTextWriter stream, int contextBindingStrength, bool fragileContext)

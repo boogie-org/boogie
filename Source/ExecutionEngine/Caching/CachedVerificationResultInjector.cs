@@ -46,7 +46,7 @@ sealed class CachedVerificationResultInjector : StandardVisitor
     temporaryVariableCount = 0;
     currentImplementation = implementation;
 
-    #region Introduce explict assumption about the precondition.
+    #region Introduce explicit assumption about the precondition.
 
     var oldProc = programInCachedSnapshot.FindProcedure(currentImplementation.Proc.Name);
     if (oldProc != null

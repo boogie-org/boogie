@@ -14,7 +14,7 @@ should work as well.
 The lit and OutputCheck tools are both available in
 [PyPi](https://pypi.python.org/pypi). Install the
 [pip](http://pip.readthedocs.org/en/latest/installing.html) tool if you don't
-already have have it and then run
+already have it and then run
 
 ```
 $ pip install lit
@@ -69,7 +69,7 @@ $ lit .
 ```
 
 For example to run all tests in the ``test1`` folder and the bla1.bpl and
-constants.bpl test run the following command
+constants.bpl tests run the following command
 
 ```
 $ cd Test
@@ -164,7 +164,7 @@ The RUN lines may use several substitutions
   you need multiple different temporary files append a unique value (e.g.
   ``%t1``, ``%t2``... etc). You should make sure this is quoted.
 
-Currently most tests simply execute boogie recording its output which then
+Currently most tests simply execute boogie recording its output which is then
 compared to a file containing the expected output (``.expect`` files) using
 ``%diff``. This is incredibly fragile and it is recommended that new tests use
 the OutputCheck tool instead of relying on %diff.

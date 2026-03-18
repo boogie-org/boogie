@@ -663,7 +663,7 @@ public class Implementation : DeclWithFormals
             graph = Program.GraphFromImpl(this);           
           }
 
-          // the graph was either reducible from the begining or was converted to a reducible one
+          // the graph was either reducible from the beginning or was converted to a reducible one
           Contract.Assert(graph.Reducible);
           TypecheckLoopAnnotations(tc, graph);
         }
@@ -906,7 +906,7 @@ public class Implementation : DeclWithFormals
   }
 
   /// <summary>
-  /// Compute the strongly connected compontents of the blocks in the implementation.
+  /// Compute the strongly connected components of the blocks in the implementation.
   /// As a side effect, it also computes the "predecessor" relation for the block in the implementation
   /// </summary>
   public override void ComputeStronglyConnectedComponents()
@@ -931,7 +931,7 @@ public class Implementation : DeclWithFormals
   }
 
   /// <summary>
-  /// Reset the abstract stated computed before
+  /// Reset the abstract state computed before
   /// </summary>
   override public void ResetAbstractInterpretationState()
   {
@@ -984,7 +984,7 @@ public class Implementation : DeclWithFormals
   }
 
   /// <summary>
-  /// Compute the predecessor informations for the blocks
+  /// Compute the predecessor information for the blocks
   /// </summary>
   public void ComputePredecessorsForBlocks()
   {
@@ -1139,7 +1139,7 @@ public class Implementation : DeclWithFormals
     g.ComputeLoops(); // this is the call that does all of the processing
     while (!g.Reducible)
     {
-      // We will be looking for a block that can be split, and for a looply connected block that has an invariant
+      // We will be looking for a block that can be split, and for a loop-connected block that has an invariant
       Block splitBlock = g.SplitCandidates
         .FirstOrDefault(b => b.Predecessors.Count > 1 && !b.HasInvariant())
         ?? g.SplitCandidates.FirstOrDefault(b => b.Predecessors.Count > 1);

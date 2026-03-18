@@ -621,7 +621,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
 
     /// <summary>
     /// For a proof of correctness of this method, see Test/dafny2/Intervals.dfy.
-    /// A difference is that the this method returns:
+    /// A difference is that this method returns:
     ///     let d = Dafny_RoundDown(k);
     ///     return d == -1 ? null : downThresholds[d];
     /// </summary>
@@ -652,7 +652,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
 
     /// <summary>
     /// For a proof of correctness of this method, see Test/dafny2/Intervals.dfy.
-    /// A difference is that the this method returns:
+    /// A difference is that this method returns:
     ///     let d = Dafny_RoundUp(k);
     ///     return d == thresholds.Count ? null : upThresholds[d];
     /// </summary>
@@ -1152,7 +1152,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
               {
                 Lo = null;
                 Hi = one;
-                // no overlaop
+                // no overlap
               }
               else if (lo0 != null && hi0 != null && lo1 != null && hi1 != null &&
                        lo0 == lo1 && hi0 == hi1 && // ranges are the same

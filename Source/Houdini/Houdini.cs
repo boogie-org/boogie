@@ -652,7 +652,7 @@ namespace Microsoft.Boogie.Houdini
       HashSet<Variable> constants;
       Implementation curImpl;
 
-      // contant -> set of implementations that have an assume command with that constant
+      // constant -> set of implementations that have an assume command with that constant
       public Dictionary<string, HashSet<Implementation>> assumedInImpl { get; private set; }
     }
 
