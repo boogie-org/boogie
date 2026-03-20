@@ -103,6 +103,10 @@ public class FunctionCall : IAppliable
     if (Func != null)
     {
       // already resolved
+      if (rc.TriggerMode && Func.Body != null)
+      {
+        CheckBodyTriggerLegality(Func, subjectForErrorReporting, rc, new HashSet<Function>());
+      }
       return;
     }
 
@@ -111,12 +115,78 @@ public class FunctionCall : IAppliable
     {
       rc.Error(this.name, "use of undeclared function: {0}", name.Name);
     }
-    else if (name.Type == null)
+    else
     {
-      // We need set the type of this IdentifierExpr so ShallowType() works
-      Debug.Assert(name.Type == null);
-      Debug.Assert(Func.OutParams.Count > 0);
-      name.Type = Func.OutParams[0].TypedIdent.Type;
+      if (name.Type == null)
+      {
+        // We need set the type of this IdentifierExpr so ShallowType() works
+        Debug.Assert(name.Type == null);
+        Debug.Assert(Func.OutParams.Count > 0);
+        name.Type = Func.OutParams[0].TypedIdent.Type;
+      }
+      if (rc.TriggerMode && Func.Body != null)
+      {
+        CheckBodyTriggerLegality(Func, subjectForErrorReporting, rc, new HashSet<Function>());
+      }
+    }
+  }
+
+  private static void CheckBodyTriggerLegality(Function func, Expr subjectForErrorReporting,
+    ResolutionContext rc, HashSet<Function> visited)
+  {
+    if (!visited.Add(func))
+    {
+      return; // Already checking this function (cycle detection)
+    }
+    CheckExprTriggerLegality(func.Body, func.Name, subjectForErrorReporting, rc, visited);
+  }
+
+  private static void CheckExprTriggerLegality(Expr expr, string funcName, Expr subjectForErrorReporting,
+    ResolutionContext rc, HashSet<Function> visited)
+  {
+    if (expr is NAryExpr nary)
+    {
+      if (nary.Fun is UnaryOperator uop && uop.Op == UnaryOperator.Opcode.Not)
+      {
+        rc.Error(subjectForErrorReporting,
+          "trigger expression refers to the inline function '{0}' whose body contains boolean operators, which are not allowed in triggers",
+          funcName);
+      }
+      else if (nary.Fun is BinaryOperator bop)
+      {
+        switch (bop.Op)
+        {
+          case BinaryOperator.Opcode.Eq:
+            rc.Error(subjectForErrorReporting,
+              "trigger expression refers to the inline function '{0}' whose body contains equality, which is not allowed in triggers",
+              funcName);
+            break;
+          case BinaryOperator.Opcode.Gt:
+          case BinaryOperator.Opcode.Ge:
+          case BinaryOperator.Opcode.Lt:
+          case BinaryOperator.Opcode.Le:
+            rc.Error(subjectForErrorReporting,
+              "trigger expression refers to the inline function '{0}' whose body contains arithmetic comparisons, which are not allowed in triggers",
+              funcName);
+            break;
+          case BinaryOperator.Opcode.And:
+          case BinaryOperator.Opcode.Or:
+          case BinaryOperator.Opcode.Imp:
+          case BinaryOperator.Opcode.Iff:
+            rc.Error(subjectForErrorReporting,
+              "trigger expression refers to the inline function '{0}' whose body contains boolean operators, which are not allowed in triggers",
+              funcName);
+            break;
+        }
+      }
+      else if (nary.Fun is FunctionCall nestedFc && nestedFc.Func?.Body != null)
+      {
+        CheckBodyTriggerLegality(nestedFc.Func, subjectForErrorReporting, rc, visited);
+      }
+      foreach (var arg in nary.Args)
+      {
+        CheckExprTriggerLegality(arg, funcName, subjectForErrorReporting, rc, visited);
+      }
     }
   }
 
