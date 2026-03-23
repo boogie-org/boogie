@@ -208,11 +208,15 @@ namespace Microsoft.Boogie
             if (cmd is MeasureCmd measureCmd)
             {
               var zero = new LiteralExpr(Token.NoToken, BigNum.ZERO);
-              newCmds.AddRange(measureCmd.Exprs.Select(expr => new AssertCmd(expr.tok, Expr.Ge(expr, zero))));
+
+              newCmds.AddRange(
+                measureCmd.Measures.Select(m =>
+                  new AssertCmd(m.tok, Expr.Ge(m.Condition, zero))));
 
               var oldMeasureExprs = new List<Expr>();
-              foreach (var expr in measureCmd.Exprs)
+              foreach (var measure in measureCmd.Measures)
               {
+                var expr = measure.Condition;
                 var localVar = new LocalVariable(
                   Token.NoToken,
                   new TypedIdent(
@@ -226,7 +230,9 @@ namespace Microsoft.Boogie
                 newCmds.Add(new AssignCmd(Token.NoToken, [lhs], [expr]));
               }
 
-              deferredAssertExpr = MeasureLessThanExpr(measureCmd.Exprs, oldMeasureExprs);
+              deferredAssertExpr = MeasureLessThanExpr(
+                measureCmd.Measures.Select(m => m.Condition).ToList(),
+                oldMeasureExprs);
             }
             else
             {

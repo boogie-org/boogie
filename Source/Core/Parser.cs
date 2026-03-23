@@ -1502,6 +1502,8 @@ out List<Variable> ins, out List<Variable> outs, out QKeyValue kv) {
 		IToken x; Expr e;
 		List<IToken> xs;
 		List<IdentifierExpr> ids;
+		List<Expr> es;
+		List<Measure> ms;
 		c = dummyCmd;  label = null;
 		Cmd cn;
 		QKeyValue kv = null;
@@ -1554,12 +1556,15 @@ out List<Variable> ins, out List<Variable> outs, out QKeyValue kv) {
 			Expect(10);
 		} else if (la.kind == 49) {
 			Get();
-			x = t; List<Expr> es; 
+			x = t; 
 			while (la.kind == 26) {
 				Attribute(ref kv);
 			}
 			Expressions(out es);
-			c = new MeasureCmd(x, es, kv); 
+			ms = es.Select(expr => new Measure(x, false, expr, null, kv)).ToList();
+			c = new MeasureCmd(x, ms);
+			kv = null;
+			
 			Expect(10);
 		} else if (la.kind == 66) {
 			Get();

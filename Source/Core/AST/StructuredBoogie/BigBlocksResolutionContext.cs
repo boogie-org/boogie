@@ -444,11 +444,11 @@ class BigBlocksResolutionContext
             {
               ssHead.Add(inv);
             }
-            
+
             if (whileCmd.Measures.Count != 0)
             {
-              var listMeasures = whileCmd.Measures.Select(m => m.Condition).ToList();
-              ssHead.Add(new MeasureCmd(whileCmd.tok, listMeasures));
+                var listMeasures = whileCmd.Measures.ToList();
+                ssHead.Add(new MeasureCmd(whileCmd.tok, listMeasures));
             }
 
             block = new Block(whileCmd.tok, loopHeadLabel, ssHead,
