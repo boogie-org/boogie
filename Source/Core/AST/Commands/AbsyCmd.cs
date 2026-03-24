@@ -2085,65 +2085,65 @@ namespace Microsoft.Boogie
       return visitor.VisitAssumeCmd(this);
     }
   }
-public class MeasureCmd : Cmd
-{
-  public List<Measure> Measures;
-
-  [ContractInvariantMethod]
-  void ObjectInvariant()
+  public class MeasureCmd : Cmd
   {
-    Contract.Invariant(Cce.NonNullElements(Measures));
-  }
+    public List<Measure> Measures;
 
-  public MeasureCmd(IToken tok, List<Measure> measures)
-    : base(tok)
-  {
-    Contract.Requires(tok != null);
-    Contract.Requires(Cce.NonNullElements(measures));
-    Measures = new List<Measure>(measures);
-  }
-
-  public MeasureCmd(IToken tok, Measure measure)
-    : base(tok)
-  {
-    Contract.Requires(tok != null);
-    Contract.Requires(measure != null);
-    Measures = new List<Measure> { measure };
-  }
-
-  public override void Resolve(ResolutionContext rc)
-  {
-    foreach (var measure in Measures)
+    [ContractInvariantMethod]
+    void ObjectInvariant()
     {
-      measure.Resolve(rc);
+      Contract.Invariant(Cce.NonNullElements(Measures));
+    }
+
+    public MeasureCmd(IToken tok, List<Measure> measures)
+      : base(tok)
+    {
+      Contract.Requires(tok != null);
+      Contract.Requires(Cce.NonNullElements(measures));
+      Measures = new List<Measure>(measures);
+    }
+
+    public MeasureCmd(IToken tok, Measure measure)
+      : base(tok)
+    {
+      Contract.Requires(tok != null);
+      Contract.Requires(measure != null);
+      Measures = new List<Measure> { measure };
+    }
+
+    public override void Resolve(ResolutionContext rc)
+    {
+      foreach (var measure in Measures)
+      {
+        measure.Resolve(rc);
+      }
+    }
+
+    public override void Typecheck(TypecheckingContext tc)
+    {
+      foreach (var measure in Measures)
+      {
+        measure.Typecheck(tc);
+      }
+    }
+
+    public override void AddAssignedIdentifiers(List<IdentifierExpr> vars)
+    {
+    }
+
+    public override void Emit(TokenTextWriter stream, int level)
+    {
+      foreach (var measure in Measures)
+      {
+        measure.Emit(stream, level);
+      }
+    }
+
+    public override Absy StdDispatch(StandardVisitor visitor)
+    {
+      return visitor.VisitMeasureCmd(this);
     }
   }
-
-  public override void Typecheck(TypecheckingContext tc)
-  {
-    foreach (var measure in Measures)
-    {
-      measure.Typecheck(tc);
-    }
-  }
-
-  public override void AddAssignedIdentifiers(List<IdentifierExpr> vars)
-  {
-  }
-
-  public override void Emit(TokenTextWriter stream, int level)
-  {
-    foreach (var measure in Measures)
-    {
-      measure.Emit(stream, level);
-    }
-  }
-
-  public override Absy StdDispatch(StandardVisitor visitor)
-  {
-    return visitor.VisitMeasureCmd(this);
-  }
-}
 
   public class ReturnExprCmd : ReturnCmd
   {
