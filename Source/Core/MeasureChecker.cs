@@ -81,7 +81,6 @@ namespace Microsoft.Boogie
               checkingContext.Error(
                 cmd.tok,
                 "Assignment must come after the measure command in loop head");
-              break;
             }
           }
         }
