@@ -9,8 +9,7 @@ procedure one()
   var n: int;
   n := 10;
   while (n >= 1)
-  measure n;
-  measure y;
+  measure {:layer 1} n, y;
   {
       n := n - 1;
   }

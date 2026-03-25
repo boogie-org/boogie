@@ -2,18 +2,18 @@
 // RUN: %diff "%s.expect" "%t"
 
 var x: int;
+var y: bool;
 
-yield procedure {:layer 2} one() 
+procedure one() 
+modifies y;
 {
     var n: int;
     n := 10;
+    y := true;
     while (n >= 1)
-    invariant {:layer 1} n >= 0;
-    measure {:layer 1} n, n+1;
+    measure y, n;
     {
         n := n - 1;
+        y := false;
     }
 }
-
-
-

@@ -7,7 +7,8 @@ var z : int;
 
 yield left procedure {:layer 1} two(tid: int, cid: int)
 preserves {:layer 1} x > 0;
-measure {:layer 1} tid + x, cid;
+measure {:layer 1} tid + x;
+measure {:layer 1} cid;
 {
     if (tid <= 1 || cid <=1 )
     {
@@ -21,7 +22,8 @@ measure {:layer 1} tid + x, cid;
 
 yield left procedure {:layer 1} one(tid: int, cid: int)
 preserves {:layer 1} x > 0;
-measure {:layer 1} tid + x, cid;
+measure {:layer 1} tid + x;
+measure {:layer 1} cid;
 {
     if (tid <= 1 || cid <= 1)
     {

@@ -1,0 +1,3 @@
+conc4.bpl(11,0): Error: Procedure may not contain multiple measure commands for the same layer
+conc4.bpl(26,0): Error: Procedure may not contain multiple measure commands for the same layer
+2 type checking errors detected in conc4.bpl

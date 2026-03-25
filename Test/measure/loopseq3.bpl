@@ -18,8 +18,7 @@ procedure one()
     n := 100;
     while (n >= 1)
     invariant n >= 0;
-    measure n+1;
-    measure n;
+    measure n+1, n;
     {
         n := n - 1;
     }
