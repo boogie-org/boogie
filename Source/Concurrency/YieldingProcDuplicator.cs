@@ -135,7 +135,7 @@ namespace Microsoft.Boogie
 
       if (doRefinementCheck || !node.Layers.Contains(layerNum))
       {
-        var cmd = new AssumeCmd(node.tok, Expr.True);
+        var cmd = new MeasureCmd(Token.NoToken, [], null);
         return cmd;
       }
 
