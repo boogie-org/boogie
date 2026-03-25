@@ -6,7 +6,7 @@ var y: int;
 var z : int;
 
 yield procedure {:layer 1} one(tid: int, next: bool, abc: int)
-measure  {:layer 1} tid;
+measure {:layer 1} tid;
 {
     if (tid == 1)
     {

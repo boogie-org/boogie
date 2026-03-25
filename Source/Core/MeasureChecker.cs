@@ -107,22 +107,34 @@ namespace Microsoft.Boogie
           continue;
         }
 
-        var seenLayers = new Dictionary<int, MeasureCmd>();
-        foreach (var measureCmd in proc.Measure)
+        if (proc is YieldProcedureDecl)
         {
-          foreach (var layer in measureCmd.Layers)
+          var seenLayers = new Dictionary<int, MeasureCmd>();
+          foreach (var measureCmd in proc.Measure)
           {
-            if (seenLayers.ContainsKey(layer))
+            foreach (var layer in measureCmd.Layers)
             {
-              checkingContext.Error(
-                measureCmd.tok,
-                $"Procedure may not contain multiple measure commands for layer {layer}");
-              break;
+              if (seenLayers.ContainsKey(layer))
+              {
+                checkingContext.Error(
+                  measureCmd.tok,
+                  $"Procedure may not contain multiple measure commands for layer {layer}");
+                break;
+              }
+              else
+              {
+                seenLayers[layer] = measureCmd;
+              }
             }
-            else
-            {
-              seenLayers[layer] = measureCmd;
-            }
+          }
+        }
+        else
+        {
+          if (proc.Measure.Count > 1)
+          {
+            checkingContext.Error(
+              proc.Measure[1].tok,
+              "Sequential procedure may contain at most one measure command");
           }
         }
       }
@@ -170,22 +182,25 @@ namespace Microsoft.Boogie
         }
         else
         {
+          var callerMeasureCount = callerDecl.Measure.SelectMany(mc => mc.Expressions).Count();
+
           foreach (var block in impl.Blocks)
           {
             foreach (var callCmd in RecursiveCallCmds(callerDecl, block))
             {
-              if (callCmd.Proc.Measure.Count != callerDecl.Measure.Count)
+              var calleeMeasureCount = callCmd.Proc.Measure.SelectMany(mc => mc.Expressions).Count();
+
+              if (calleeMeasureCount != callerMeasureCount)
               {
                 checkingContext.Error(
                   callCmd.tok,
-                  "Expected number of measures on callee and caller to be same");
+                  "Expected number of measure expressions on callee and caller to be same");
               }
             }
           }
         }
       }
     }
-
     private void TransformProcedure(Procedure node)
     {
       foreach (var measureCmd in node.Measure)
@@ -230,6 +245,12 @@ namespace Microsoft.Boogie
 
             var calleeMeasureExprs =
               callCmd.Proc.Measure.SelectMany(mc => mc.Expressions).ToList();
+
+            if (callerMeasureExprs.Count != calleeMeasureExprs.Count)
+            {
+              newCmds.Add(cmd);
+              continue;
+            }
 
             var callerMeasures = new List<Expr>();
             var calleeMeasures = new List<Expr>();

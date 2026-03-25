@@ -1,6 +1,2 @@
-seq2.bpl(14,5): Error: a precondition for this call could not be proved
-seq2.bpl(18,1): Related location: this measure could not be proved to be non-negative
-Execution trace:
-    seq2.bpl(14,5): anon0
-
-Boogie program verifier finished with 1 verified, 1 error
+seq2.bpl(10,0): Error: Sequential procedure may contain at most one measure command
+1 type checking errors detected in seq2.bpl
