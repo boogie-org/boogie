@@ -1112,7 +1112,6 @@ WhileCmd<out WhileCmd wcmd>
   Guard<out guard>    (. Contract.Assume(guard == null || Cce.Owner.None(guard)); .)
   { (. isFree = false; z = la/*lookahead token*/; .)
   (
-    // invariant (possibly free) OR a yield-call variant
     [ "free" (. isFree = true; .) ]
     "invariant" (. z = t; .)
     { Attribute<ref kv> }
@@ -1135,11 +1134,11 @@ WhileCmd<out WhileCmd wcmd>
     )
     ";"
   | "measure"               (. z = t; .)
-  { Attribute<ref kv> }
-  Proposition<out e>      (. measures.Add(new Measure(z, false, e, null, kv));
-                             kv = null;
-                           .)
-  ";"
+    { Attribute<ref kv> }
+    Expressions<out es>     (. measureCmds.Add(new MeasureCmd(z, es, kv));
+                                kv = null;
+                             .)
+    ";"
   )
   }
   "{"
@@ -1201,14 +1200,13 @@ LabelOrCmd<out Cmd c, out IToken label>
     { Attribute<ref kv> }
     Proposition<out e>    (. c = new AssumeCmd(x, e, kv); .)
     ";"
-  | "measure"              (. x = t; .)
-  { Attribute<ref kv> }
-  Expressions<out es>
-  (. ms = es.Select(expr => new Measure(x, false, expr, null, kv)).ToList();
-     c = new MeasureCmd(x, ms);
-     kv = null;
-  .)
-  ";"
+  | "measure"             (. x = t; .)
+    { Attribute<ref kv> }
+    Expressions<out es>
+    (. c = new MeasureCmd(x, es, kv);
+       kv = null;
+    .)
+    ";"
   | "havoc"               (. x = t; .)
     Idents<out xs> ";"    (. ids = new List<IdentifierExpr>();
                              foreach(IToken y in xs){
@@ -1220,7 +1218,7 @@ LabelOrCmd<out Cmd c, out IToken label>
   | CallCmd<false, out cn>  ";"     (. c = cn; .)
   )
   .
-
+  
 /*------------------------------------------------------------------------*/
 
 LabelOrAssign<out Cmd c, out IToken label>

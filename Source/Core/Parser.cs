@@ -1571,8 +1571,7 @@ out List<Variable> ins, out List<Variable> outs, out QKeyValue kv) {
 				Attribute(ref kv);
 			}
 			Expressions(out es);
-			ms = es.Select(expr => new Measure(x, false, expr, null, kv)).ToList();
-			c = new MeasureCmd(x, ms);
+			c = new MeasureCmd(x, es, kv);
 			kv = null;
 			
 			Expect(10);
@@ -1721,8 +1720,8 @@ out List<Variable> ins, out List<Variable> outs, out QKeyValue kv) {
 				while (la.kind == 26) {
 					Attribute(ref kv);
 				}
-				Proposition(out e);
-				measures.Add(new Measure(z, false, e, null, kv));
+				Expressions(out es);
+				measureCmds.Add(new MeasureCmd(z, es, kv));
 				kv = null;
 				
 				Expect(10);
