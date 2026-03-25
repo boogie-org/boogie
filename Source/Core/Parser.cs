@@ -597,7 +597,7 @@ private class BvBounds : Expr {
 		List<Requires> pre = new List<Requires>();
 		List<Requires> preserves = new List<Requires>();
 		List<Ensures> post = new List<Ensures>();
-		List<Measure> measure = new List<Measure>();
+		List<MeasureCmd> measureCmds = new List<MeasureCmd>();
 		List<CallCmd> yieldRequires = new List<CallCmd>();
 		List<CallCmd> yieldPreserves = new List<CallCmd>();
 		List<CallCmd> yieldEnsures = new List<CallCmd>();
@@ -623,18 +623,18 @@ private class BvBounds : Expr {
 		if (la.kind == 10) {
 			Get();
 			while (StartOf(6)) {
-				SpecYieldPrePost(ref refinedAction, name, ins, outs, pre, preserves, post, measure, yieldRequires, yieldPreserves, yieldEnsures, mods);
+				SpecYieldPrePost(ref refinedAction, name, ins, outs, pre, preserves, post, measureCmds, yieldRequires, yieldPreserves, yieldEnsures, mods);
 			}
 		} else if (StartOf(7)) {
 			while (StartOf(6)) {
-				SpecYieldPrePost(ref refinedAction, name, ins, outs, pre, preserves, post, measure, yieldRequires, yieldPreserves, yieldEnsures, mods);
+				SpecYieldPrePost(ref refinedAction, name, ins, outs, pre, preserves, post, measureCmds, yieldRequires, yieldPreserves, yieldEnsures, mods);
 			}
 			ImplBody(out locals, out stmtList);
 			impl = new Implementation(name, name.val, new List<TypeVariable>(), Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs),
 			                         locals, stmtList, kv == null ? null : (QKeyValue)kv.Clone(), this.errors);
 			
 		} else SynErr(129);
-		ypDecl = new YieldProcedureDecl(name, name.val, moverType, ins, outs, pre, preserves, post, measure, mods, yieldRequires, yieldPreserves, yieldEnsures, refinedAction, kv); 
+		ypDecl = new YieldProcedureDecl(name, name.val, moverType, ins, outs, pre, preserves, post, measureCmds, mods, yieldRequires, yieldPreserves, yieldEnsures, refinedAction, kv); 
 	}
 
 	void Pure(ref bool isPure) {
@@ -651,7 +651,7 @@ private class BvBounds : Expr {
 		List<Requires> pre = new List<Requires>();
 		List<IdentifierExpr> mods = new List<IdentifierExpr>();
 		List<Ensures> post = new List<Ensures>();
-		List<Measure> measure = new List<Measure>();
+		List<MeasureCmd> measureCmds = new List<MeasureCmd>();
 		List<Variable> locals = new List<Variable>();
 		StmtList stmtList;
 		QKeyValue kv = null;
@@ -662,18 +662,18 @@ private class BvBounds : Expr {
 		if (la.kind == 10) {
 			Get();
 			while (StartOf(8)) {
-				Spec(pre, mods, post, measure);
+				Spec(pre, mods, post, measureCmds);
 			}
 		} else if (StartOf(9)) {
 			while (StartOf(8)) {
-				Spec(pre, mods, post, measure);
+				Spec(pre, mods, post, measureCmds);
 			}
 			ImplBody(out locals, out stmtList);
 			impl = new Implementation(x, x.val, typeParams.ConvertAll(tp => new TypeVariable(tp.tok, tp.Name)),
 			                         Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs), locals, stmtList, kv == null ? null : (QKeyValue)kv.Clone(), this.errors);
 			
 		} else SynErr(130);
-		proc = new Procedure(x, x.val, typeParams, ins, outs, isPure, pre, new List<Requires>(), post, measure, mods, kv); 
+		proc = new Procedure(x, x.val, typeParams, ins, outs, isPure, pre, new List<Requires>(), post, measureCmds, mods, kv); 
 	}
 
 	void ActionDecl(bool isPure, out ActionDecl actionDecl, out Implementation impl, out DatatypeTypeCtorDecl datatypeTypeCtorDecl) {
@@ -1257,7 +1257,7 @@ private class BvBounds : Expr {
 		Expect(10);
 	}
 
-	void SpecYieldPrePost(ref ActionDeclRef refinedAction, IToken name, List<Variable> ins, List<Variable> outs, List<Requires> pre, List<Requires> preserves, List<Ensures> post, List<Measure> measure, List<CallCmd> yieldRequires, List<CallCmd> yieldPreserves, List<CallCmd> yieldEnsures, List<IdentifierExpr> mods) {
+	void SpecYieldPrePost(ref ActionDeclRef refinedAction, IToken name, List<Variable> ins, List<Variable> outs, List<Requires> pre, List<Requires> preserves, List<Ensures> post, List<MeasureCmd> measureCmds, List<CallCmd> yieldRequires, List<CallCmd> yieldPreserves, List<CallCmd> yieldEnsures, List<IdentifierExpr> mods) {
 		switch (la.kind) {
 		case 40: {
 			SpecRefinedActionForYieldProcedure(ref refinedAction, name, ins, outs);
@@ -1276,7 +1276,7 @@ private class BvBounds : Expr {
 			break;
 		}
 		case 49: {
-			SpecYieldMeasure(measure);
+			SpecYieldMeasure(measureCmds);
 			break;
 		}
 		case 52: {
@@ -1356,16 +1356,27 @@ private class BvBounds : Expr {
 		Expect(10);
 	}
 
-	void SpecYieldMeasure(List<Measure> measure ) {
-		Expr e; Token tok; QKeyValue kv = null; 
+	void SpecYieldMeasure(List<MeasureCmd> measureCmds ) {
+		List<Expr> es; Token tok; QKeyValue kv = null; 
 		Expect(49);
 		tok = t; 
 		while (la.kind == 26) {
 			Attribute(ref kv);
 		}
-		Proposition(out e);
-		measure.Add(new Measure(tok, false, e, null, kv)); 
+		Expressions(out es);
 		Expect(10);
+		measureCmds.Add(new MeasureCmd(tok, es, kv)); 
+	}
+
+	void Expressions(out List<Expr> es) {
+		Contract.Ensures(Contract.ValueAtReturn(out es) != null); Expr e; es = new List<Expr>(); 
+		Expression(out e);
+		es.Add(e); 
+		while (la.kind == 14) {
+			Get();
+			Expression(out e);
+			es.Add(e); 
+		}
 	}
 
 	void ProcSignature(bool allowWhereClausesOnFormals, out IToken name, out List<TypeVariable> typeParams,
@@ -1387,19 +1398,19 @@ out List<Variable> ins, out List<Variable> outs, out QKeyValue kv) {
 		}
 	}
 
-	void Spec(List<Requires> pre, List<IdentifierExpr> mods, List<Ensures> post, List<Measure> measure) {
+	void Spec(List<Requires> pre, List<IdentifierExpr> mods, List<Ensures> post, List<MeasureCmd> measureCmds) {
 		if (la.kind == 52) {
 			SpecModifies(mods);
 		} else if (la.kind == 51) {
 			Get();
-			SpecPrePost(true, pre, post, measure);
+			SpecPrePost(true, pre, post, measureCmds);
 		} else if (la.kind == 47 || la.kind == 48 || la.kind == 49) {
-			SpecPrePost(false, pre, post, measure);
+			SpecPrePost(false, pre, post, measureCmds);
 		} else SynErr(143);
 	}
 
-	void SpecPrePost(bool free, List<Requires> pre, List<Ensures> post, List<Measure> measure) {
-		Contract.Requires(pre != null); Contract.Requires(post != null); Expr e; Token tok = null; QKeyValue kv = null; 
+	void SpecPrePost(bool free, List<Requires> pre, List<Ensures> post, List<MeasureCmd> measureCmds) {
+		Contract.Requires(pre != null); Contract.Requires(post != null); Expr e; List<Expr> es; Token tok = null; QKeyValue kv = null; 
 		if (la.kind == 47) {
 			Get();
 			tok = t; 
@@ -1424,9 +1435,9 @@ out List<Variable> ins, out List<Variable> outs, out QKeyValue kv) {
 			while (la.kind == 26) {
 				Attribute(ref kv);
 			}
-			Proposition(out e);
+			Expressions(out es);
 			Expect(10);
-			measure.Add(new Measure(tok, free, e, null, kv)); 
+			measureCmds.Add(new MeasureCmd(tok, es, kv)); 
 		} else SynErr(144);
 	}
 
@@ -1503,7 +1514,6 @@ out List<Variable> ins, out List<Variable> outs, out QKeyValue kv) {
 		List<IToken> xs;
 		List<IdentifierExpr> ids;
 		List<Expr> es;
-		List<Measure> ms;
 		c = dummyCmd;  label = null;
 		Cmd cn;
 		QKeyValue kv = null;
@@ -1561,8 +1571,7 @@ out List<Variable> ins, out List<Variable> outs, out QKeyValue kv) {
 				Attribute(ref kv);
 			}
 			Expressions(out es);
-			ms = es.Select(expr => new Measure(x, false, expr, null, kv)).ToList();
-			c = new MeasureCmd(x, ms);
+			c = new MeasureCmd(x, es, kv);
 			kv = null;
 			
 			Expect(10);
@@ -1664,8 +1673,9 @@ out List<Variable> ins, out List<Variable> outs, out QKeyValue kv) {
 	void WhileCmd(out WhileCmd wcmd) {
 		Contract.Ensures(Contract.ValueAtReturn(out wcmd) != null); IToken x;  Token z;
 		Expr guard;  Expr e;  Cmd cmd;  bool isFree;
+		List<Expr> es;
 		List<PredicateCmd> invariants = new List<PredicateCmd>();
-		List<Measure> measures = new List<Measure>();
+		List<MeasureCmd> measureCmds = new List<MeasureCmd>();
 		List<CallCmd> yields = new List<CallCmd>();
 		StmtList body;
 		QKeyValue kv = null;
@@ -1710,8 +1720,8 @@ out List<Variable> ins, out List<Variable> outs, out QKeyValue kv) {
 				while (la.kind == 26) {
 					Attribute(ref kv);
 				}
-				Proposition(out e);
-				measures.Add(new Measure(z, false, e, null, kv));
+				Expressions(out es);
+				measureCmds.Add(new MeasureCmd(z, es, kv));
 				kv = null;
 				
 				Expect(10);
@@ -1719,7 +1729,7 @@ out List<Variable> ins, out List<Variable> outs, out QKeyValue kv) {
 		}
 		Expect(26);
 		StmtList(out body);
-		wcmd = new WhileCmd(x, guard, invariants, measures, yields, body); 
+		wcmd = new WhileCmd(x, guard, invariants, measureCmds, yields, body); 
 	}
 
 	void BreakCmd(out BreakCmd bcmd) {
@@ -1824,17 +1834,6 @@ out List<Variable> ins, out List<Variable> outs, out QKeyValue kv) {
 			Expect(10);
 			c = new AssignCmd(x, lhss, rhss, kv); 
 		} else SynErr(152);
-	}
-
-	void Expressions(out List<Expr> es) {
-		Contract.Ensures(Contract.ValueAtReturn(out es) != null); Expr e; es = new List<Expr>(); 
-		Expression(out e);
-		es.Add(e); 
-		while (la.kind == 14) {
-			Get();
-			Expression(out e);
-			es.Add(e); 
-		}
 	}
 
 	void MapAssignIndex(out IToken x, out List<Expr> indexes) {

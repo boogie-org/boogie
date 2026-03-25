@@ -8,7 +8,7 @@ public class WhileCmd : StructuredCmd
   [Peer] public Expr Guard;
 
   public List<PredicateCmd> Invariants;
-  public List<Measure> Measures;
+  public List<MeasureCmd> Measures;
   public List<CallCmd> Yields;
 
   public StmtList Body;
@@ -18,14 +18,18 @@ public class WhileCmd : StructuredCmd
   {
     Contract.Invariant(Body != null);
     Contract.Invariant(Cce.NonNullElements(Invariants));
+    Contract.Invariant(Cce.NonNullElements(Measures));
+    Contract.Invariant(Cce.NonNullElements(Yields));
   }
 
-  public WhileCmd(IToken tok, [Captured] Expr guard, List<PredicateCmd> invariants, List<Measure> measures, List<CallCmd> yields, StmtList body)
+  public WhileCmd(IToken tok, [Captured] Expr guard, List<PredicateCmd> invariants, List<MeasureCmd> measures, List<CallCmd> yields, StmtList body)
     : base(tok)
   {
-    Contract.Requires(Cce.NonNullElements(invariants));
-    Contract.Requires(body != null);
     Contract.Requires(tok != null);
+    Contract.Requires(Cce.NonNullElements(invariants));
+    Contract.Requires(Cce.NonNullElements(measures));
+    Contract.Requires(Cce.NonNullElements(yields));
+    Contract.Requires(body != null);
     this.Guard = guard;
     this.Invariants = invariants;
     this.Measures = measures;

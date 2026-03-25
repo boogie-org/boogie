@@ -16,6 +16,7 @@ namespace Microsoft.Boogie
     {
       this.program = program;
       CheckMeasureCmds(program);
+      CheckProcedureMeasures(program);
       callGraph = Program.BuildTransitiveCallGraph(options, program);
       CheckRecursiveCalls();
     }
@@ -32,15 +33,40 @@ namespace Microsoft.Boogie
         {
           headers.Add(header);
 
-          var measureCount = header.Cmds.OfType<MeasureCmd>().Count();
-          if (measureCount == 0)
+          var measureCmds = header.Cmds.OfType<MeasureCmd>().ToList();
+          if (measureCmds.Count == 0)
           {
             continue;
           }
-          if (measureCount > 1)
+
+          if (impl.Proc is YieldProcedureDecl)
           {
-            checkingContext.Error(header.tok, $"Loop head may contain at most one measure");
-            continue;
+            var seenLayers = new Dictionary<int, MeasureCmd>();
+            foreach (var measureCmd in measureCmds)
+            {
+              foreach (var layer in measureCmd.Layers)
+              {
+                if (seenLayers.ContainsKey(layer))
+                {
+                  checkingContext.Error(
+                    measureCmd.tok,
+                    $"Loop head may not contain multiple measure commands for layer {layer}");
+                }
+                else
+                {
+                  seenLayers[layer] = measureCmd;
+                }
+              }
+            }
+          }
+          else
+          {
+            if (measureCmds.Count > 1)
+            {
+              checkingContext.Error(
+                header.tok,
+                "Loop head may contain at most one measure command in a sequential procedure");
+            }
           }
 
           var afterAssignment = false;
@@ -52,7 +78,9 @@ namespace Microsoft.Boogie
             }
             else if (afterAssignment && cmd is MeasureCmd)
             {
-              checkingContext.Error(cmd.tok, $"Assignment must come after the measure command in loop head");
+              checkingContext.Error(
+                cmd.tok,
+                "Assignment must come after the measure command in loop head");
               break;
             }
           }
@@ -62,7 +90,39 @@ namespace Microsoft.Boogie
         {
           foreach (var cmd in block.Cmds.OfType<MeasureCmd>())
           {
-            checkingContext.Error(cmd.tok, $"Measure command must not occur outside a loop head");
+            checkingContext.Error(
+              cmd.tok,
+              "Measure command must not occur outside a loop head");
+          }
+        }
+      }
+    }
+
+    private void CheckProcedureMeasures(Program program)
+    {
+      foreach (var proc in program.Procedures)
+      {
+        if (proc.Measure == null || proc.Measure.Count == 0)
+        {
+          continue;
+        }
+
+        var seenLayers = new Dictionary<int, MeasureCmd>();
+        foreach (var measureCmd in proc.Measure)
+        {
+          foreach (var layer in measureCmd.Layers)
+          {
+            if (seenLayers.ContainsKey(layer))
+            {
+              checkingContext.Error(
+                measureCmd.tok,
+                $"Procedure may not contain multiple measure commands for layer {layer}");
+              break;
+            }
+            else
+            {
+              seenLayers[layer] = measureCmd;
+            }
           }
         }
       }
@@ -78,9 +138,6 @@ namespace Microsoft.Boogie
         measureChecker.TransformCallCmds(impl);
       }
 
-      // Add non-negative requirements for each measure
-      // Since implementations have already been transformed, measure annotations are no longer
-      // needed and should be dropped
       foreach (var proc in program.Procedures)
       {
         measureChecker.TransformProcedure(proc);
@@ -94,9 +151,6 @@ namespace Microsoft.Boogie
       return callGraph.Edges.Any(e => e.Item1.Proc == callCmd.Proc && e.Item2.Proc == callerProc);
     }
 
-    // ------------------------------------------------------------
-    // Check that number of measures match on recursive calls
-    // ------------------------------------------------------------
     private void CheckRecursiveCalls()
     {
       IEnumerable<CallCmd> RecursiveCallCmds(Procedure callerDecl, Block block)
@@ -112,7 +166,7 @@ namespace Microsoft.Boogie
         var callerDecl = impl.Proc;
         if (callerDecl is ActionDecl || callerDecl is YieldProcedureDecl yp && !yp.MoverType.HasValue)
         {
-          checkingContext.Error(callerDecl.tok, $"Measure expected only for mover procedures");
+          checkingContext.Error(callerDecl.tok, "Measure expected only for mover procedures");
         }
         else
         {
@@ -122,7 +176,9 @@ namespace Microsoft.Boogie
             {
               if (callCmd.Proc.Measure.Count != callerDecl.Measure.Count)
               {
-                checkingContext.Error(callCmd.tok, $"Expected number of measures on callee and caller to be same");
+                checkingContext.Error(
+                  callCmd.tok,
+                  "Expected number of measures on callee and caller to be same");
               }
             }
           }
@@ -130,28 +186,33 @@ namespace Microsoft.Boogie
       }
     }
 
-    // ------------------------------------------------------------
-    // Add non-negative measure requirement at procedure entry
-    // ------------------------------------------------------------
     private void TransformProcedure(Procedure node)
     {
-      foreach (var m in node.Measure)
+      foreach (var measureCmd in node.Measure)
       {
-        var zero = new LiteralExpr(Token.NoToken, BigNum.ZERO);
-        var ge = Expr.Ge(m.Condition, zero);
-        node.Requires.Add(new Requires(m.tok, false, ge) { Description = new MeasureNonNegativeDescription() });
+        foreach (var expr in measureCmd.Expressions)
+        {
+          if (expr.Type.Equals(Type.Int))
+          {
+            var zero = new LiteralExpr(Token.NoToken, BigNum.ZERO);
+            var ge = Expr.Ge(expr, zero);
+            node.Requires.Add(
+              new Requires(expr.tok, false, ge)
+              {
+                Description = new MeasureNonNegativeDescription()
+              });
+          }
+        }
       }
 
-      node.Measure = [];
+      node.Measure = new List<MeasureCmd>();
     }
 
-    // ------------------------------------------------------------
-    // Inject measure decreases check
-    // ------------------------------------------------------------
     private void TransformCallCmds(Implementation impl)
     {
       var implFormals = impl.InParams.Select(x => (Expr)Expr.Ident(x));
-      var procToImplSubst = Substituter.SubstitutionFromDictionary(impl.Proc.InParams.Zip(implFormals).ToDictionary());
+      var procToImplSubst =
+        Substituter.SubstitutionFromDictionary(impl.Proc.InParams.Zip(implFormals).ToDictionary());
 
       foreach (var block in impl.Blocks)
       {
@@ -161,24 +222,34 @@ namespace Microsoft.Boogie
           if (cmd is CallCmd callCmd && IsRecursiveCall(impl.Proc, callCmd))
           {
             var formalToActualSubst =
-              Substituter.SubstitutionFromDictionary(callCmd.Proc.InParams.Zip(callCmd.Ins).ToDictionary());
+              Substituter.SubstitutionFromDictionary(
+                callCmd.Proc.InParams.Zip(callCmd.Ins).ToDictionary());
+
+            var callerMeasureExprs =
+              impl.Proc.Measure.SelectMany(mc => mc.Expressions).ToList();
+
+            var calleeMeasureExprs =
+              callCmd.Proc.Measure.SelectMany(mc => mc.Expressions).ToList();
 
             var callerMeasures = new List<Expr>();
             var calleeMeasures = new List<Expr>();
-            for (int i = 0; i < callCmd.Proc.Measure.Count; i++)
+
+            for (int i = 0; i < calleeMeasureExprs.Count; i++)
             {
               var callerMeasure = new OldExpr(
                 callCmd.tok,
-                Substituter.Apply(procToImplSubst, impl.Proc.Measure[i].Condition));
+                Substituter.Apply(procToImplSubst, callerMeasureExprs[i]));
               callerMeasures.Add(callerMeasure);
 
               var calleeMeasure =
-                Substituter.Apply(formalToActualSubst, callCmd.Proc.Measure[i].Condition);
+                Substituter.Apply(formalToActualSubst, calleeMeasureExprs[i]);
               calleeMeasures.Add(calleeMeasure);
             }
 
             newCmds.Add(
-              new AssertCmd(callCmd.tok, MeasureLessThanExpr(calleeMeasures, callerMeasures))
+              new AssertCmd(
+                callCmd.tok,
+                MeasureLessThanExpr(calleeMeasures, callerMeasures))
               {
                 Description = new MeasureDecreasesDescription()
               });
@@ -207,22 +278,25 @@ namespace Microsoft.Boogie
           {
             if (cmd is MeasureCmd measureCmd)
             {
-              var zero = new LiteralExpr(Token.NoToken, BigNum.ZERO);
-
-              newCmds.AddRange(
-                measureCmd.Measures.Select(m =>
-                  new AssertCmd(m.tok, Expr.Ge(m.Condition, zero))));
+              foreach (var m in measureCmd.Expressions)
+              {
+                if (m.Type.Equals(Type.Int))
+                {
+                  var zero = new LiteralExpr(Token.NoToken, BigNum.ZERO);
+                  newCmds.Add(new AssertCmd(m.tok, Expr.Ge(m, zero)));
+                }
+              }
 
               var oldMeasureExprs = new List<Expr>();
-              foreach (var measure in measureCmd.Measures)
+              foreach (var expr in measureCmd.Expressions)
               {
-                var expr = measure.Condition;
                 var localVar = new LocalVariable(
                   Token.NoToken,
                   new TypedIdent(
                     Token.NoToken,
                     $"old_{measureCmd.UniqueId}_{expr.UniqueId}",
-                    Type.Int));
+                    expr.Type));
+
                 impl.LocVars.Add(localVar);
                 oldMeasureExprs.Add(Expr.Ident(localVar));
 
@@ -231,7 +305,7 @@ namespace Microsoft.Boogie
               }
 
               deferredAssertExpr = MeasureLessThanExpr(
-                measureCmd.Measures.Select(m => m.Condition).ToList(),
+                measureCmd.Expressions.ToList(),
                 oldMeasureExprs);
             }
             else
@@ -259,19 +333,36 @@ namespace Microsoft.Boogie
       }
     }
 
-    // returns the expression for measure1 < measure2
     private static Expr MeasureLessThanExpr(List<Expr> measure1, List<Expr> measure2)
     {
       Debug.Assert(measure1.Count == measure2.Count);
 
       Expr lessThan = Expr.False;
       Expr equalPrefix = Expr.True;
+
       for (int i = 0; i < measure1.Count; i++)
       {
+        Expr strictDecrease;
+        if (measure1[i].Type.Equals(Type.Int))
+        {
+          strictDecrease = Expr.Lt(measure1[i], measure2[i]);
+        }
+        else if (measure1[i].Type.Equals(Type.Bool))
+        {
+          strictDecrease = Expr.And(Expr.Not(measure1[i]), measure2[i]);
+        }
+        else
+        {
+          throw new Cce.UnreachableException();
+        }
+
         lessThan = Expr.Or(
           lessThan,
-          Expr.And(equalPrefix, Expr.Lt(measure1[i], measure2[i])));
-        equalPrefix = Expr.And(equalPrefix, Expr.Eq(measure1[i], measure2[i]));
+          Expr.And(equalPrefix, strictDecrease));
+
+        equalPrefix = Expr.And(
+          equalPrefix,
+          Expr.Eq(measure1[i], measure2[i]));
       }
 
       return lessThan;

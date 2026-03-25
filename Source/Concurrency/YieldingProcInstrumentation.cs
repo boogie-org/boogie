@@ -121,7 +121,7 @@ namespace Microsoft.Boogie
           : $"Wrapper_YieldToYield_NoninterferenceChecker_{layerNum}";
       wrapperYieldToYieldNoninterferenceCheckerProc = DeclHelper.Procedure(
         civlTypeChecker.AddNamePrefix(wrapperYieldToYieldNoninterferenceCheckerProcName),
-        wrapperNoninterferenceCheckerFormals, new List<Variable>(), new List<Requires>(), new List<Requires>(), new List<Ensures>(), new List<Measure>(), new List<IdentifierExpr>());
+        wrapperNoninterferenceCheckerFormals, new List<Variable>(), new List<Requires>(), new List<Requires>(), new List<Ensures>(), new List<MeasureCmd>(), new List<IdentifierExpr>());
       CivlUtil.AddInlineAttribute(wrapperYieldToYieldNoninterferenceCheckerProc);
       
       var wrapperGlobalNoninterferenceCheckerProcName =
@@ -130,7 +130,7 @@ namespace Microsoft.Boogie
           : $"Wrapper_Global_NoninterferenceChecker_{layerNum}";
       wrapperGlobalNoninterferenceCheckerProc = DeclHelper.Procedure(
         civlTypeChecker.AddNamePrefix(wrapperGlobalNoninterferenceCheckerProcName),
-        wrapperNoninterferenceCheckerFormals, new List<Variable>(), new List<Requires>(), new List<Requires>(), new List<Ensures>(), new List<Measure>(), new List<IdentifierExpr>());
+        wrapperNoninterferenceCheckerFormals, new List<Variable>(), new List<Requires>(), new List<Requires>(), new List<Ensures>(), new List<MeasureCmd>(), new List<IdentifierExpr>());
       CivlUtil.AddInlineAttribute(wrapperGlobalNoninterferenceCheckerProc);
 
       if (civlTypeChecker.Options.TrustNoninterference)
@@ -639,7 +639,7 @@ namespace Microsoft.Boogie
         List<Variable> outParams = new List<Variable>();
         List<Requires> requiresSeq = new List<Requires>();
         List<Ensures> ensuresSeq = new List<Ensures>();
-        List<Measure> measureSeq = new List<Measure>();
+        List<MeasureCmd> measureSeq = new List<MeasureCmd>();
         int count = 0;
         foreach (CallCmd callCmd in parCallCmd.CallCmds)
         {
@@ -746,7 +746,7 @@ namespace Microsoft.Boogie
         var requires = action.Gate.Select(a => new Requires(false, a.Expr)).ToList();
         var preserves = new List<Requires>();
         var ensures = new List<Ensures>();
-        var measure = new List<Measure>();
+        var measure = new List<MeasureCmd>();
         var modifies = civlTypeChecker.GlobalVariables.Select(Expr.Ident).ToList();
         var locals = oldGlobalMap.Values.Union(localPermissionCollectors.Values).ToList();
         var cmds = new List<Cmd>();

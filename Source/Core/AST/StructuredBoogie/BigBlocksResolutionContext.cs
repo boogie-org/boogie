@@ -447,10 +447,15 @@ class BigBlocksResolutionContext
 
             if (whileCmd.Measures.Count != 0)
             {
-                var listMeasures = whileCmd.Measures.ToList();
-                ssHead.Add(new MeasureCmd(whileCmd.tok, listMeasures));
+              foreach (var measureCmd in whileCmd.Measures)
+              {
+                ssHead.Add(new MeasureCmd(
+                  measureCmd.tok,
+                  measureCmd.Expressions.ToList(),
+                  measureCmd.Attributes));
+              }
             }
-
+            
             block = new Block(whileCmd.tok, loopHeadLabel, ssHead,
               new GotoCmd(whileCmd.tok, new List<string> {loopDoneLabel, loopBodyLabel}));
             blocks.Add(block);

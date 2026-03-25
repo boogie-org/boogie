@@ -2545,107 +2545,6 @@ namespace Microsoft.Boogie
     }
   }
 
-
-  public class Measure : Absy, ICarriesAttributes
-  {
-    public readonly bool Free;
-
-    private Expr _condition;
-
-    public Expr Condition
-    {
-      get => this._condition;
-      set => this._condition = value;
-    }
-    
-    public List<int> Layers;
-    
-    [ContractInvariantMethod]
-    void ObjectInvariant()
-    {
-      Contract.Invariant(this._condition != null);
-    }
-
-    public string Comment;
-
-    public QKeyValue Attributes { get; set; }
-
-    public Measure(IToken token, bool free, Expr condition, string comment, QKeyValue kv)
-      : base(token)
-    {
-      Contract.Requires(condition != null);
-      Contract.Requires(token != null);
-      this.Free = free;
-      this._condition = condition;
-      this.Comment = comment;
-      this.Attributes = kv;
-    }
-
-    public Measure(IToken token, bool free, Expr condition, string comment)
-      : this(token, free, condition, comment, null)
-    {
-    }
-
-    public Measure(bool free, Expr condition)
-      : this(Token.NoToken, free, condition, null)
-    {
-    }
-
-    public Measure(bool free, Expr condition, string comment)
-      : this(Token.NoToken, free, condition, comment)
-    {
-    }
-
-    public void Emit(TokenTextWriter stream, int level)
-    {
-      Contract.Requires(stream != null);
-      if (Comment != null)
-      {
-        stream.WriteLine(this, level, "// " + Comment);
-      }
-
-      stream.Write(this, level, "{0}measure ", Free ? "free " : "");
-      Cmd.EmitAttributes(stream, Attributes);
-      this.Condition.Emit(stream);
-      stream.WriteLine(";");
-    }
-
-    public override void Resolve(ResolutionContext rc)
-    {
-      this.Condition.Resolve(rc);
-      (this as ICarriesAttributes).ResolveAttributes(rc);
-      Layers = (this as ICarriesAttributes).FindLayers();
-      if (rc.Proc is YieldProcedureDecl yieldProcedureDecl)
-      {
-        if (Layers.Count == 0)
-        {
-          rc.Error(this, "expected layers");
-        }
-        else if (Layers[^1] > yieldProcedureDecl.Layer)
-        {
-          rc.Error(this, $"each layer must not be more than {yieldProcedureDecl.Layer}");
-        }
-      }
-    }
-
-    public override void Typecheck(TypecheckingContext tc)
-    {
-      tc.ExpectedLayerRange = Layers?.Count > 0 ?new LayerRange(Layers[0], Layers[^1]) : null;
-      this.Condition.Typecheck(tc);
-      tc.ExpectedLayerRange = null;
-      Contract.Assert(this.Condition.Type != null); // follows from postcondition of Expr.Typecheck
-      if (!this.Condition.Type.Unify(Type.Int))
-      {
-        tc.Error(this, "measure must be of type Integer");
-      }
-    }
-
-    public override Absy StdDispatch(StandardVisitor visitor)
-    {
-      return visitor.VisitMeasure(this);
-    }
-  }
-
   public class Procedure : DeclWithFormals
   {
     public bool IsPure;
@@ -2656,7 +2555,7 @@ namespace Microsoft.Boogie
 
     public List<Ensures> Ensures;
 
-    public List<Measure> Measure;
+    public List<MeasureCmd> Measure;
 
     public List<IdentifierExpr> Modifies;
     
@@ -2664,14 +2563,14 @@ namespace Microsoft.Boogie
 
     public Procedure(IToken tok, string name, List<TypeVariable> typeParams,
       List<Variable> inParams, List<Variable> outParams, bool isPure,
-      List<Requires> requires, List<Requires> preserves, List<Ensures> ensures, List<Measure> measure, List<IdentifierExpr> modifies)
+      List<Requires> requires, List<Requires> preserves, List<Ensures> ensures, List<MeasureCmd> measure, List<IdentifierExpr> modifies)
       : this(tok, name, typeParams, inParams, outParams, isPure, requires, preserves, ensures, measure, modifies, null)
     {
     }
 
     public Procedure(IToken tok, string name, List<TypeVariable> typeParams,
       List<Variable> inParams, List<Variable> outParams, bool isPure,
-      List<Requires> requires, List<Requires> preserves, List<Ensures> ensures, List<Measure> measure, List<IdentifierExpr> modifies, QKeyValue kv)
+      List<Requires> requires, List<Requires> preserves, List<Ensures> ensures, List<MeasureCmd> measure, List<IdentifierExpr> modifies, QKeyValue kv)
       : base(tok, name, typeParams, inParams, outParams)
     {
       this.IsPure = isPure;
@@ -2715,7 +2614,7 @@ namespace Microsoft.Boogie
         e.Emit(stream, level);
       }
 
-      foreach (Measure m in this.Measure)
+      foreach (MeasureCmd m in this.Measure)
       {
         Contract.Assert(m != null);
         m.Emit(stream, level);
@@ -2778,7 +2677,7 @@ namespace Microsoft.Boogie
           e.Resolve(rc);
         }
 
-        foreach (Measure e in Measure)
+        foreach (MeasureCmd e in Measure)
         {
           Contract.Assert(e != null);
           e.Resolve(rc);
@@ -2858,7 +2757,7 @@ namespace Microsoft.Boogie
         TypecheckSpec(e.Layers, e.Typecheck);
       }
       
-      foreach (Measure e in Measure)
+      foreach (MeasureCmd e in Measure)
       {
         var savedGlobalAccessOnlyInOld = tc.GlobalAccessOnlyInOld;
         tc.GlobalAccessOnlyInOld = false;   // allow globals in measure without old(...)
@@ -2905,7 +2804,7 @@ namespace Microsoft.Boogie
 
     public YieldInvariantDecl(IToken tok, string name, List<Variable> inParams, List<Requires> preserves, QKeyValue kv) :
       base(tok, name, new List<TypeVariable>(), inParams, new List<Variable>(), false,
-            new List<Requires>(), preserves, new List<Ensures>(), new List<Measure>(), new List<IdentifierExpr>(), kv)
+            new List<Requires>(), preserves, new List<Ensures>(), new List<MeasureCmd>(), new List<IdentifierExpr>(), kv)
     {
       IsGlobal = true;
     }
@@ -3016,7 +2915,7 @@ namespace Microsoft.Boogie
       List<Requires> requires, List<IdentifierExpr> modifies, List<CallCmd> yieldRequires, List<AssertCmd> asserts,
       QKeyValue kv) : base(tok, name,
       new List<TypeVariable>(), inParams, outParams,
-      isPure, requires, new List<Requires>(), new List<Ensures>(), new List<Measure>(), modifies, kv)
+      isPure, requires, new List<Requires>(), new List<Ensures>(), new List<MeasureCmd>(), modifies, kv)
     {
       this.MoverType = moverType;
       this.RefinedAction = refinedAction;
@@ -3185,7 +3084,7 @@ namespace Microsoft.Boogie
 
     public YieldProcedureDecl(IToken tok, string name, MoverType? moverType, List<Variable> inParams,
       List<Variable> outParams,
-      List<Requires> requires, List<Requires> preserves, List<Ensures> ensures, List<Measure> measure, List<IdentifierExpr> modifies,
+      List<Requires> requires, List<Requires> preserves, List<Ensures> ensures, List<MeasureCmd> measure, List<IdentifierExpr> modifies,
       List<CallCmd> yieldRequires, List<CallCmd> yieldPreserves, List<CallCmd> yieldEnsures,
       ActionDeclRef refinedAction, QKeyValue kv) : base(tok, name, new List<TypeVariable>(), inParams, outParams,
       false, requires, preserves, ensures, measure, modifies, kv)
@@ -3429,7 +3328,7 @@ namespace Microsoft.Boogie
       List<Variable> inputs, List<Variable> outputs, List<IdentifierExpr> globalMods)
       : base(Token.NoToken, impl.Name + "_loop_" + header.ToString(),
         new List<TypeVariable>(), inputs, outputs, false,
-        new List<Requires>(), new List<Requires>(), new List<Ensures>(), new List<Measure>(), globalMods)
+        new List<Requires>(), new List<Requires>(), new List<Ensures>(), new List<MeasureCmd>(), globalMods)
     {
       enclosingImpl = impl;
     }

@@ -52,7 +52,7 @@ namespace Microsoft.Boogie
         var requires = VisitRequiresSeq(node.Requires);
         var preserves = VisitRequiresSeq(node.Preserves);
         var ensures = VisitEnsuresSeq(node.Ensures);
-        var measure = VisitMeasureSeq(node.Measure);
+        var measure = node.Measure.Where(m => m.Layers != null && m.Layers.Contains(layerNum)).Select(m => (MeasureCmd)VisitMeasureCmd(m)).ToList();
         if (doRefinementCheck)
         {
           requires = requires.Select(req => new Requires(req.tok, true, req.Condition, req.Comment, req.Attributes)).ToList();
@@ -129,6 +129,18 @@ namespace Microsoft.Boogie
       return ensures;
     }
 
+    public override Cmd VisitMeasureCmd(MeasureCmd node)
+    {
+      var measureCmd = (MeasureCmd) base.VisitMeasureCmd(node);
+
+      if (node.Layers != null && node.Layers.Count > 0 && !node.Layers.Contains(layerNum))
+      {
+        return null;
+      }
+
+      return measureCmd;
+    }
+
     #endregion
 
     #region Implementation duplication
@@ -191,28 +203,33 @@ namespace Microsoft.Boogie
     }
 
     public override List<Cmd> VisitCmdSeq(List<Cmd> cmdSeq)
+{
+  newCmdSeq = new List<Cmd>();
+  foreach (var cmd in cmdSeq)
+  {
+    Cmd newCmd = (Cmd)Visit(cmd);
+    if (newCmd == null)
     {
-      newCmdSeq = new List<Cmd>();
-      foreach (var cmd in cmdSeq)
-      {
-        Cmd newCmd = (Cmd) Visit(cmd);
-        absyMap[newCmd] = cmd;
-        if (newCmd is CallCmd)
-        {
-          ProcessCallCmd((CallCmd) newCmd);
-        }
-        else if (newCmd is ParCallCmd)
-        {
-          ProcessParCallCmd((ParCallCmd) newCmd);
-        }
-        else
-        {
-          newCmdSeq.Add(newCmd);
-        }
-        lastAbsy = newCmd;
-      }
-      return newCmdSeq;
+      continue;
     }
+
+    absyMap[newCmd] = cmd;
+    if (newCmd is CallCmd)
+    {
+      ProcessCallCmd((CallCmd)newCmd);
+    }
+    else if (newCmd is ParCallCmd)
+    {
+      ProcessParCallCmd((ParCallCmd)newCmd);
+    }
+    else
+    {
+      newCmdSeq.Add(newCmd);
+    }
+    lastAbsy = newCmd;
+  }
+  return newCmdSeq;
+}
 
     private bool IsMoverAtCurrentLayer(YieldProcedureDecl node)
     {

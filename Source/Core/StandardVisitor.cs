@@ -451,29 +451,13 @@ namespace Microsoft.Boogie
       return ensuresSeq;
     }
 
-    public virtual Measure VisitMeasure(Measure @measure)
-    {
-      Contract.Requires(@measure != null);
-      Contract.Ensures(Contract.Result<Measure>() != null);
-      @measure.Condition = this.VisitExpr(@measure.Condition);
-      return @measure;
-    }
-
     public virtual Cmd VisitMeasureCmd(MeasureCmd node)
     {
-      node.Measures = this.VisitMeasureSeq(node.Measures);
+      Contract.Requires(node != null);
+      Contract.Ensures(Contract.Result<Cmd>() != null);
+      node.Expressions = this.VisitExprSeq(node.Expressions).ToList();
+      VisitAttributes(node);
       return node;
-    }
-
-    public virtual List<Measure> VisitMeasureSeq(List<Measure> measureSeq)
-    {
-      Contract.Requires(measureSeq != null);
-      Contract.Ensures(Contract.Result<List<Measure>>() != null);
-      for (int i = 0, n = measureSeq.Count; i < n; i++)
-      {
-        measureSeq[i] = this.VisitMeasure(measureSeq[i]);
-      }
-      return measureSeq;
     }
 
     public virtual Expr VisitForallExpr(ForallExpr node)
@@ -686,6 +670,7 @@ namespace Microsoft.Boogie
       node.OutParams = this.VisitVariableSeq(node.OutParams);
       node.Requires = this.VisitRequiresSeq(node.Requires);
       node.Preserves = this.VisitRequiresSeq(node.Preserves);
+      node.Measure = node.Measure.Select(m => (MeasureCmd)this.VisitMeasureCmd(m)).ToList();
       VisitAttributes(node);
       return node;
     }
@@ -1743,7 +1728,8 @@ namespace Microsoft.Boogie
 
     public override Cmd VisitMeasureCmd(MeasureCmd node)
     {
-      this.VisitMeasureSeq(node.Measures);
+      Contract.Ensures(Contract.Result<Cmd>() == node);
+      this.VisitExprSeq(node.Expressions);
       return node;
     }
   }
