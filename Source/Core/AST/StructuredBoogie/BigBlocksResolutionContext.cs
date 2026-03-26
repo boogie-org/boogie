@@ -434,7 +434,7 @@ class BigBlocksResolutionContext
               new GotoCmd(whileCmd.tok, new List<string> {loopHeadLabel}));
             blocks.Add(block);
 
-            // LoopHead: assert/assume loop_invariant; goto LoopDone, LoopBody;
+            // LoopHead: assert/assume loop_invariant; measure commands; goto LoopDone, LoopBody;
             List<Cmd> ssHead = new List<Cmd>();
             foreach (CallCmd yield in whileCmd.Yields)
             {
@@ -444,17 +444,7 @@ class BigBlocksResolutionContext
             {
               ssHead.Add(inv);
             }
-
-            if (whileCmd.MeasureCmds.Count != 0)
-            {
-              foreach (var measureCmd in whileCmd.MeasureCmds)
-              {
-                ssHead.Add(new MeasureCmd(
-                  measureCmd.tok,
-                  measureCmd.Expressions.ToList(),
-                  measureCmd.Attributes));
-              }
-            }
+            ssHead.AddRange(whileCmd.MeasureCmds);
             
             block = new Block(whileCmd.tok, loopHeadLabel, ssHead,
               new GotoCmd(whileCmd.tok, new List<string> {loopDoneLabel, loopBodyLabel}));
