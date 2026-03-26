@@ -2085,6 +2085,7 @@ namespace Microsoft.Boogie
       return visitor.VisitAssumeCmd(this);
     }
   }
+
   public class MeasureCmd : Cmd, ICarriesAttributes
   {
     public List<Expr> Expressions;

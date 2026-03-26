@@ -640,7 +640,7 @@ namespace Microsoft.Boogie
         List<Variable> outParams = new List<Variable>();
         List<Requires> requiresSeq = new List<Requires>();
         List<Ensures> ensuresSeq = new List<Ensures>();
-        List<MeasureCmd> measureSeq = new List<MeasureCmd>();
+        List<MeasureCmd> measureCmdSeq = new List<MeasureCmd>();
         int count = 0;
         foreach (CallCmd callCmd in parCallCmd.CallCmds)
         {
@@ -686,7 +686,7 @@ namespace Microsoft.Boogie
 
         parallelCallAggregators[procName] = DeclHelper.Procedure(
           procName, inParams, outParams, doRefinementCheck ? new List<Requires>() : requiresSeq, new List<Requires>(),
-          ensuresSeq, measureSeq, civlTypeChecker.GlobalVariables.Select(v => Expr.Ident(v)).ToList());
+          ensuresSeq, measureCmdSeq, civlTypeChecker.GlobalVariables.Select(v => Expr.Ident(v)).ToList());
       }
 
       Procedure proc = parallelCallAggregators[procName];
@@ -753,7 +753,7 @@ namespace Microsoft.Boogie
         var requires = action.Gate.Select(a => new Requires(false, a.Expr)).ToList();
         var preserves = new List<Requires>();
         var ensures = new List<Ensures>();
-        var measure = new List<MeasureCmd>();
+        var measureCmds = new List<MeasureCmd>();
         var modifies = civlTypeChecker.GlobalVariables.Select(Expr.Ident).ToList();
         var locals = oldGlobalMap.Values.Union(localPermissionCollectors.Values).ToList();
         var cmds = new List<Cmd>();
@@ -766,7 +766,7 @@ namespace Microsoft.Boogie
         var blocks = new List<Block> { BlockHelper.Block("init", cmds) };
 
         var name = civlTypeChecker.AddNamePrefix($"{checkerNamePrefix}_NoninterferenceChecker_{action.Name}_{layerNum}");
-        var proc = DeclHelper.Procedure(name, inputs, outputs, requires, preserves, ensures, measure, modifies);
+        var proc = DeclHelper.Procedure(name, inputs, outputs, requires, preserves, ensures, measureCmds, modifies);
         var impl = DeclHelper.Implementation(proc, inputs, outputs, locals, blocks);
         yield return proc;
         yield return impl;

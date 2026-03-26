@@ -101,7 +101,7 @@ namespace Microsoft.Boogie
     {
       foreach (var proc in program.Procedures)
       {
-        if (proc.Measure == null || proc.Measure.Count == 0)
+        if (proc.MeasureCmds == null || proc.MeasureCmds.Count == 0)
         {
           continue;
         }
@@ -109,7 +109,7 @@ namespace Microsoft.Boogie
         if (proc is YieldProcedureDecl)
         {
           var seenLayers = new Dictionary<int, MeasureCmd>();
-          foreach (var measureCmd in proc.Measure)
+          foreach (var measureCmd in proc.MeasureCmds)
           {
             foreach (var layer in measureCmd.Layers)
             {
@@ -129,10 +129,10 @@ namespace Microsoft.Boogie
         }
         else
         {
-          if (proc.Measure.Count > 1)
+          if (proc.MeasureCmds.Count > 1)
           {
             checkingContext.Error(
-              proc.Measure[1].tok,
+              proc.MeasureCmds[1].tok,
               "Sequential procedure may contain at most one measure command");
           }
         }
@@ -144,7 +144,7 @@ namespace Microsoft.Boogie
       var measureChecker = new MeasureChecker(program, options);
       Debug.Assert(measureChecker.checkingContext.ErrorCount == 0);
 
-      foreach (var impl in program.Implementations.Where(impl => impl.Proc.Measure.Count > 0))
+      foreach (var impl in program.Implementations.Where(impl => impl.Proc.MeasureCmds.Count > 0))
       {
         measureChecker.TransformCallCmds(impl);
       }
@@ -172,7 +172,7 @@ namespace Microsoft.Boogie
           .Where(callCmd => IsRecursiveCall(callerDecl, callCmd));
       }
 
-      foreach (var impl in program.Implementations.Where(impl => impl.Proc.Measure.Count > 0))
+      foreach (var impl in program.Implementations.Where(impl => impl.Proc.MeasureCmds.Count > 0))
       {
         var callerDecl = impl.Proc;
         if (callerDecl is ActionDecl || callerDecl is YieldProcedureDecl yp && !yp.MoverType.HasValue)
@@ -181,13 +181,13 @@ namespace Microsoft.Boogie
         }
         else
         {
-          var callerMeasureCount = callerDecl.Measure.SelectMany(mc => mc.Expressions).Count();
+          var callerMeasureCount = callerDecl.MeasureCmds.SelectMany(mc => mc.Expressions).Count();
 
           foreach (var block in impl.Blocks)
           {
             foreach (var callCmd in RecursiveCallCmds(callerDecl, block))
             {
-              var calleeMeasureCount = callCmd.Proc.Measure.SelectMany(mc => mc.Expressions).Count();
+              var calleeMeasureCount = callCmd.Proc.MeasureCmds.SelectMany(mc => mc.Expressions).Count();
 
               if (calleeMeasureCount != callerMeasureCount)
               {
@@ -202,7 +202,7 @@ namespace Microsoft.Boogie
     }
     private void TransformProcedure(Procedure node)
     {
-      foreach (var measureCmd in node.Measure)
+      foreach (var measureCmd in node.MeasureCmds)
       {
         foreach (var expr in measureCmd.Expressions)
         {
@@ -219,7 +219,7 @@ namespace Microsoft.Boogie
         }
       }
 
-      node.Measure = new List<MeasureCmd>();
+      node.MeasureCmds = new List<MeasureCmd>();
     }
 
     private void TransformCallCmds(Implementation impl)
@@ -240,10 +240,10 @@ namespace Microsoft.Boogie
                 callCmd.Proc.InParams.Zip(callCmd.Ins).ToDictionary());
 
             var callerMeasureExprs =
-              impl.Proc.Measure.SelectMany(mc => mc.Expressions).ToList();
+              impl.Proc.MeasureCmds.SelectMany(mc => mc.Expressions).ToList();
 
             var calleeMeasureExprs =
-              callCmd.Proc.Measure.SelectMany(mc => mc.Expressions).ToList();
+              callCmd.Proc.MeasureCmds.SelectMany(mc => mc.Expressions).ToList();
 
             if (callerMeasureExprs.Count != calleeMeasureExprs.Count)
             {

@@ -52,13 +52,12 @@ namespace Microsoft.Boogie
         var requires = VisitRequiresSeq(node.Requires);
         var preserves = VisitRequiresSeq(node.Preserves);
         var ensures = VisitEnsuresSeq(node.Ensures);
-        var measure = node.Measure.Where(m => m.Layers != null && m.Layers.Contains(layerNum)).Select(m => (MeasureCmd)VisitMeasureCmd(m)).ToList();
+        var measure = VisitMeasureCmdSeq(node.MeasureCmds);
         if (doRefinementCheck)
         {
           requires = requires.Select(req => new Requires(req.tok, true, req.Condition, req.Comment, req.Attributes)).ToList();
           preserves = preserves.Select(req => new Requires(req.tok, true, req.Condition, req.Comment, req.Attributes)).ToList();
           ensures = ensures.Select(ens => new Ensures(ens.tok, true, ens.Condition, ens.Comment, ens.Attributes)).ToList();
-          measure = [];
         }
         requires.AddRange(preserves);
         ensures.AddRange(preserves.Select(req => new Ensures(req.tok, req.Free, req.Condition, req.Comment, req.Attributes)));
@@ -97,6 +96,13 @@ namespace Microsoft.Boogie
       return ensuresSeq;
     }
 
+    public override List<MeasureCmd> VisitMeasureCmdSeq(List<MeasureCmd> measureCmdSeq)
+    {
+      measureCmdSeq = base.VisitMeasureCmdSeq(measureCmdSeq);
+      measureCmdSeq.RemoveAll(measureCmd => measureCmd.Expressions.Count == 0);
+      return measureCmdSeq;
+    }
+
     public override Requires VisitRequires(Requires node)
     {
       Requires requires = base.VisitRequires(node);
@@ -129,13 +135,13 @@ namespace Microsoft.Boogie
       return ensures;
     }
 
-    public override Cmd VisitMeasureCmd(MeasureCmd node)
+    public override MeasureCmd VisitMeasureCmd(MeasureCmd node)
     {
-      var measureCmd = (MeasureCmd) base.VisitMeasureCmd(node);
+      var measureCmd = base.VisitMeasureCmd(node);
 
       if (doRefinementCheck || !node.Layers.Contains(layerNum))
       {
-        var cmd = new MeasureCmd(Token.NoToken, [], null);
+        var cmd = new MeasureCmd(Token.NoToken, []);
         return cmd;
       }
 
@@ -204,33 +210,37 @@ namespace Microsoft.Boogie
     }
 
     public override List<Cmd> VisitCmdSeq(List<Cmd> cmdSeq)
-{
-  newCmdSeq = new List<Cmd>();
-  foreach (var cmd in cmdSeq)
-  {
-    Cmd newCmd = (Cmd)Visit(cmd);
-    if (newCmd == null)
     {
-      continue;
-    }
+      newCmdSeq = new List<Cmd>();
+      foreach (var cmd in cmdSeq)
+      {
+        Cmd newCmd = (Cmd)Visit(cmd);
+        if (newCmd == null)
+        {
+          continue;
+        }
 
-    absyMap[newCmd] = cmd;
-    if (newCmd is CallCmd)
-    {
-      ProcessCallCmd((CallCmd)newCmd);
+        absyMap[newCmd] = cmd;
+        if (newCmd is CallCmd)
+        {
+          ProcessCallCmd((CallCmd)newCmd);
+        }
+        else if (newCmd is ParCallCmd)
+        {
+          ProcessParCallCmd((ParCallCmd)newCmd);
+        }
+        else if (newCmd is MeasureCmd measureCmd && measureCmd.Expressions.Count == 0)
+        {
+          // drop it
+        }
+        else
+        {
+          newCmdSeq.Add(newCmd);
+        }
+        lastAbsy = newCmd;
+      }
+      return newCmdSeq;
     }
-    else if (newCmd is ParCallCmd)
-    {
-      ProcessParCallCmd((ParCallCmd)newCmd);
-    }
-    else
-    {
-      newCmdSeq.Add(newCmd);
-    }
-    lastAbsy = newCmd;
-  }
-  return newCmdSeq;
-}
 
     private bool IsMoverAtCurrentLayer(YieldProcedureDecl node)
     {

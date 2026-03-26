@@ -249,6 +249,18 @@ namespace Microsoft.Boogie
       return base.VisitEnsuresSeq(new List<Ensures>(ensuresSeq));
     }
 
+    public override MeasureCmd VisitMeasureCmd(MeasureCmd node)
+    {
+      Contract.Ensures(Contract.Result<MeasureCmd>() != null);
+      return base.VisitMeasureCmd((MeasureCmd) node.Clone());
+    }
+
+    public override List<MeasureCmd> VisitMeasureCmdSeq(List<MeasureCmd> measureCmdSeq)
+    {
+      Contract.Ensures(Contract.Result<List<MeasureCmd>>() != null);
+      return base.VisitMeasureCmdSeq(new List<MeasureCmd>(measureCmdSeq));
+    }
+
     public override Expr VisitExistsExpr(ExistsExpr node)
     {
       Contract.Ensures(Contract.Result<Expr>() != null);

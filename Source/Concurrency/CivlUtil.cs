@@ -329,10 +329,10 @@ namespace Microsoft.Boogie
   {
     public static Procedure Procedure(string name,
       List<Variable> inParams, List<Variable> outParams,
-      List<Requires> requires, List<Requires> preserves, List<Ensures> ensures, List<MeasureCmd> measure, List<IdentifierExpr> modifies,
+      List<Requires> requires, List<Requires> preserves, List<Ensures> ensures, List<MeasureCmd> measureCmds, List<IdentifierExpr> modifies,
       QKeyValue kv = null)
     {
-      return new Procedure(Token.NoToken, name, new List<TypeVariable>(), inParams, outParams, false, requires, preserves, ensures, measure, modifies, kv);
+      return new Procedure(Token.NoToken, name, new List<TypeVariable>(), inParams, outParams, false, requires, preserves, ensures, measureCmds, modifies, kv);
     }
 
     public static Implementation Implementation(Procedure proc,

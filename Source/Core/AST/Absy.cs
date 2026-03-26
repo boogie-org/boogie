@@ -2555,7 +2555,7 @@ namespace Microsoft.Boogie
 
     public List<Ensures> Ensures;
 
-    public List<MeasureCmd> Measure;
+    public List<MeasureCmd> MeasureCmds;
 
     public List<IdentifierExpr> Modifies;
     
@@ -2563,21 +2563,21 @@ namespace Microsoft.Boogie
 
     public Procedure(IToken tok, string name, List<TypeVariable> typeParams,
       List<Variable> inParams, List<Variable> outParams, bool isPure,
-      List<Requires> requires, List<Requires> preserves, List<Ensures> ensures, List<MeasureCmd> measure, List<IdentifierExpr> modifies)
-      : this(tok, name, typeParams, inParams, outParams, isPure, requires, preserves, ensures, measure, modifies, null)
+      List<Requires> requires, List<Requires> preserves, List<Ensures> ensures, List<MeasureCmd> measureCmds, List<IdentifierExpr> modifies)
+      : this(tok, name, typeParams, inParams, outParams, isPure, requires, preserves, ensures, measureCmds, modifies, null)
     {
     }
 
     public Procedure(IToken tok, string name, List<TypeVariable> typeParams,
       List<Variable> inParams, List<Variable> outParams, bool isPure,
-      List<Requires> requires, List<Requires> preserves, List<Ensures> ensures, List<MeasureCmd> measure, List<IdentifierExpr> modifies, QKeyValue kv)
+      List<Requires> requires, List<Requires> preserves, List<Ensures> ensures, List<MeasureCmd> measureCmds, List<IdentifierExpr> modifies, QKeyValue kv)
       : base(tok, name, typeParams, inParams, outParams)
     {
       this.IsPure = isPure;
       this.Requires = requires;
       this.Preserves = preserves;
       this.Ensures = ensures;
-      this.Measure = measure;
+      this.MeasureCmds = measureCmds;
       this.Modifies = modifies;
       this.Attributes = kv;
     }
@@ -2614,7 +2614,7 @@ namespace Microsoft.Boogie
         e.Emit(stream, level);
       }
 
-      foreach (MeasureCmd m in this.Measure)
+      foreach (MeasureCmd m in this.MeasureCmds)
       {
         Contract.Assert(m != null);
         m.Emit(stream, level);
@@ -2677,7 +2677,7 @@ namespace Microsoft.Boogie
           e.Resolve(rc);
         }
 
-        foreach (MeasureCmd e in Measure)
+        foreach (MeasureCmd e in MeasureCmds)
         {
           Contract.Assert(e != null);
           e.Resolve(rc);
@@ -2757,7 +2757,7 @@ namespace Microsoft.Boogie
         TypecheckSpec(e.Layers, e.Typecheck);
       }
       
-      foreach (MeasureCmd e in Measure)
+      foreach (MeasureCmd e in MeasureCmds)
       {
         var savedGlobalAccessOnlyInOld = tc.GlobalAccessOnlyInOld;
         tc.GlobalAccessOnlyInOld = false;   // allow globals in measure without old(...)
@@ -3084,10 +3084,10 @@ namespace Microsoft.Boogie
 
     public YieldProcedureDecl(IToken tok, string name, MoverType? moverType, List<Variable> inParams,
       List<Variable> outParams,
-      List<Requires> requires, List<Requires> preserves, List<Ensures> ensures, List<MeasureCmd> measure, List<IdentifierExpr> modifies,
+      List<Requires> requires, List<Requires> preserves, List<Ensures> ensures, List<MeasureCmd> measureCmds, List<IdentifierExpr> modifies,
       List<CallCmd> yieldRequires, List<CallCmd> yieldPreserves, List<CallCmd> yieldEnsures,
       ActionDeclRef refinedAction, QKeyValue kv) : base(tok, name, new List<TypeVariable>(), inParams, outParams,
-      false, requires, preserves, ensures, measure, modifies, kv)
+      false, requires, preserves, ensures, measureCmds, modifies, kv)
     {
       this.MoverType = moverType;
       this.YieldRequires = yieldRequires;

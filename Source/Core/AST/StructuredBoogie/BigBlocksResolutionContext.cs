@@ -445,9 +445,9 @@ class BigBlocksResolutionContext
               ssHead.Add(inv);
             }
 
-            if (whileCmd.Measures.Count != 0)
+            if (whileCmd.MeasureCmds.Count != 0)
             {
-              foreach (var measureCmd in whileCmd.Measures)
+              foreach (var measureCmd in whileCmd.MeasureCmds)
               {
                 ssHead.Add(new MeasureCmd(
                   measureCmd.tok,
@@ -616,5 +616,3 @@ class BigBlocksResolutionContext
     }
   }
 }
-
-
