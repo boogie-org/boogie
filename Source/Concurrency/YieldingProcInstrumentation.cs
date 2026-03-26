@@ -469,7 +469,10 @@ namespace Microsoft.Boogie
           }
         }
 
-        SplitCmds(header.Cmds, out var firstCmds, out var measureCmds, out var secondCmds);
+        var measureCmds = header.Cmds.OfType<MeasureCmd>();
+        var numMeasureCmds = header.Cmds.RemoveAll(cmd => cmd is MeasureCmd);
+        Debug.Assert(numMeasureCmds <= 1);
+        SplitCmds(header.Cmds, out var firstCmds, out var secondCmds);
         List<Cmd> newCmds = new List<Cmd>();
         newCmds.AddRange(firstCmds);
         newCmds.AddRange(refinementInstrumentation.CreateAssumeCmds());
@@ -705,34 +708,25 @@ namespace Microsoft.Boogie
       return civlTypeChecker.Formal($"{count}_{v.Name}", v.TypedIdent.Type, incoming);
     }
 
-    private void SplitCmds(List<Cmd> cmds, out List<Cmd> firstCmds, out List<MeasureCmd> measureCmds,  out List<Cmd> secondCmds)
+    private void SplitCmds(List<Cmd> cmds, out List<Cmd> firstCmds, out List<Cmd> secondCmds)
     {
       firstCmds = new List<Cmd>();
       secondCmds = new List<Cmd>();
-      measureCmds = new List<MeasureCmd>();
-      var count = 0;
       bool splitDone = false;
-      while (count < cmds.Count)
+      foreach (var cmd in cmds)
       {
-        var cmd = cmds[count];
         if (splitDone)
         {
           secondCmds.Add(cmd);
-          count++;
         }
         else if (cmd is PredicateCmd)
         {
           firstCmds.Add(cmd);
-          count++;
-        }
-        else if (cmd is MeasureCmd mc)
-        {
-          measureCmds.Add(mc);
-          count++;
         }
         else
         {
           splitDone = true;
+          secondCmds.Add(cmd);
         }
       }
     }

@@ -2188,6 +2188,7 @@ namespace Microsoft.Boogie
       return visitor.VisitMeasureCmd(this);
     }
   }
+
   public class ReturnExprCmd : ReturnCmd
   {
     public Expr Expr;
