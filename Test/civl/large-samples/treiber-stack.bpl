@@ -12,17 +12,6 @@ type X; // module type parameter
 var {:layer 3, 4} TreiberPool: Map (One (LocTreiber X)) (Vec X);
 var {:layer 0, 3} {:linear} TreiberPoolLow: Map (One (LocTreiber X)) (Treiber X);
 
-/// Proof outline
-/*
-Layer 1: Create abstractions of ReadTopOfStack for Push and Pop separately
-- right mover ReadTopOfStack#Push
-- atomic ReadTopOfStack#Pop
-Layer 2:
-- Convert PopIntermediate to atomic action using right mover LoadNode
-- Convert CreateNewTopOfStack to atomic action using right mover ReadTopOfStack#Push
-Layer 3: Introduce TreiberPool and abstract TreiberPoolLow to TreiberPool
-*/
-
 /// Yield invariants
 
 function {:inline} Domain(ts: Map (One (LocTreiber X)) (Treiber X), loc_t: LocTreiber X): Set (One (LocNode X)) {
@@ -33,14 +22,14 @@ function {:inline} ListInDomain(t: Treiber X): bool {
   (forall x: LocNode X:: BetweenSet(t->nodes->val, t->top, None())[x] ==> Set_Contains(t->nodes->dom, One(x)))
 }
 
-yield invariant {:layer 1} TopInStack(loc_t: LocTreiber X);
+yield invariant {:layer 2} TopInStack(loc_t: LocTreiber X);
 preserves Map_Contains(TreiberPoolLow, One(loc_t));
 preserves (var loc_n := Map_At(TreiberPoolLow, One(loc_t))->top; loc_n is None || Set_Contains(Domain(TreiberPoolLow, loc_t), One(loc_n->t)));
 preserves (forall loc_n: LocNode X :: Set_Contains(Domain(TreiberPoolLow, loc_t), One(loc_n)) ==>
               (var loc_n' := Map_At(Map_At(TreiberPoolLow, One(loc_t))->nodes, One(loc_n))->next;
                 loc_n' is None || Set_Contains(Domain(TreiberPoolLow, loc_t), One(loc_n'->t))));
 
-yield invariant {:layer 1} LocInStackOrNone(loc_t: LocTreiber X, loc_n: Option (LocNode X));
+yield invariant {:layer 2} LocInStackOrNone(loc_t: LocTreiber X, loc_n: Option (LocNode X));
 preserves Map_Contains(TreiberPoolLow, One(loc_t));
 preserves loc_n is None || Set_Contains(Domain(TreiberPoolLow, loc_t), One(loc_n->t));
 
@@ -196,7 +185,8 @@ refines AtomicCreateNewTopOfStack;
   var one_loc_n: One (LocNode X);
   var tagged_locs: Set (One (TaggedLocNode X));
 
-  call loc_n := ReadTopOfStack#Push(loc_t);
+  call loc_n := ReadTopOfStack#0(loc_t);
+  call LocInStackOrNone(loc_t, loc_n) | TopInStack(loc_t);
   call one_loc_n, tagged_locs := TaggedLocs_New(UnitSet());
   new_loc_n := one_loc_n->val;
   tagged_loc := One(TaggedLoc(new_loc_n, Unit()));
@@ -242,13 +232,13 @@ preserves call TopInStack(loc_t);
   var node: Node X;
   var x: X;
 
-  call loc_n := ReadTopOfStack#Pop(loc_t);
+  call loc_n := ReadTopOfStack#0(loc_t);
   if (loc_n == None()) {
     x_opt := None();
     success := true;
     return;
   }
-  call LocInStack(loc_t, loc_n->t) | LocInStackOrNone(loc_t, loc_n) | TopInStack(loc_t);
+  call LocInStack(loc_t, loc_n->t) | TopInStack(loc_t);
   call node := LoadNode#0(loc_t, loc_n->t);
   Node(new_loc_n, x) := node;
   call success := WriteTopOfStack#0(loc_t, loc_n, new_loc_n);
@@ -257,29 +247,6 @@ preserves call TopInStack(loc_t);
   } else {
     x_opt := None();
   }
-}
-
-yield procedure {:layer 1} ReadTopOfStack#Push(loc_t: LocTreiber X) returns (loc_n: Option (LocNode X))
-preserves call TopInStack(loc_t);
-ensures call LocInStackOrNone(loc_t, loc_n);
-refines right action {:layer 2} _ {
-  assert Map_Contains(TreiberPoolLow, One(loc_t));
-  assume loc_n is None || Set_Contains(Domain(TreiberPoolLow, loc_t), One(loc_n->t));
-}
-{
-  call loc_n := ReadTopOfStack#0(loc_t);
-}
-
-yield procedure {:layer 1} ReadTopOfStack#Pop(loc_t: LocTreiber X) returns (loc_n: Option (LocNode X))
-preserves call TopInStack(loc_t);
-ensures call LocInStackOrNone(loc_t, loc_n);
-refines atomic action {:layer 2} _
-{
-  assert Map_Contains(TreiberPoolLow, One(loc_t));
-  assume if loc_n is None then Map_At(TreiberPoolLow, One(loc_t))->top is None else Set_Contains(Domain(TreiberPoolLow, loc_t), One(loc_n->t));
-}
-{
-  call loc_n := ReadTopOfStack#0(loc_t);
 }
 
 /// Primitives
@@ -293,7 +260,7 @@ refines right action {:layer 1,2} _
 }
 
 yield procedure {:layer 0} ReadTopOfStack#0(loc_t: LocTreiber X) returns (loc_n: Option (LocNode X));
-refines atomic action {:layer 1} _
+refines atomic action {:layer 1,2} _
 {
   assert Map_Contains(TreiberPoolLow, One(loc_t));
   loc_n := TreiberPoolLow->val[One(loc_t)]->top;
