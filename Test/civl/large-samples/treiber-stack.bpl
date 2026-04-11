@@ -33,10 +33,6 @@ yield invariant {:layer 1} LocInStackOrNone(loc_t: LocTreiber X, loc_n: Option (
 preserves Map_Contains(TreiberPoolLow, One(loc_t));
 preserves loc_n is None || Set_Contains(Domain(TreiberPoolLow, loc_t), One(loc_n->t));
 
-yield invariant {:layer 1} LocInStack(loc_t: LocTreiber X, loc_n: LocNode X);
-preserves Map_Contains(TreiberPoolLow, One(loc_t));
-preserves Set_Contains(Domain(TreiberPoolLow, loc_t), One(loc_n));
-
 yield invariant {:layer 2} ReachInStack(loc_t: LocTreiber X);
 preserves Map_Contains(TreiberPoolLow, One(loc_t));
 preserves (var t := Map_At(TreiberPoolLow, One(loc_t)); Between(t->nodes->val, t->top, t->top, None()));
@@ -179,7 +175,7 @@ asserts Map_Contains(TreiberPoolLow, One(loc_t));
 yield procedure {:layer 1} CreateNewTopOfStack(loc_t: LocTreiber X, x: X)
   returns (loc_n: Option (LocNode X), new_loc_n: LocNode X, {:linear} tagged_loc: One (TaggedLocNode X))
 preserves call TopInStack(loc_t);
-ensures call LocInStack(loc_t, new_loc_n);
+ensures call LocInStackOrNone(loc_t, Some(new_loc_n));
 refines AtomicCreateNewTopOfStack;
 {
   var one_loc_n: One (LocNode X);
@@ -238,7 +234,7 @@ preserves call TopInStack(loc_t);
     success := true;
     return;
   }
-  call LocInStack(loc_t, loc_n->t) | TopInStack(loc_t);
+  call LocInStackOrNone(loc_t, loc_n) | TopInStack(loc_t);
   call node := LoadNode#0(loc_t, loc_n->t);
   Node(new_loc_n, x) := node;
   call success := WriteTopOfStack#0(loc_t, loc_n, new_loc_n);
