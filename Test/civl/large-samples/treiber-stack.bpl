@@ -43,11 +43,11 @@ preserves Map_At(TreiberPool, One(loc_t)) == Abs(Map_At(TreiberPoolLow, One(loc_
 yield invariant {:layer 2} StackDom();
 preserves TreiberPool->dom == TreiberPoolLow->dom;
 
-yield invariant {:layer 2} PushLocInStack(loc_t: LocTreiber X, node: Node X, new_loc_n: LocNode X, {:linear} tagged_loc: One (TaggedLocNode X));
+yield invariant {:layer 2} PushLocInStack(loc_t: LocTreiber X, new_top: LocNode X, new_node: Node X, {:linear} tagged_loc: One (TaggedLocNode X));
 preserves Map_Contains(TreiberPoolLow, One(loc_t));
-preserves Set_Contains(Domain(TreiberPoolLow, loc_t), One(new_loc_n));
-preserves tagged_loc->val == TaggedLoc(new_loc_n, Unit());
-preserves (var t := Map_At(TreiberPoolLow, One(loc_t)); Map_At(t->nodes, One(new_loc_n)) == node && !BetweenSet(t->nodes->val, t->top, None())[new_loc_n]);
+preserves Set_Contains(Domain(TreiberPoolLow, loc_t), One(new_top));
+preserves tagged_loc->val == TaggedLoc(new_top, Unit());
+preserves (var t := Map_At(TreiberPoolLow, One(loc_t)); Map_At(t->nodes, One(new_top)) == new_node && !BetweenSet(t->nodes->val, t->top, None())[new_top]);
 
 /// Layered implementation
 
@@ -100,16 +100,16 @@ preserves call TopInStack(loc_t);
 preserves call ReachInStack(loc_t);
 preserves call StackDom();
 {
-  var loc_n: Option (LocNode X);
-  var new_loc_n: LocNode X;
+  var old_top: Option (LocNode X);
+  var new_top: LocNode X;
   var tagged_loc: One (TaggedLocNode X);
   var {:layer 2} old_treiber: Treiber X;
 
   call {:layer 2} old_treiber := Copy(TreiberPoolLow->val[One(loc_t)]);
-  call loc_n, new_loc_n, tagged_loc := CreateNewTopOfStack(loc_t, x);
+  call old_top, new_top, tagged_loc := AllocNode#1(loc_t, x);
   call {:layer 2} FrameLemma(old_treiber, TreiberPoolLow->val[One(loc_t)]);
-  call ReachInStack(loc_t) | StackDom() | PushLocInStack(loc_t, Node(loc_n, x), new_loc_n, tagged_loc);
-  call success := WriteTopOfStack#0(loc_t, loc_n, Some(new_loc_n));
+  call ReachInStack(loc_t) | StackDom() | PushLocInStack(loc_t, new_top, Node(old_top, x), tagged_loc);
+  call success := WriteTopOfStack#0(loc_t, old_top, Some(new_top));
   if (success) {
     call {:layer 2} TreiberPool := Copy(Map_Update(TreiberPool, One(loc_t), Vec_Append(Map_At(TreiberPool, One(loc_t)), x)));
     assert {:layer 2} TreiberPoolLow->val[One(loc_t)]->top != None();
@@ -149,8 +149,8 @@ preserves call StackDom();
   }
 }
 
-atomic action {:layer 2} AtomicCreateNewTopOfStack(loc_t: LocTreiber X, x: X)
-  returns (loc_n: Option (LocNode X), new_loc_n: LocNode X, {:linear} tagged_loc: One (TaggedLocNode X))
+atomic action {:layer 2} AtomicAllocNode#1(loc_t: LocTreiber X, x: X)
+  returns (old_top: Option (LocNode X), new_top: LocNode X, {:linear} tagged_loc: One (TaggedLocNode X))
 asserts Map_Contains(TreiberPoolLow, One(loc_t));
 {
   var one_loc_t: One (LocTreiber X);
@@ -163,31 +163,31 @@ asserts Map_Contains(TreiberPoolLow, One(loc_t));
   one_loc_t := One(loc_t);
   call treiber := Map_Get(TreiberPoolLow, one_loc_t);
   Treiber(top, stack) := treiber;
-  assume loc_n is None || Map_Contains(stack, One(loc_n->t));
+  assume old_top is None || Map_Contains(stack, One(old_top->t));
   call one_loc_n, tagged_locs := TaggedLocs_New(UnitSet());
-  new_loc_n := one_loc_n->val;
-  tagged_loc := One(TaggedLoc(new_loc_n, Unit()));
+  new_top := one_loc_n->val;
+  tagged_loc := One(TaggedLoc(new_top, Unit()));
   call One_Get(tagged_locs, tagged_loc);
-  call Map_Put(stack, one_loc_n, Node(loc_n, x));
+  call Map_Put(stack, one_loc_n, Node(old_top, x));
   treiber := Treiber(top, stack);
   call Map_Put(TreiberPoolLow, one_loc_t, treiber);
 }
-yield procedure {:layer 1} CreateNewTopOfStack(loc_t: LocTreiber X, x: X)
-  returns (loc_n: Option (LocNode X), new_loc_n: LocNode X, {:linear} tagged_loc: One (TaggedLocNode X))
+yield procedure {:layer 1} AllocNode#1(loc_t: LocTreiber X, x: X)
+  returns (old_top: Option (LocNode X), new_top: LocNode X, {:linear} tagged_loc: One (TaggedLocNode X))
 preserves call TopInStack(loc_t);
-ensures call LocInStackOrNone(loc_t, Some(new_loc_n));
-refines AtomicCreateNewTopOfStack;
+ensures call LocInStackOrNone(loc_t, Some(new_top));
+refines AtomicAllocNode#1;
 {
   var one_loc_n: One (LocNode X);
   var tagged_locs: Set (One (TaggedLocNode X));
 
-  call loc_n := ReadTopOfStack#0(loc_t);
-  call LocInStackOrNone(loc_t, loc_n) | TopInStack(loc_t);
+  call old_top := ReadTopOfStack#0(loc_t);
+  call LocInStackOrNone(loc_t, old_top) | TopInStack(loc_t);
   call one_loc_n, tagged_locs := TaggedLocs_New(UnitSet());
-  new_loc_n := one_loc_n->val;
-  tagged_loc := One(TaggedLoc(new_loc_n, Unit()));
+  new_top := one_loc_n->val;
+  tagged_loc := One(TaggedLoc(new_top, Unit()));
   call One_Get(tagged_locs, tagged_loc);
-  call AllocNode#0(loc_t, one_loc_n, Node(loc_n, x));
+  call AllocNode#0(loc_t, one_loc_n, Node(old_top, x));
 }
 
 atomic action {:layer 2} AtomicPopIntermediate(loc_t: LocTreiber X) returns (success: bool, x_opt: Option X)
