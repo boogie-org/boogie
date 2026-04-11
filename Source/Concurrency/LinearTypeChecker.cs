@@ -58,13 +58,27 @@ namespace Microsoft.Boogie
 
     private static bool IsPrimitiveLinearType(Type type)
     {
-      if (type is CtorType ctorType && ctorType.Decl is DatatypeTypeCtorDecl datatypeTypeCtorDecl)
+      var originalTypeCtorDecl = GetOriginalTypeCtorDecl(type);
+      if (originalTypeCtorDecl == null)
       {
-        var originalTypeCtorDecl = Monomorphizer.GetOriginalDecl(datatypeTypeCtorDecl);
-        var typeName = originalTypeCtorDecl.Name;
-        return typeName == "One" || typeName == "Set" || typeName == "Map";
+        return false;
       }
-      return false;
+      return IsPrimitiveLinearTypeCtorDecl(originalTypeCtorDecl);
+    }
+
+    private static bool IsPrimitiveLinearTypeCtorDecl(TypeCtorDecl typeCtorDecl)
+    {
+      var typeName = typeCtorDecl.Name;
+      return typeName == "One" || typeName == "Set" || typeName == "Map";
+    }
+
+    private static TypeCtorDecl GetOriginalTypeCtorDecl(Type type)
+    {
+      if (type is CtorType ctorType)
+      {
+        return Monomorphizer.GetOriginalDecl(ctorType.Decl);
+      }
+      return null;
     }
 
     // This method checks that assignLhs does not modify the contents of a
@@ -83,9 +97,12 @@ namespace Microsoft.Boogie
         return IsLegalAssignmentTarget(mapAssignLhs.Map);
       }
       var fieldAssignLhs = (FieldAssignLhs)assignLhs;
-      if (IsPrimitiveLinearType(fieldAssignLhs.Datatype.Type))
+      var typeCtorDecl = GetOriginalTypeCtorDecl(fieldAssignLhs.Datatype.Type);
+      if (typeCtorDecl != null && IsPrimitiveLinearTypeCtorDecl(typeCtorDecl))
       {
-        return false;
+        var typeName = typeCtorDecl.Name;
+        var fieldName = fieldAssignLhs.FieldAccess.FieldName;
+        return typeName == "Map" && fieldName == "val";
       }
       return IsLegalAssignmentTarget(fieldAssignLhs.Datatype);
     }
