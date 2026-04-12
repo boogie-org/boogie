@@ -4,16 +4,16 @@
 datatype List { 
     List(
         data: int,
-        next: Option (Cell (Loc List) List)
+        next: Option (Cell Loc List)
     )
 }
 
 procedure append({:linear_in} l: List, {:linear_in} m: List) returns ({:linear} l': List)
 {
     var data: int;
-    var next: Option (Cell (Loc List) List);
-    var cell: Cell (Loc List) List;
-    var loc_p: One (Loc List);
+    var next: Option (Cell Loc List);
+    var cell: Cell Loc List;
+    var loc_p: One Loc;
     var tl, tl': List;
 
     List(data, next) := l;

@@ -1,23 +1,19 @@
 // RUN: %parallel-boogie /lib:base /lib:node "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type TaggedLocNode V = TaggedLoc (Node V) Unit;
-
-datatype Treiber<V> { Treiber(top: Option (LocNode V), nodes: Map (One (LocNode V)) (Node V)) }
-type LocTreiber V = Loc (Treiber V);
-type TaggedLocTreiber V = TaggedLoc (Treiber V) Unit;
+datatype Treiber<V> { Treiber(top: Option Loc, nodes: Map (One Loc) (Node V)) }
 
 type X;
-var ts: Map (LocTreiber X) (Treiber X);
+var ts: Map Loc (Treiber X);
 
-function {:inline} SubsetInv(ts: Map (LocTreiber X) (Treiber X), ref_t: LocTreiber X): bool
+function {:inline} SubsetInv(ts: Map Loc (Treiber X), ref_t: Loc): bool
 {
   (var t := Map_At(ts, ref_t);
     (var m := t->nodes; 
-      (forall x: LocNode X:: BetweenSet(m->val, t->top, None())[x] ==> Set_Contains(m->dom, One(x)))))
+      (forall x: Loc:: BetweenSet(m->val, t->top, None())[x] ==> Set_Contains(m->dom, One(x)))))
 }
 
-procedure YieldInv(ref_t: LocTreiber X)
+procedure YieldInv(ref_t: Loc)
 requires Map_Contains(ts, ref_t);
 requires (var t := Map_At(ts, ref_t); Between(t->nodes->val, t->top, None(), None()));
 requires SubsetInv(ts, ref_t);
@@ -31,11 +27,11 @@ modifies ts;
   call AtomicPushIntermediate(ref_t, x);
 }
 
-procedure {:inline 1} AtomicPopIntermediate(loc_t: LocTreiber X) returns (x: X)
+procedure {:inline 1} AtomicPopIntermediate(loc_t: Loc) returns (x: X)
 modifies ts;
 {
   var treiber: Treiber X;
-  var loc_n_opt: Option (LocNode X);
+  var loc_n_opt: Option (Loc);
   assert Map_Contains(ts, loc_t);
   treiber := Map_At(ts, loc_t);
   assume treiber->top is Some && Map_Contains(treiber->nodes, One(treiber->top->t));
@@ -44,11 +40,11 @@ modifies ts;
   ts := Map_Update(ts, loc_t, treiber);
 }
 
-procedure {:inline 1} AtomicPushIntermediate(loc_t: LocTreiber X, x: X)
+procedure {:inline 1} AtomicPushIntermediate(loc_t: Loc, x: X)
 modifies ts;
 {
   var treiber: Treiber X;
-  var loc_n: LocNode X;
+  var loc_n: Loc;
   assert Map_Contains(ts, loc_t);
   treiber := Map_At(ts, loc_t);
   assume !Map_Contains(treiber->nodes, One(loc_n));
