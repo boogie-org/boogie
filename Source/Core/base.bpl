@@ -316,12 +316,12 @@ pure procedure {:inline 1} Loc_New() returns ({:linear} {:pool "Loc_New"} l: One
   assume {:add_to_pool "Loc_New", l} true;
 }
 
-datatype TaggedLoc<T> { TaggedLoc(loc: Loc, tag: T) }
+datatype Tag<V> { Tag(loc: Loc, val: V) }
 
-pure procedure {:inline 1} TaggedLocs_New<T>(tags: Set T) returns ({:linear} {:pool "Loc_New"} l: One Loc, {:linear} tagged_locs: Set (One (TaggedLoc T)))
+pure procedure {:inline 1} Tags_New<V>(vals: Set V) returns ({:linear} {:pool "Loc_New"} l: One Loc, {:linear} tags: Set (One (Tag V)))
 {
   assume {:add_to_pool "Loc_New", l} true;
-  tagged_locs := Set((lambda x: One (TaggedLoc T) :: x->val->loc == l->val && Set_Contains(tags, x->val->tag)));
+  tags := Set((lambda x: One (Tag V) :: x->val->loc == l->val && Set_Contains(vals, x->val->val)));
 }
 
 /// Helpers

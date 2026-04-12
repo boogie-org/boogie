@@ -9,12 +9,12 @@ into that pool such that: (1) the domain of pool is linear, and
 (2) the indices pos and neg are distinct by virtue of being linear.
 We cannot model pos and neg as One Loc because those values
 are already earmarked for the domain of queues.
-Instead, we model each of pos and neg as a One (TaggedLoc Unit) value,
+Instead, we model each of pos and neg as a One (Tag Unit) value,
 which allows us to achieve both goals.
 */
 var {:linear} {:layer 0, 1} queues: Map (One Loc) (Queue int);
-var {:linear} {:layer 0, 1} pos: One (TaggedLoc Unit);
-var {:linear} {:layer 0, 1} neg: One (TaggedLoc Unit);
+var {:linear} {:layer 0, 1} pos: One (Tag Unit);
+var {:linear} {:layer 0, 1} neg: One (Tag Unit);
 
 function {:inline} IsAcyclic(q: Queue int): bool
 {

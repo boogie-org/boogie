@@ -56,7 +56,7 @@ public class LinearRewriter
     switch (Monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
     {
       case "Loc_New":
-      case "TaggedLocs_New":
+      case "Tags_New":
       case "Set_MakeEmpty":
       case "Map_MakeEmpty":
         return new List<Cmd>{callCmd};
