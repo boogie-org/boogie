@@ -311,12 +311,20 @@ pure procedure Map_Put<K,V>({:linear} path: Map K V, {:linear_in} k: K, {:linear
 
 type Loc;
 
+datatype Unit { Unit() }
+
 pure procedure {:inline 1} Loc_New() returns ({:linear} {:pool "Loc_New"} l: One Loc)
 {
   assume {:add_to_pool "Loc_New", l} true;
 }
 
 datatype Tag<V> { Tag(loc: Loc, val: V) }
+
+pure procedure {:inline 1} Tag_New() returns ({:linear} {:pool "Loc_New"} l: One Loc, {:linear} tag: One (Tag Unit))
+{
+  assume {:add_to_pool "Loc_New", l} true;
+  tag := One(Tag(l->val, Unit()));
+}
 
 pure procedure {:inline 1} Tags_New<V>(vals: Set V) returns ({:linear} {:pool "Loc_New"} l: One Loc, {:linear} tags: Set (One (Tag V)))
 {
@@ -333,11 +341,6 @@ ensures b;
 
 pure procedure Move<T>({:linear_in} v: T, {:linear_out} v': T);
 requires v == v';
-
-datatype Unit { Unit() }
-function {:inline} UnitSet(): Set Unit {
-  Set_Add(Set_Empty(), Unit())
-}
 
 pure action Assert(b: bool)
 {
