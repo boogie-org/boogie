@@ -1,7 +1,7 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-var {:layer 0,1} {:linear} usedPermissions: Set (One int);
+var {:layer 0,1} {:linear} usedPermissions: UnitMap (One int);
 var {:layer 0,1} g: int;
 
 invariant {:layer 1} Inv();

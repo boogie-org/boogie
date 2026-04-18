@@ -18,7 +18,7 @@ var {:layer 0,1} channels: [ChannelId]Channel;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-yield invariant {:layer 1} YieldMain(cid: ChannelId, {:linear} handles: Set (One ChannelHandle));
+yield invariant {:layer 1} YieldMain(cid: ChannelId, {:linear} handles: UnitMap (One ChannelHandle));
 preserves handles->dom == BothHandles(cid);
 preserves channels[cid]->head == 0;
 preserves channels[cid]->tail == 0;
@@ -40,10 +40,10 @@ preserves (var channel := channels[receive_handle->val->cid];
 ////////////////////////////////////////////////////////////////////////////////
 
 yield procedure {:layer 1}
-main (cid: ChannelId, {:linear_in} handles: Set (One ChannelHandle))
+main (cid: ChannelId, {:linear_in} handles: UnitMap (One ChannelHandle))
 requires call YieldMain(cid, handles);
 {
-  var handles': Set (One ChannelHandle);
+  var handles': UnitMap (One ChannelHandle);
   var send_handle, receive_handle: One ChannelHandle;
 
   handles' := handles;

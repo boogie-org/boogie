@@ -32,7 +32,7 @@ function {:inline} Singleton(x: int): [int]int { Empty()[x := 1] }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-yield invariant {:layer 1} YieldMain(cid: ChannelId, {:linear} handles: Set (One ChannelHandle));
+yield invariant {:layer 1} YieldMain(cid: ChannelId, {:linear} handles: UnitMap (One ChannelHandle));
 preserves handles->dom == BothHandles(cid);
 preserves channels[cid] == ChannelPair(Empty(), Empty());
 
@@ -53,10 +53,10 @@ preserves (var left_channel, right_channel := channels[p->val->cid]->left, chann
 ////////////////////////////////////////////////////////////////////////////////
 
 yield procedure {:layer 1}
-main (cid: ChannelId, {:linear_in} handles: Set (One ChannelHandle))
+main (cid: ChannelId, {:linear_in} handles: UnitMap (One ChannelHandle))
 requires call YieldMain(cid, handles);
 {
-  var handles': Set (One ChannelHandle);
+  var handles': UnitMap (One ChannelHandle);
   var left: One ChannelHandle;
   var right: One ChannelHandle;
 

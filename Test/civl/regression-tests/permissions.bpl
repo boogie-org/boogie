@@ -6,14 +6,14 @@ yield procedure {:layer 1} Proc0 ({:linear} x: One int, {:linear} y: One int)
   assert {:layer 1} x != y;
 }
 
-var {:linear} {:layer 0,1} A : Set (One int);
+var {:linear} {:layer 0,1} A : UnitMap (One int);
 
 yield procedure {:layer 1} Proc1 ({:linear} i: One int)
 {
   call {:layer 1} Lemma(A, i);
 }
 
-pure procedure Lemma (set: Set (One int), i: One int);
+pure procedure Lemma (set: UnitMap (One int), i: One int);
 requires !Map_Contains(set, i);
 
 datatype D { D1(x: One int), D2(x: One int) }

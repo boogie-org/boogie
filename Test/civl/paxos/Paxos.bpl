@@ -113,9 +113,9 @@ var {:layer 1,2} status: [Round]RoundStatus;
 var {:layer 1,2} joinInfo: [Round]NodeSet;
 var {:layer 1,2} voteInfo: [Round]NodeSet;
 
-var {:layer 1,2} {:linear} joinChannelPermissions: Set (One Permission);
-var {:layer 1,2} {:linear} voteChannelPermissions: Set (One Permission);
-var {:layer 1,2} {:linear} usedPermissions: Set (One Permission);
+var {:layer 1,2} {:linear} joinChannelPermissions: UnitMap (One Permission);
+var {:layer 1,2} {:linear} voteChannelPermissions: UnitMap (One Permission);
+var {:layer 1,2} {:linear} usedPermissions: UnitMap (One Permission);
 
 var {:layer 0,1} acceptorState: [Node]AcceptorState;
 var {:layer 0,1} joinChannel: [Round][JoinResponse]int;
@@ -139,8 +139,8 @@ function {:inline} MaxRoundPredicate(r: Round, n: Node, voteInfo: [Round]NodeSet
 }
 
 function {:inline} Inv(status: [Round]RoundStatus, joinInfo: [Round]NodeSet, voteInfo: [Round]NodeSet, acceptorState: [Node]AcceptorState,
-              joinChannel: [Round][JoinResponse]int, joinChannelPermissions: Set (One Permission),
-              voteChannel: [Round][VoteResponse]int, voteChannelPermissions: Set (One Permission)) : bool
+              joinChannel: [Round][JoinResponse]int, joinChannelPermissions: UnitMap (One Permission),
+              voteChannel: [Round][VoteResponse]int, voteChannelPermissions: UnitMap (One Permission)) : bool
 {
   (forall r: Round, jr: JoinResponse :: 0 <= joinChannel[r][jr] && joinChannel[r][jr] <= 1)
   &&

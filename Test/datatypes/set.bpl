@@ -2,7 +2,7 @@
 // RUN: %diff "%s.expect" "%t"
 
 procedure Test1() {
-  var a, b, c, d: Set int;
+  var a, b, c, d: [int]bool;
   a := Set_Empty();
   assert Set_Size(a) == 0;
   a := Set_Singleton(3);
@@ -19,7 +19,7 @@ procedure Test1() {
 }
 
 procedure Test2() {
-  var a, b, c: Set int;
+  var a, b, c: [int]bool;
   a := Set_Singleton(3);
   b := Set_Add(a, 5);
   c := Set_Union(b, Set_Singleton(6));
@@ -28,7 +28,7 @@ procedure Test2() {
 }
 
 procedure Test3() {
-  var a, b, c: Set int;
+  var a, b, c: [int]bool;
   a := Set_Singleton(3);
   b := Set_Union(a, Set_Singleton(5));
   assert Set_Size(Set_Singleton(5)) == 1;
@@ -37,7 +37,7 @@ procedure Test3() {
   assert Set_Size(c) == 3;
 }
 
-procedure Test4(a: Set int, b: Set int)
+procedure Test4(a: [int]bool, b: [int]bool)
 requires Set_IsSubset(a, b);
 {
   call Lemma_SetSize_Subset(a, b);
@@ -46,13 +46,13 @@ requires Set_IsSubset(a, b);
   assert a == b || Set_Size(a) < Set_Size(b);
 }
 
-procedure Test5(a: Set int, b: Set int)
+procedure Test5(a: [int]bool, b: [int]bool)
 requires Set_IsDisjoint(a, b);
 {
   assert Set_Size(Set_Union(a, b)) == Set_Size(a) + Set_Size(b);
 }
 
-procedure Test6(a: Set int, t: int)
+procedure Test6(a: [int]bool, t: int)
 {
   assert Set_Size(Set_Add(a, t)) == Set_Size(Set_Remove(a, t)) + 1;
 }
@@ -86,18 +86,18 @@ modifies isFree;
   assert false;
 }
 
-function FreePositions(isFree: [int]bool, i: int): Set int;
+function FreePositions(isFree: [int]bool, i: int): [int]bool;
 
 pure procedure FreePositionsDefinition(isFree: [int]bool, i: int)
 ensures FreePositions(isFree, i) ==
         if (i >= max) then Set_Empty() else (var t := FreePositions(isFree, i + 1); if (isFree[i]) then Set_Add(t, i) else t);
 {
-    var set: Set int;
+    var set: [int]bool;
     call set := FreePositionsCompute(isFree, i);
 }
 
-pure procedure FreePositionsCompute(isFree: [int]bool, i: int) returns (set: Set int)
-ensures set == Set((lambda x: int :: i <= x && x < max && isFree[x]));
+pure procedure FreePositionsCompute(isFree: [int]bool, i: int) returns (set: [int]bool)
+ensures set == (lambda x: int :: i <= x && x < max && isFree[x]);
 ensures set ==
         if (i >= max) then Set_Empty() else (var t := FreePositions(isFree, i + 1); if (isFree[i]) then Set_Add(t, i) else t);
 free ensures set == FreePositions(isFree, i);

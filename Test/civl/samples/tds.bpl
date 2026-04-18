@@ -40,12 +40,12 @@ modifies status;
 yield procedure {:layer 0} FinishTask({:linear} tid: One int);
 refines AtomicFinishTask;
 
-yield procedure {:layer 0} Alloc(i: int, {:linear_in} tidq: Set (One int)) returns ({:linear} id: One int, {:linear} tidq': Set (One int));
+yield procedure {:layer 0} Alloc(i: int, {:linear_in} tidq: UnitMap (One int)) returns ({:linear} id: One int, {:linear} tidq': UnitMap (One int));
 refines AtomicAlloc;
-both action {:layer 1} AtomicAlloc(i: int, {:linear_in} tidq: Set (One int)) returns ({:linear} id: One int, {:linear} tidq': Set (One int))
+both action {:layer 1} AtomicAlloc(i: int, {:linear_in} tidq: UnitMap (One int)) returns ({:linear} id: One int, {:linear} tidq': UnitMap (One int))
 { tidq' := tidq; id := One(i); call One_Get(tidq', id); }
 
-atomic action {:layer 2} AtomicMain({:linear_in} tids: Set (One int))
+atomic action {:layer 2} AtomicMain({:linear_in} tids: UnitMap (One int))
 modifies status;
 {
     assert (forall i: int :: 0 <= i && i < n <==> Map_Contains(tids, One(i)));
@@ -53,12 +53,12 @@ modifies status;
     status := (lambda j: int :: if (0 <= j && j < n) then FINISHED else status[j]);
 }
 
-yield procedure {:layer 1} Main({:linear_in} tids: Set (One int))
+yield procedure {:layer 1} Main({:linear_in} tids: UnitMap (One int))
 refines AtomicMain;
 {
     var i: int;
     var {:layer 1} snapshot: [int]int;
-    var tids': Set (One int);
+    var tids': UnitMap (One int);
     var tid: One int;
 
     call {:layer 1} Assert((forall i: int :: 0 <= i && i < n <==> Map_Contains(tids, One(i))));

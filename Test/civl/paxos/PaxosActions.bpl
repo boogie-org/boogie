@@ -1,16 +1,16 @@
-function {:inline} JoinLt(r: Round, joinChannelPermissions: Set (One Permission), usedPermissions: Set (One Permission)): bool {
+function {:inline} JoinLt(r: Round, joinChannelPermissions: UnitMap (One Permission), usedPermissions: UnitMap (One Permission)): bool {
   (forall r': Round:: Round(r') && r' < r ==> Set_IsSubset(JoinPermissions(r'), Set_Union(joinChannelPermissions->dom, usedPermissions->dom)))
 }
 
-function {:inline} VoteLt(r: Round, voteChannelPermissions: Set (One Permission), usedPermissions: Set (One Permission)): bool {
+function {:inline} VoteLt(r: Round, voteChannelPermissions: UnitMap (One Permission), usedPermissions: UnitMap (One Permission)): bool {
   (forall r': Round:: Round(r') && r' < r ==> Set_IsSubset(VotePermissions(r'), Set_Union(voteChannelPermissions->dom, usedPermissions->dom)))
 }
 
-function {:inline} JoinLe(r: Round, joinChannelPermissions: Set (One Permission), usedPermissions: Set (One Permission)): bool {
+function {:inline} JoinLe(r: Round, joinChannelPermissions: UnitMap (One Permission), usedPermissions: UnitMap (One Permission)): bool {
   (forall r': Round:: Round(r') && r' <= r ==> Set_IsSubset(JoinPermissions(r'), Set_Union(joinChannelPermissions->dom, usedPermissions->dom)))
 }
 
-function {:inline} VoteLe(r: Round, voteChannelPermissions: Set (One Permission), usedPermissions: Set (One Permission)): bool {
+function {:inline} VoteLe(r: Round, voteChannelPermissions: UnitMap (One Permission), usedPermissions: UnitMap (One Permission)): bool {
   (forall r': Round:: Round(r') && r' <= r ==> Set_IsSubset(VotePermissions(r'), Set_Union(voteChannelPermissions->dom, usedPermissions->dom)))
 }
 
@@ -52,7 +52,7 @@ requires call JoinPre(r);
   call One_Put(joinChannelPermissions, p);
 }
 
-left action {:layer 2} A_ProcessJoinResponse(r: Round, {:linear} roundPermission: One Permission, {:linear} votePermissions: Set (One Permission))
+left action {:layer 2} A_ProcessJoinResponse(r: Round, {:linear} roundPermission: One Permission, {:linear} votePermissions: UnitMap (One Permission))
 returns (joinResponse: JoinResponse)
 requires call JoinResponsePre(r, roundPermission);
 {

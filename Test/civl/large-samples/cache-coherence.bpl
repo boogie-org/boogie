@@ -62,8 +62,8 @@ var {:layer 0,2} cache: [CacheId][CacheAddr]CacheLine;
 var {:layer 0,1} cacheBusy: [CacheId][CacheAddr]bool;
 
 // Auxiliary state to replace dirBusy and cacheBusy
-var {:linear} {:layer 1,2} cachePermissions: Set (One CachePermission);
-var {:linear} {:layer 1,2} dirPermissions: Set (One DirPermission);
+var {:linear} {:layer 1,2} cachePermissions: UnitMap (One CachePermission);
+var {:linear} {:layer 1,2} dirPermissions: UnitMap (One DirPermission);
 
 // Specification state
 var {:layer 1,3} absMem: [MemAddr]Value;
@@ -109,11 +109,11 @@ preserves (forall ma: MemAddr:: {dir[ma]} dir[ma] is Sharers ==>
             (forall i: CacheId:: cache[i][Hash(ma)]->ma == ma ==> Set_Contains(dir[ma]->iset, i) || cache[i][Hash(ma)]->state == Invalid()));
 preserves (forall ma: MemAddr:: {dir[ma]} dir[ma] is Sharers ==> mem[ma] == absMem[ma]);
 
-yield invariant {:layer 2} YieldEvict(i: CacheId, ma: MemAddr, value: Value, {:linear} drp: Set (One CachePermission));
+yield invariant {:layer 2} YieldEvict(i: CacheId, ma: MemAddr, value: Value, {:linear} drp: UnitMap (One CachePermission));
 preserves Map_Contains(drp, One(CachePermission(i, Hash(ma))));
 preserves value == cache[i][Hash(ma)]->value;
 
-yield invariant {:layer 2} YieldRead(i: CacheId, ma: MemAddr, {:linear} drp: Set (One CachePermission));
+yield invariant {:layer 2} YieldRead(i: CacheId, ma: MemAddr, {:linear} drp: UnitMap (One CachePermission));
 preserves Map_Contains(drp, One(CachePermission(i, Hash(ma))));
 preserves (var line := cache[i][Hash(ma)]; (line->state == Invalid() || line->state == Shared()) && line->ma == ma);
 
@@ -169,7 +169,7 @@ preserves call YieldInv#2();
 {
   var ma: MemAddr;
   var value: Value;
-  var {:layer 1,2} drp: Set (One CachePermission);
+  var {:layer 1,2} drp: UnitMap (One CachePermission);
   
   call result, ma, value, drp := cache_evict_req#1(i, ca);
   if (result == Ok()) {
@@ -182,7 +182,7 @@ preserves call YieldInv#1();
 preserves call YieldInv#2();
 {
   var line: CacheLine;
-  var {:layer 1,2} drp: Set (One CachePermission);
+  var {:layer 1,2} drp: UnitMap (One CachePermission);
 
   call result, drp := cache_read_shd_req#1(i, ma);
   if (result == Ok()) {
@@ -194,7 +194,7 @@ yield procedure {:layer 2} cache_read_exc_req(i: CacheId, ma: MemAddr) returns (
 preserves call YieldInv#1();
 preserves call YieldInv#2();
 {
-  var {:layer 1,2} drp: Set (One CachePermission);
+  var {:layer 1,2} drp: UnitMap (One CachePermission);
 
   call result, drp := cache_read_exc_req#1(i, ma);
   if (result == Ok()) {
@@ -248,7 +248,7 @@ refines atomic action {:layer 2} _ {
   }
 }
 
-yield procedure {:layer 1} cache_evict_req#1(i: CacheId, ca: CacheAddr) returns (result: Result, ma: MemAddr, value: Value, {:linear} {:layer 1} drp: Set (One CachePermission))
+yield procedure {:layer 1} cache_evict_req#1(i: CacheId, ca: CacheAddr) returns (result: Result, ma: MemAddr, value: Value, {:linear} {:layer 1} drp: UnitMap (One CachePermission))
 preserves call YieldInv#1();
 refines atomic action {:layer 2} _ {
   var line: CacheLine;
@@ -272,7 +272,7 @@ refines atomic action {:layer 2} _ {
   }
 }
 
-yield procedure {:layer 1} cache_read_shd_req#1(i: CacheId, ma: MemAddr) returns (result: Result, {:linear} {:layer 1} drp: Set (One CachePermission))
+yield procedure {:layer 1} cache_read_shd_req#1(i: CacheId, ma: MemAddr) returns (result: Result, {:linear} {:layer 1} drp: UnitMap (One CachePermission))
 preserves call YieldInv#1();
 refines atomic action {:layer 2} _ {
   var ca: CacheAddr;
@@ -298,7 +298,7 @@ refines atomic action {:layer 2} _ {
   }
 }
 
-yield procedure {:layer 1} cache_read_exc_req#1(i: CacheId, ma: MemAddr) returns (result: Result, {:linear} {:layer 1} drp: Set (One CachePermission))
+yield procedure {:layer 1} cache_read_exc_req#1(i: CacheId, ma: MemAddr) returns (result: Result, {:linear} {:layer 1} drp: UnitMap (One CachePermission))
 preserves call YieldInv#1();
 refines atomic action {:layer 2} _ {
   var ca: CacheAddr;
@@ -324,7 +324,7 @@ refines atomic action {:layer 2} _ {
   }
 }
 
-yield procedure {:layer 1} cache_nop_resp#1(i: CacheId, ma: MemAddr, {:linear_in} {:layer 1} drp: Set (One CachePermission), {:linear} {:layer 1} dp: Set (One DirPermission))
+yield procedure {:layer 1} cache_nop_resp#1(i: CacheId, ma: MemAddr, {:linear_in} {:layer 1} drp: UnitMap (One CachePermission), {:linear} {:layer 1} dp: UnitMap (One DirPermission))
 preserves call YieldInv#1();
 refines atomic action {:layer 2} _ {
   assert Map_Contains(drp, One(CachePermission(i, Hash(ma))));
@@ -335,7 +335,7 @@ refines atomic action {:layer 2} _ {
   call {:layer 1} Map_Join(cachePermissions, drp);
 }
 
-yield procedure {:layer 1} cache_evict_resp#1(i: CacheId, ma: MemAddr, {:linear_in} {:layer 1} drp: Set (One CachePermission), {:linear} {:layer 1} dp: Set (One DirPermission))
+yield procedure {:layer 1} cache_evict_resp#1(i: CacheId, ma: MemAddr, {:linear_in} {:layer 1} drp: UnitMap (One CachePermission), {:linear} {:layer 1} dp: UnitMap (One DirPermission))
 preserves call YieldInv#1();
 refines atomic action {:layer 2} _ {
   var ca: CacheAddr;
@@ -369,7 +369,7 @@ We get a contradiction because both invocations are referring to the same cache 
 but asserting that ma field of this cache line are equal to ma1 and ma2, respectively.
 */
 
-yield procedure {:layer 1} cache_read_resp#1(i: CacheId, ma: MemAddr, v: Value, s: State, {:linear_in} {:layer 1} drp: Set (One CachePermission), {:linear} {:layer 1} dp: Set (One DirPermission))
+yield procedure {:layer 1} cache_read_resp#1(i: CacheId, ma: MemAddr, v: Value, s: State, {:linear_in} {:layer 1} drp: UnitMap (One CachePermission), {:linear} {:layer 1} dp: UnitMap (One DirPermission))
 preserves call YieldInv#1();
 refines left action {:layer 2} _ {
   var ca: CacheAddr;
@@ -396,7 +396,7 @@ refines left action {:layer 2} _ {
   call {:layer 1} Map_Join(cachePermissions, drp);
 }
 
-yield procedure {:layer 1} cache_invalidate_shd#1(i: CacheId, ma: MemAddr, s: State, {:linear} {:layer 1} dp: Set (One DirPermission))
+yield procedure {:layer 1} cache_invalidate_shd#1(i: CacheId, ma: MemAddr, s: State, {:linear} {:layer 1} dp: UnitMap (One DirPermission))
 refines left action {:layer 2} _ {
   var ca: CacheAddr;
 
@@ -412,7 +412,7 @@ refines left action {:layer 2} _ {
   call cache_invalidate_shd#0(i, ma, s);
 }
 
-yield procedure {:layer 1} cache_invalidate_exc#1(i: CacheId, ma: MemAddr, s: State, {:linear} {:layer 1} dp: Set (One DirPermission)) returns (value: Value)
+yield procedure {:layer 1} cache_invalidate_exc#1(i: CacheId, ma: MemAddr, s: State, {:linear} {:layer 1} dp: UnitMap (One DirPermission)) returns (value: Value)
 refines atomic action {:layer 2} _ {
   assert dp->dom == WholeDirPermission(ma);
   assume {:add_to_pool "DirPermission", One(DirPermission(i0, ma))} true;
@@ -578,13 +578,13 @@ pure action primitive_cache_invalidate_exc(cache: [CacheId][CacheAddr]CacheLine,
 }
 
 /// Directory
-yield procedure {:layer 2} dir_evict_req(i: CacheId, ma: MemAddr, value: Value, {:layer 1,2} {:linear_in} drp: Set (One CachePermission))
+yield procedure {:layer 2} dir_evict_req(i: CacheId, ma: MemAddr, value: Value, {:layer 1,2} {:linear_in} drp: UnitMap (One CachePermission))
 preserves call YieldInv#1();
 preserves call YieldInv#2();
 requires call YieldEvict(i, ma, value, drp);
 {
   var dirState: DirState;
-  var {:layer 1,2} dp: Set (One DirPermission);
+  var {:layer 1,2} dp: UnitMap (One DirPermission);
 
   call dirState, dp := dir_req_begin(ma);
   // do not change dirState in case this is a stale evict request due to a race condition with an invalidate
@@ -601,13 +601,13 @@ requires call YieldEvict(i, ma, value, drp);
   call dir_req_end(ma, dirState, dp);
 }
 
-yield procedure {:layer 2} dir_read_shd_req(i: CacheId, ma: MemAddr, {:layer 1,2} {:linear_in} drp: Set (One CachePermission))
+yield procedure {:layer 2} dir_read_shd_req(i: CacheId, ma: MemAddr, {:layer 1,2} {:linear_in} drp: UnitMap (One CachePermission))
 preserves call YieldInv#1();
 preserves call YieldInv#2();
 requires call YieldRead(i, ma, drp);
 {
   var dirState: DirState;
-  var {:layer 1,2} dp: Set (One DirPermission);
+  var {:layer 1,2} dp: UnitMap (One DirPermission);
   var value: Value;
 
   call dirState, dp := dir_req_begin(ma);
@@ -623,13 +623,13 @@ requires call YieldRead(i, ma, drp);
   }
 }
 
-yield procedure {:layer 2} dir_read_exc_req(i: CacheId, ma: MemAddr, {:layer 1,2} {:linear_in} drp: Set (One CachePermission))
+yield procedure {:layer 2} dir_read_exc_req(i: CacheId, ma: MemAddr, {:layer 1,2} {:linear_in} drp: UnitMap (One CachePermission))
 preserves call YieldInv#1();
 preserves call YieldInv#2();
 requires call YieldRead(i, ma, drp);
 {
   var dirState: DirState;
-  var {:layer 1,2} dp: Set (One DirPermission);
+  var {:layer 1,2} dp: UnitMap (One DirPermission);
   var value: Value;
 
   call dirState, dp := dir_req_begin(ma);
@@ -644,8 +644,8 @@ requires call YieldRead(i, ma, drp);
   call dir_req_end(ma, Owner(i), dp);
 }
 
-yield left procedure {:layer 2} invalidate_sharers(ma: MemAddr, victims: [CacheId]bool, {:linear_in} {:layer 1,2} dp: Set (One DirPermission))
-  returns ({:linear} {:layer 1,2} dp': Set (One DirPermission))
+yield left procedure {:layer 2} invalidate_sharers(ma: MemAddr, victims: [CacheId]bool, {:linear_in} {:layer 1,2} dp: UnitMap (One DirPermission))
+  returns ({:linear} {:layer 1,2} dp': UnitMap (One DirPermission))
 modifies cache;
 requires {:layer 2} Set_IsSubset((lambda x: One DirPermission :: Set_Contains(victims, x->val->i) && x->val->ma == ma), dp->dom);
 requires {:layer 2} (forall i: CacheId, ca: CacheAddr:: (var line := cache[i][ca];
@@ -659,7 +659,7 @@ ensures {:layer 2} dp == dp';
 {
   var victim: CacheId;
   var victims': [CacheId]bool;
-  var {:layer 1,2} dpOne: Set (One DirPermission);
+  var {:layer 1,2} dpOne: UnitMap (One DirPermission);
 
   dp' := dp;
   if (victims == Set_Empty())
@@ -673,8 +673,8 @@ ensures {:layer 2} dp == dp';
   call dp' := put_victim(dpOne, dp');
 }
 
-yield procedure {:layer 1} get_victim(victim: CacheId, ma: MemAddr, {:layer 1} {:linear_in} dp: Set (One DirPermission))
-returns ({:linear} {:layer 1} dpOne: Set (One DirPermission), {:linear} {:layer 1} dp': Set (One DirPermission))
+yield procedure {:layer 1} get_victim(victim: CacheId, ma: MemAddr, {:layer 1} {:linear_in} dp: UnitMap (One DirPermission))
+returns ({:linear} {:layer 1} dpOne: UnitMap (One DirPermission), {:linear} {:layer 1} dp': UnitMap (One DirPermission))
 refines both action {:layer 2} _ {
   dp' := dp;
   call dpOne := Map_Split(dp', Set_Singleton(One(DirPermission(victim, ma))));
@@ -684,8 +684,8 @@ refines both action {:layer 2} _ {
   call {:layer 1} dpOne := Map_Split(dp', Set_Singleton(One(DirPermission(victim, ma))));
 }
 
-yield procedure {:layer 1} put_victim({:linear_in} {:layer 1} dpOne: Set (One DirPermission), {:layer 1} {:linear_in} dp: Set (One DirPermission))
-returns ({:linear} {:layer 1} dp': Set (One DirPermission))
+yield procedure {:layer 1} put_victim({:linear_in} {:layer 1} dpOne: UnitMap (One DirPermission), {:layer 1} {:linear_in} dp: UnitMap (One DirPermission))
+returns ({:linear} {:layer 1} dp': UnitMap (One DirPermission))
 refines both action {:layer 2} _ {
   dp' := dp;
   call Map_Join(dp', dpOne);
@@ -695,7 +695,7 @@ refines both action {:layer 2} _ {
   call {:layer 1} Map_Join(dp', dpOne);
 }
 
-yield procedure {:layer 1} dir_req_begin(ma: MemAddr) returns (dirState: DirState, {:linear} {:layer 1} dp: Set (One DirPermission))
+yield procedure {:layer 1} dir_req_begin(ma: MemAddr) returns (dirState: DirState, {:linear} {:layer 1} dp: UnitMap (One DirPermission))
 preserves call YieldInv#1();
 refines right action {:layer 2} _ {
   assume Set_IsSubset(WholeDirPermission(ma), dirPermissions->dom);
@@ -707,7 +707,7 @@ refines right action {:layer 2} _ {
   call {:layer 1} dp := Map_Split(dirPermissions, WholeDirPermission(ma));
 }
 
-yield procedure {:layer 1} dir_req_end(ma: MemAddr, dirState: DirState, {:layer 1} {:linear_in} dp: Set (One DirPermission))
+yield procedure {:layer 1} dir_req_end(ma: MemAddr, dirState: DirState, {:layer 1} {:linear_in} dp: UnitMap (One DirPermission))
 preserves call YieldInv#1();
 refines left action {:layer 2} _ {
   assert dp->dom == WholeDirPermission(ma);
@@ -736,7 +736,7 @@ refines atomic action {:layer 1} _ {
 }
 
 /// Memory
-yield procedure {:layer 1} read_mem(ma: MemAddr, {:linear} {:layer 1} dp: Set (One DirPermission)) returns (value: Value)
+yield procedure {:layer 1} read_mem(ma: MemAddr, {:linear} {:layer 1} dp: UnitMap (One DirPermission)) returns (value: Value)
 refines both action {:layer 2} _ {
   assert dp->dom == WholeDirPermission(ma);
   assume {:add_to_pool "DirPermission", One(DirPermission(i0, ma))} true;
@@ -746,7 +746,7 @@ refines both action {:layer 2} _ {
   call value := read_mem#0(ma);
 }
 
-yield procedure {:layer 1} write_mem(ma: MemAddr, value: Value, {:linear} {:layer 1} dp: Set (One DirPermission))
+yield procedure {:layer 1} write_mem(ma: MemAddr, value: Value, {:linear} {:layer 1} dp: UnitMap (One DirPermission))
 refines both action {:layer 2} _ {
   assert dp->dom == WholeDirPermission(ma);
   assume {:add_to_pool "DirPermission", One(DirPermission(i0, ma))} true;

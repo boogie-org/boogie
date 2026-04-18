@@ -266,24 +266,24 @@ function {:inline} One_Collector<T>(a: One T): [One T]bool
 /// singleton map
 datatype Cell<T,U> { Cell(key: One T, val: U) }
 
-type Set K = Map K Unit;
+datatype Unit { Unit() }
+
+type UnitMap K = Map K Unit;
 
 /// linear primitives
-pure procedure One_Get<K>({:linear} path: Set K, {:linear_out} l: K);
-pure procedure One_Put<K>({:linear} path: Set K, {:linear_in} l: K);
-
+pure procedure Move<T>({:linear_in} u: T, {:linear_out} v: T);
 pure procedure {:inline 1} Map_MakeEmpty<K,V>() returns ({:linear} m: Map K V)
 {
   m := Map_Empty();
 }
+pure procedure One_Get<K>({:linear} path: UnitMap K, {:linear_out} l: K);
+pure procedure One_Put<K>({:linear} path: UnitMap K, {:linear_in} l: K);
 pure procedure Map_Get<K,V>({:linear} path: Map K V, {:linear_out} k: K) returns ({:linear} v: V);
 pure procedure Map_Put<K,V>({:linear} path: Map K V, {:linear_in} k: K, {:linear_in} v: V);
 pure procedure Map_Split<K,V>({:linear} path: Map K V, k: [K]bool) returns ({:linear} l: Map K V);
 pure procedure Map_Join<K,V>({:linear} path: Map K V, {:linear_in} l: Map K V);
 
 type Loc;
-
-datatype Unit { Unit() }
 
 pure procedure {:inline 1} Loc_New() returns ({:linear} {:pool "Loc_New"} l: One Loc)
 {
@@ -298,7 +298,7 @@ pure procedure {:inline 1} Tag_New() returns ({:linear} {:pool "Loc_New"} l: One
   tag := One(Tag(l->val, Unit()));
 }
 
-pure procedure {:inline 1} Tags_New<V>(vals: [V]bool) returns ({:linear} {:pool "Loc_New"} l: One Loc, {:linear} tags: Set (One (Tag V)))
+pure procedure {:inline 1} Tags_New<V>(vals: [V]bool) returns ({:linear} {:pool "Loc_New"} l: One Loc, {:linear} tags: UnitMap (One (Tag V)))
 {
   assume {:add_to_pool "Loc_New", l} true;
   tags := Map((lambda x: One (Tag V) :: x->val->loc == l->val && Set_Contains(vals, x->val->val)), MapConst(Unit()));
@@ -310,8 +310,6 @@ ensures v' == v;
 
 pure procedure Assume(b: bool);
 ensures b;
-
-pure procedure Move<T>({:linear_in} u: T, {:linear_out} v: T);
 
 pure action Assert(b: bool)
 {

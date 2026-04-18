@@ -4,7 +4,7 @@ type X;
 const nil: X;
 var {:layer 0,1} l: X;
 var {:layer 0,1} x: int;
-var {:layer 0,1}{:linear} unallocated: Set (One X);
+var {:layer 0,1}{:linear} unallocated: UnitMap (One X);
 
 yield procedure {:layer 1} Allocate() returns ({:linear} xl: One X)
 ensures {:layer 1} xl->val != nil;

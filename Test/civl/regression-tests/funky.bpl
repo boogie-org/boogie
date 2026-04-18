@@ -7,7 +7,7 @@ const nil: X;
 var {:layer 0,3} A: X;
 var {:layer 0,3} B: X;
 var {:layer 0,3} counter: int;
-var {:layer 0,3}{:linear} unallocated: Set (One X);
+var {:layer 0,3}{:linear} unallocated: UnitMap (One X);
 
 right action {:layer 1,3} AtomicLockA({:linear} tid: One X)
 modifies A;

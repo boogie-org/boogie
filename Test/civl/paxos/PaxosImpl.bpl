@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 //// Entry procedure
 
-yield atomic procedure {:layer 2} Paxos({:layer 1,2}{:linear_in} ps: Set (One Permission))
+yield atomic procedure {:layer 2} Paxos({:layer 1,2}{:linear_in} ps: UnitMap (One Permission))
 requires {:layer 1,2} ps->dom == (lambda p: One Permission :: true);
 requires {:layer 2} (forall r: Round :: Round(r) ==> status[r] == Inactive() && voteInfo[r] == MapConst(false));
 preserves call YieldInv();
 {
   var r: int;
-  var {:layer 1,2} ps': Set (One Permission);
-  var {:layer 1,2} allRoundPermissions: Set (One Permission);
+  var {:layer 1,2} ps': UnitMap (One Permission);
+  var {:layer 1,2} allRoundPermissions: UnitMap (One Permission);
 
   r := 1;
   ps' := ps;
@@ -30,7 +30,7 @@ preserves call YieldInv();
 ////////////////////////////////////////////////////////////////////////////////
 //// Proposer procedures
 
-yield left procedure {:layer 2} ExecuteRound(r: Round, {:layer 1,2}{:linear_in} allRoundPermissions: Set (One Permission))
+yield left procedure {:layer 2} ExecuteRound(r: Round, {:layer 1,2}{:linear_in} allRoundPermissions: UnitMap (One Permission))
 requires {:layer 1,2} Round(r) && allRoundPermissions->dom == AllPermissions(r);
 preserves call YieldInv();
 requires {:layer 2} status[r] == Inactive() && voteInfo[r] == MapConst(false);
@@ -45,8 +45,8 @@ ensures {:layer 2} VoteQuorumLe(r, status, voteInfo);
 ensures {:layer 2} SpecLe(r, status);
 {
   var {:layer 1,2} roundPermission: One Permission;
-  var {:layer 1,2} joinPermissions: Set (One Permission);
-  var {:layer 1,2} votePermissions: Set (One Permission);
+  var {:layer 1,2} joinPermissions: UnitMap (One Permission);
+  var {:layer 1,2} votePermissions: UnitMap (One Permission);
   var {:layer 2} joinPerms: [One Permission]bool;
   var maxRound: Round;
   var maxValue: Value;
@@ -66,7 +66,7 @@ ensures {:layer 2} SpecLe(r, status);
 }
 
 yield left procedure {:layer 2} SendJoinRequests(
-  r: Round, {:layer 1,2}{:linear_in} joinPermissions: Set (One Permission)) returns ({:layer 2} joinPerms: [One Permission]bool)
+  r: Round, {:layer 1,2}{:linear_in} joinPermissions: UnitMap (One Permission)) returns ({:layer 2} joinPerms: [One Permission]bool)
 preserves call YieldInv();
 requires {:layer 1,2} Round(r) && joinPermissions->dom == JoinPermissions(r);
 requires {:layer 2} JoinLt(r, joinChannelPermissions, usedPermissions);
@@ -76,7 +76,7 @@ ensures {:layer 2} joinPerms == Set_Intersection(JoinPermissions(r), joinChannel
 ensures {:layer 2} Set_Size(joinPerms) == numNodes;
 {
   var n: int;
-  var {:layer 1,2} joinPermissions': Set (One Permission);
+  var {:layer 1,2} joinPermissions': UnitMap (One Permission);
   var {:layer 1,2} p: One Permission;
 
   joinPermissions' := joinPermissions;
@@ -113,7 +113,7 @@ ensures (forall r': Round:: Round(r') && r' < r && status[r'] is Decided ==> sta
 }
 
 yield left procedure {:layer 2} CollectJoinResponses(
-  r: Round, {:layer 1,2}{:linear} roundPermission: One Permission, {:layer 1,2}{:linear} votePermissions: Set (One Permission), {:layer 2} joinPerms: [One Permission]bool)
+  r: Round, {:layer 1,2}{:linear} roundPermission: One Permission, {:layer 1,2}{:linear} votePermissions: UnitMap (One Permission), {:layer 2} joinPerms: [One Permission]bool)
 returns (maxRound: Round, maxValue: Value, count: int, {:layer 2} joinAcceptPerms: [One Permission]bool)
 requires {:layer 1,2} Round(r) && roundPermission->val == RoundPerm(r) && votePermissions->dom == VotePermissions(r);
 preserves call YieldInv();
@@ -169,7 +169,7 @@ ensures {:layer 2} (forall n: Node, r': Round:: Set_Contains(joinAcceptPerms, On
 }
 
 yield procedure {:layer 1} UpdateStatusToProposed(
-  r: Round, v: Value, {:layer 1}{:linear} roundPermission: One Permission, {:layer 1}{:linear} votePermissions: Set (One Permission))
+  r: Round, v: Value, {:layer 1}{:linear} roundPermission: One Permission, {:layer 1}{:linear} votePermissions: UnitMap (One Permission))
 refines left action {:layer 2} _ {
   assert Round(r) && roundPermission->val == RoundPerm(r) && votePermissions->dom == VotePermissions(r);
   assert voteInfo[r] == MapConst(false);
@@ -181,7 +181,7 @@ refines left action {:layer 2} _ {
   call {:layer 1} status := Copy(status[r := Proposed(v)]);
 }
 
-yield procedure {:layer 1} DropPermissions({:layer 1}{:linear_in} ps: Set (One Permission))
+yield procedure {:layer 1} DropPermissions({:layer 1}{:linear_in} ps: UnitMap (One Permission))
 refines left action {:layer 2} _ {
   call Map_Join(usedPermissions, ps);
 }
@@ -190,7 +190,7 @@ refines left action {:layer 2} _ {
 }
 
 yield left procedure {:layer 2} Propose(
-  r: Round, v: Value, {:layer 1,2}{:linear_in} roundPermission: One Permission, {:layer 1,2}{:linear_in} votePermissions: Set (One Permission))
+  r: Round, v: Value, {:layer 1,2}{:linear_in} roundPermission: One Permission, {:layer 1,2}{:linear_in} votePermissions: UnitMap (One Permission))
 requires {:layer 1,2} Round(r) && roundPermission->val == RoundPerm(r) && votePermissions->dom == VotePermissions(r);
 preserves call YieldInv();
 requires {:layer 2} status[r] == Proposed(v) && voteInfo[r] == MapConst(false);
@@ -205,7 +205,7 @@ ensures {:layer 2} VoteQuorumLe(r, status, voteInfo);
 ensures {:layer 2} SpecLe(r, status);
 {
   var n: int;
-  var {:layer 1,2} ps': Set (One Permission);
+  var {:layer 1,2} ps': UnitMap (One Permission);
   var {:layer 1,2} p: One Permission;
   var {:layer 2} votePerms: [One Permission]bool;
   var count: int;
@@ -300,7 +300,7 @@ refines left action {:layer 2} _ {
 }
 
 yield procedure {:layer 1}
-ProcessJoinResponse(r: Round, {:linear}{:layer 1} roundPermission: One Permission, {:layer 1}{:linear} votePermissions: Set (One Permission)) returns (joinResponse: JoinResponse)
+ProcessJoinResponse(r: Round, {:linear}{:layer 1} roundPermission: One Permission, {:layer 1}{:linear} votePermissions: UnitMap (One Permission)) returns (joinResponse: JoinResponse)
 refines A_ProcessJoinResponse;
 preserves call YieldInv();
 {
@@ -420,10 +420,10 @@ refines left action {:layer 1} _
 ////////////////////////////////////////////////////////////////////////////////
 //// Permission transfers
 
-pure action SplitPermissions(r: Round, {:linear_in} allRoundPermissions: Set (One Permission))
-returns ({:linear} roundPermission: One Permission, {:linear} joinPermissions: Set (One Permission), {:linear} votePermissions: Set (One Permission))
+pure action SplitPermissions(r: Round, {:linear_in} allRoundPermissions: UnitMap (One Permission))
+returns ({:linear} roundPermission: One Permission, {:linear} joinPermissions: UnitMap (One Permission), {:linear} votePermissions: UnitMap (One Permission))
 {
-  var ps: Set (One Permission);
+  var ps: UnitMap (One Permission);
 
   ps := allRoundPermissions;
   roundPermission := One(RoundPerm(r));
@@ -432,8 +432,8 @@ returns ({:linear} roundPermission: One Permission, {:linear} joinPermissions: S
   call votePermissions := Map_Split(ps, VotePermissions(r));
 }
 
-pure action MovePermission(p: Permission, {:linear_in} from: Set (One Permission), {:linear_in} to: Set (One Permission))
-returns ({:linear} from': Set (One Permission), {:linear} to': Set (One Permission))
+pure action MovePermission(p: Permission, {:linear_in} from: UnitMap (One Permission), {:linear_in} to: UnitMap (One Permission))
+returns ({:linear} from': UnitMap (One Permission), {:linear} to': UnitMap (One Permission))
 {
   var one_p: One Permission;
 

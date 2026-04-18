@@ -9,7 +9,7 @@ yield procedure {:layer 1} D()
 {
     var a: One X;
     var x: One X;
-    var b: Set (One X);
+    var b: UnitMap (One X);
     var c: One X;
     var d: One X;
 

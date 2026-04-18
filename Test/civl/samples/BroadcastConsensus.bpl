@@ -47,7 +47,7 @@ This precondition is used to show that COLLECT is a left mover.
 
 // processes deposit Broadcast and Collect permissions in this global
 // variable once they are finished with the respective operations
-var {:layer 0,2} {:linear} usedPermissions: Set (One Permission);
+var {:layer 0,2} {:linear} usedPermissions: UnitMap (One Permission);
 
 // array of values in the processes
 // each process broadcasts its value to all other processes
@@ -87,7 +87,7 @@ function value_card(v:val, value:[pid]val, j:pid) : int
 
 ////////////////////////////////////////////////////////////////////////////////
 
-yield invariant {:layer 1} YieldInit#1({:linear} ps: Set (One Permission));
+yield invariant {:layer 1} YieldInit#1({:linear} ps: UnitMap (One Permission));
 preserves ps->dom == (lambda {:pool "A"} p: One Permission ::IsPid(p->val->i));
 preserves (forall ii:pid :: channels[ii] == MultisetEmpty);
 preserves values == MultisetEmpty;
@@ -104,7 +104,7 @@ preserves (forall q: One Permission:: q->val is Broadcast && IsPid(q->val->i) ==
 
 ////////////////////////////////////////////////////////////////////////////////
 
-yield left procedure {:layer 2} Main({:linear_in} ps: Set (One Permission))
+yield left procedure {:layer 2} Main({:linear_in} ps: UnitMap (One Permission))
 requires call YieldInit#1(ps);
 requires {:layer 2} ps->dom == (lambda {:pool "A"} p: One Permission ::IsPid(p->val->i));
 requires {:layer 2} values == MultisetEmpty;
@@ -115,7 +115,7 @@ modifies values, usedPermissions, decision;
   var i: pid;
   var s: One Permission;
   var r: One Permission;
-  var psb, psc: Set (One Permission);
+  var psb, psc: UnitMap (One Permission);
 
   assume {:add_to_pool "A", Broadcast(1)} true;
   psc := ps;

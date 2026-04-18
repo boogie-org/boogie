@@ -4,9 +4,9 @@
 // flag /trustRefinement avoids duplicate error messages since the precondition of Lemma
 // is checked during both invariant checking and refinement checking at layer 1
 
-var {:linear} {:layer 0,1} A : Set (One int);
+var {:linear} {:layer 0,1} A : UnitMap (One int);
 
-pure procedure Lemma (set: Set (One int), i: One int);
+pure procedure Lemma (set: UnitMap (One int), i: One int);
 requires !Map_Contains(set, i);
 
 datatype D { D1(x: One int), D2(x: One int) }

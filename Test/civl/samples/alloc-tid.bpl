@@ -3,7 +3,7 @@
 
 var {:layer 0,2} a: [int]int;
 var {:layer 0,1} count: int;
-var {:layer 1,2} {:linear} unallocated: Set (One int);
+var {:layer 1,2} {:linear} unallocated: UnitMap (One int);
 
 yield invariant {:layer 1} Yield1();
 preserves AllocInv(count, unallocated);
@@ -86,7 +86,7 @@ preserves call Yield1();
   call WriteLow(i, val);
 }
 
-function {:inline} AllocInv(count: int, unallocated: Set (One int)): bool
+function {:inline} AllocInv(count: int, unallocated: UnitMap (One int)): bool
 {
   (forall x: int :: Map_Contains(unallocated, One(x)) || x < count)
 }
@@ -118,8 +118,8 @@ refines AtomicWriteLow;
 yield procedure {:layer 0} AllocateLow() returns (i: int);
 refines AtomicAllocateLow;
 
-pure action MakeLinear(i: int, {:linear_in} unallocated: Set (One int))
-returns ({:linear} tid: One int, {:linear} unallocated': Set (One int))
+pure action MakeLinear(i: int, {:linear_in} unallocated: UnitMap (One int))
+returns ({:linear} tid: One int, {:linear} unallocated': UnitMap (One int))
 {
   unallocated' := unallocated;
   tid := One(i);

@@ -207,10 +207,9 @@ namespace Microsoft.Boogie
   {
     public static HashSet<string> LinearPrimitives = new()
     {
-      "Loc_New", "Tag_New", "Tags_New",
+      "Loc_New", "Tag_New", "Tags_New", "Move",
       "Map_MakeEmpty", "Map_Get", "Map_Put", "Map_Split", "Map_Join",
       "One_Get", "One_Put",
-      "Move",
     };
 
     public static bool IsPrimitive(DeclWithFormals decl)
@@ -242,6 +241,7 @@ namespace Microsoft.Boogie
         case "Tag_New":
         case "Tags_New":
         case "Map_MakeEmpty":
+        case "Move":
           return null;
         default:
           return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);

@@ -3,7 +3,7 @@
 
 datatype Perm { Left(i: int), Right(i: int) }
 
-datatype Tid { Tid(i: int, ps: Set (One Perm)) }
+datatype Tid { Tid(i: int, ps: UnitMap (One Perm)) }
 
 function {:inline} All(i: int): Tid {
     Tid(i, Map(Set_Add(Set_Singleton(One(Left(i))), One(Right(i))), MapConst(Unit())))
@@ -15,13 +15,13 @@ function {:inline} IsMutator(i: int) : bool
 {
     1 <= i && i <= N
 }
-const Mutators: Set (One Perm);
+const Mutators: UnitMap (One Perm);
 axiom Mutators->dom == (lambda p: One Perm:: p->val is Left && IsMutator(p->val->i));
 axiom Set_Size(Mutators->dom) == N;
 
 var {:layer 0,1} barrierOn: bool;
 var {:layer 0,1} barrierCounter: int;
-var {:layer 0,1} {:linear} mutatorsInBarrier: Set (One Perm);
+var {:layer 0,1} {:linear} mutatorsInBarrier: UnitMap (One Perm);
 
 atomic action {:layer 1} AtomicIsBarrierOn() returns (b: bool)
 {
