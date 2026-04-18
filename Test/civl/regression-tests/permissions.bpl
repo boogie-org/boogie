@@ -14,7 +14,7 @@ yield procedure {:layer 1} Proc1 ({:linear} i: One int)
 }
 
 pure procedure Lemma (set: Set (One int), i: One int);
-requires !Set_Contains(set, i);
+requires !Map_Contains(set, i);
 
 datatype D { D1(x: One int), D2(x: One int) }
 

@@ -13,7 +13,7 @@ requires call Yield(permVar_in, 0);
 }
 
 yield procedure {:layer 1} Main({:linear_in} Permissions: Set (One int))
-requires {:layer 1} Permissions == Set_Add(Set_Add(Set_Empty(), One(0)), One(1));
+requires {:layer 1} Permissions->dom == Set_Add(Set_Add(Set_Empty(), One(0)), One(1));
 {
   call SetG(0);
   async call PB(Permissions);
@@ -34,5 +34,5 @@ yield procedure {:layer 0} IncrG();
 refines AtomicIncrG;
 
 yield invariant {:layer 1} Yield({:linear} p: Set (One int), v: int);
-preserves Set_Contains(p, One(0));
+preserves Map_Contains(p, One(0));
 preserves g == v;

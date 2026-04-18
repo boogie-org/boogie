@@ -6,7 +6,7 @@ datatype Perm { Left(i: int), Right(i: int) }
 datatype Tid { Tid(i: int, ps: Set (One Perm)) }
 
 function {:inline} All(i: int): Tid {
-    Tid(i, Set_Add(Set_Singleton(One(Left(i))), One(Right(i))))
+    Tid(i, Map(Set_Add(Set_Singleton(One(Left(i))), One(Right(i))), MapConst(Unit())))
 }
 
 const N: int;
@@ -16,8 +16,8 @@ function {:inline} IsMutator(i: int) : bool
     1 <= i && i <= N
 }
 const Mutators: Set (One Perm);
-axiom Mutators->val == (lambda p: One Perm:: p->val is Left && IsMutator(p->val->i));
-axiom Set_Size(Mutators) == N;
+axiom Mutators->dom == (lambda p: One Perm:: p->val is Left && IsMutator(p->val->i));
+axiom Set_Size(Mutators->dom) == N;
 
 var {:layer 0,1} barrierOn: bool;
 var {:layer 0,1} barrierCounter: int;
@@ -54,8 +54,8 @@ modifies barrierCounter, mutatorsInBarrier;
     var i: int;
 
     i := tid->i;
-    assert Set_Contains(tid->ps, One(Right(i)));
-    assert Set_Contains(mutatorsInBarrier, One(Left(i)));
+    assert Map_Contains(tid->ps, One(Right(i)));
+    assert Map_Contains(mutatorsInBarrier, One(Left(i)));
     assume !barrierOn;
     p := One(Left(i));
     call One_Get(mutatorsInBarrier, p);
@@ -108,7 +108,7 @@ preserves call BarrierInv();
     call SetBarrier(true);
     call BarrierInv() | CollectorInv(tid, false);
     call WaitBarrier();
-    call {:layer 1} Lemma_SetSize_Subset(mutatorsInBarrier, Mutators);
+    call {:layer 1} Lemma_SetSize_Subset(mutatorsInBarrier->dom, Mutators->dom);
     call BarrierInv() | CollectorInv(tid, true);
     // do root scan here
     assert {:layer 1} mutatorsInBarrier == Mutators;
@@ -116,12 +116,12 @@ preserves call BarrierInv();
 }
 
 yield invariant {:layer 1} BarrierInv();
-preserves Set_IsSubset(mutatorsInBarrier, Mutators);
-preserves Set_Size(mutatorsInBarrier) + barrierCounter == N;
+preserves Set_IsSubset(mutatorsInBarrier->dom, Mutators->dom);
+preserves Set_Size(mutatorsInBarrier->dom) + barrierCounter == N;
 
 yield invariant {:layer 1} MutatorInv({:linear} tid: Tid);
-preserves Set_Contains(tid->ps, One(Right(tid->i)));
-preserves Set_Contains(mutatorsInBarrier, One(Left(tid->i)));
+preserves Map_Contains(tid->ps, One(Right(tid->i)));
+preserves Map_Contains(mutatorsInBarrier, One(Left(tid->i)));
 
 yield invariant {:layer 1} CollectorInv({:linear} tid: Tid, done: bool);
 preserves tid == All(0) && barrierOn;

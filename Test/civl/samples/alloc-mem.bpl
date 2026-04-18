@@ -3,7 +3,7 @@
 
 function {:inline} PoolInv(unallocated: [int]bool, pool: Set (One int)): (bool)
 {
-  (forall x: int :: unallocated[x] ==> Set_Contains(pool, One(x)))
+  (forall x: int :: unallocated[x] ==> Map_Contains(pool, One(x)))
 }
 
 yield procedure {:layer 2} Main ()
@@ -48,7 +48,7 @@ modifies pool;
 {
   var one_i: One int;
   one_i := One(i);
-  assume Set_Contains(pool, one_i);
+  assume Map_Contains(pool, one_i);
   call One_Get(pool, one_i);
   l := Cell(one_i, 0);
 }

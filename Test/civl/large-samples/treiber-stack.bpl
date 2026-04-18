@@ -10,7 +10,7 @@ var {:layer 0, 2} {:linear} TreiberPoolLow: Map (One Loc) (Treiber X);
 
 /// Yield invariants
 
-function {:inline} Domain(ts: Map (One Loc) (Treiber X), loc_t: Loc): Set (One Loc) {
+function {:inline} Domain(ts: Map (One Loc) (Treiber X), loc_t: Loc): [One Loc]bool {
   ts->val[One(loc_t)]->nodes->dom
 }
 
@@ -292,9 +292,9 @@ if treiber->top == None() then
 
 pure procedure AbsCompute(treiber: Treiber X, treiber': Treiber X) returns (absStack: Vec X)
 requires treiber->top == treiber'->top;
-requires IsSubset(treiber->nodes->dom->val, treiber'->nodes->dom->val);
-requires MapIte(treiber->nodes->dom->val, treiber->nodes->val, MapConst(Default())) ==
-         MapIte(treiber->nodes->dom->val, treiber'->nodes->val, MapConst(Default()));
+requires Set_IsSubset(treiber->nodes->dom, treiber'->nodes->dom);
+requires MapIte(treiber->nodes->dom, treiber->nodes->val, MapConst(Default())) ==
+         MapIte(treiber->nodes->dom, treiber'->nodes->val, MapConst(Default()));
 requires Between(treiber->nodes->val, treiber->top, treiber->top, None());
 requires ListInDomain(treiber);
 ensures absStack == AbsDefinition(treiber);
@@ -332,9 +332,9 @@ ensures Abs(treiber) == AbsDefinition(treiber);
 
 pure procedure FrameLemma(treiber: Treiber X, treiber': Treiber X)
 requires treiber->top == treiber'->top;
-requires IsSubset(treiber->nodes->dom->val, treiber'->nodes->dom->val);
-requires MapIte(treiber->nodes->dom->val, treiber->nodes->val, MapConst(Default())) ==
-         MapIte(treiber->nodes->dom->val, treiber'->nodes->val, MapConst(Default()));
+requires Set_IsSubset(treiber->nodes->dom, treiber'->nodes->dom);
+requires MapIte(treiber->nodes->dom, treiber->nodes->val, MapConst(Default())) ==
+         MapIte(treiber->nodes->dom, treiber'->nodes->val, MapConst(Default()));
 requires Between(treiber->nodes->val, treiber->top, treiber->top, None());
 requires ListInDomain(treiber);
 ensures Abs(treiber) == Abs(treiber');

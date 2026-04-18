@@ -42,7 +42,7 @@ ensures call Yield2(tid, old(a)[tid->val] + 1);
 atomic action {:layer 2,2} AtomicAllocate() returns ({:linear} tid: One int, i: int)
 modifies unallocated;
 {
-  assume Set_Contains(unallocated, One(i));
+  assume Map_Contains(unallocated, One(i));
   tid := One(i);
   call One_Get(unallocated, tid);
 }
@@ -88,7 +88,7 @@ preserves call Yield1();
 
 function {:inline} AllocInv(count: int, unallocated: Set (One int)): bool
 {
-  (forall x: int :: Set_Contains(unallocated, One(x)) || x < count)
+  (forall x: int :: Map_Contains(unallocated, One(x)) || x < count)
 }
 
 atomic action {:layer 1,1} AtomicReadLow(i: int) returns (val: int)

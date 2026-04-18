@@ -7,7 +7,7 @@
 var {:linear} {:layer 0,1} A : Set (One int);
 
 pure procedure Lemma (set: Set (One int), i: One int);
-requires !Set_Contains(set, i);
+requires !Map_Contains(set, i);
 
 datatype D { D1(x: One int), D2(x: One int) }
 

@@ -208,9 +208,9 @@ namespace Microsoft.Boogie
     public static HashSet<string> LinearPrimitives = new()
     {
       "Loc_New", "Tag_New", "Tags_New",
-      "Map_MakeEmpty", "Map_Get", "Map_Put",
-      "Set_MakeEmpty", "Set_Get", "Set_Put",
-      "One_Get", "One_Put"
+      "Map_MakeEmpty", "Map_Get", "Map_Put", "Map_Split", "Map_Join",
+      "One_Get", "One_Put",
+      "Move",
     };
 
     public static bool IsPrimitive(DeclWithFormals decl)
@@ -241,7 +241,6 @@ namespace Microsoft.Boogie
         case "Loc_New":
         case "Tag_New":
         case "Tags_New":
-        case "Set_MakeEmpty":
         case "Map_MakeEmpty":
           return null;
         default:

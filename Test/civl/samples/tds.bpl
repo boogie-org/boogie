@@ -48,7 +48,7 @@ both action {:layer 1} AtomicAlloc(i: int, {:linear_in} tidq: Set (One int)) ret
 atomic action {:layer 2} AtomicMain({:linear_in} tids: Set (One int))
 modifies status;
 {
-    assert (forall i: int :: 0 <= i && i < n <==> Set_Contains(tids, One(i)));
+    assert (forall i: int :: 0 <= i && i < n <==> Map_Contains(tids, One(i)));
     assert (forall i: int :: 0 <= i && i < n ==> status[i] == DEFAULT);
     status := (lambda j: int :: if (0 <= j && j < n) then FINISHED else status[j]);
 }
@@ -61,14 +61,14 @@ refines AtomicMain;
     var tids': Set (One int);
     var tid: One int;
 
-    call {:layer 1} Assert((forall i: int :: 0 <= i && i < n <==> Set_Contains(tids, One(i))));
+    call {:layer 1} Assert((forall i: int :: 0 <= i && i < n <==> Map_Contains(tids, One(i))));
     call {:layer 1} Assert((forall i: int :: 0 <= i && i < n ==> status[i] == DEFAULT));
     i := 0;
     tids' := tids;
     call {:layer 1} snapshot := Copy(status);
     while (i < n)
     invariant {:layer 1} 0 <= i && i <= n;
-    invariant {:layer 1} (forall j: int :: i <= j && j < n <==> Set_Contains(tids', One(j)));
+    invariant {:layer 1} (forall j: int :: i <= j && j < n <==> Map_Contains(tids', One(j)));
     invariant {:layer 1} status == (lambda j: int :: if (0 <= j && j < i) then FINISHED else snapshot[j]);
     {
         call tid, tids' := Alloc(i, tids');

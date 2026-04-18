@@ -80,7 +80,7 @@ refines AtomicAssertB;
 right action {:layer 1,3} AtomicAllocTid() returns ({:linear} tid: One X)
 modifies unallocated;
 {
-  assume Set_Contains(unallocated, tid) && tid->val != nil;
+  assume Map_Contains(unallocated, tid) && tid->val != nil;
   call One_Get(unallocated, tid);
 }
 

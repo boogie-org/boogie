@@ -31,7 +31,7 @@ ensures {:layer 1} xl->val != nil;
 }
 
 yield procedure {:layer 1} main({:linear_in} xls: Set (One X))
-requires {:layer 1} xls->val == MapConst(true);
+requires {:layer 1} xls->dom == MapConst(true);
 {
     var tid: One X;
 
@@ -127,7 +127,7 @@ preserves call YieldToReadCache(tid, old(currsize));
 
 atomic action {:layer 1} AtomicInit({:linear_in} xls: Set (One X))
 modifies currsize, newsize, lock, ghostLock;
-{ assert xls->val == MapConst(true); currsize := 0; newsize := 0; lock := nil; ghostLock := nil; }
+{ assert xls->dom == MapConst(true); currsize := 0; newsize := 0; lock := nil; ghostLock := nil; }
 
 yield procedure {:layer 0} Init({:linear_in} xls: Set (One X));
 refines AtomicInit;
@@ -186,7 +186,7 @@ refines atomic_release;
 
 atomic action {:layer 1} AtomicAllocateLow() returns ({:linear} tid: One X)
 modifies unallocated;
-{ assume tid->val != nil; assume Set_Contains(unallocated, tid); call One_Get(unallocated, tid); }
+{ assume tid->val != nil; assume Map_Contains(unallocated, tid); call One_Get(unallocated, tid); }
 
 yield procedure {:layer 0} AllocateLow() returns ({:linear} tid: One X);
 refines AtomicAllocateLow;

@@ -3,7 +3,7 @@
 
 yield procedure {:layer 1} Foo({:linear_in} x: Set (One int), i: int)
     returns ({:linear} x': Set (One int))
-requires {:layer 1} Set_Contains(x, One(i));
+requires {:layer 1} Map_Contains(x, One(i));
 refines atomic action _ { x' := x; }
 {
     var a: Set (One int);
@@ -17,7 +17,7 @@ refines atomic action _ { x' := x; }
 
 yield procedure {:layer 1} Bar({:linear_in} a: Set (One int), i: int)
     returns ({:linear} a': Set (One int), {:linear} b: One int)
-requires {:layer 1} Set_Contains(a, One(i));
+requires {:layer 1} Map_Contains(a, One(i));
 refines atomic action _ { a' := a; b := One(i); call One_Get(a', b); }
 {
     a' := a;

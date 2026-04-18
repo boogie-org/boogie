@@ -88,10 +88,10 @@ function value_card(v:val, value:[pid]val, j:pid) : int
 ////////////////////////////////////////////////////////////////////////////////
 
 yield invariant {:layer 1} YieldInit#1({:linear} ps: Set (One Permission));
-preserves ps->val == (lambda {:pool "A"} p: One Permission ::IsPid(p->val->i));
+preserves ps->dom == (lambda {:pool "A"} p: One Permission ::IsPid(p->val->i));
 preserves (forall ii:pid :: channels[ii] == MultisetEmpty);
 preserves values == MultisetEmpty;
-preserves usedPermissions == Set_Empty();
+preserves usedPermissions->dom == Set_Empty();
 
 yield invariant {:layer 1} YieldCollect();
 preserves (forall i:pid :: MultisetSubsetEq(MultisetEmpty, channels[i]) && MultisetSubsetEq(channels[i], values));
@@ -100,15 +100,15 @@ invariant {:layer 2} CollectPre();
 preserves values == (lambda v:val :: value_card(v, value, n));
 preserves card(values) == n;
 preserves MultisetSubsetEq(MultisetEmpty, values);
-preserves (forall q: One Permission:: q->val is Broadcast && IsPid(q->val->i) ==> Set_Contains(usedPermissions, q));
+preserves (forall q: One Permission:: q->val is Broadcast && IsPid(q->val->i) ==> Map_Contains(usedPermissions, q));
 
 ////////////////////////////////////////////////////////////////////////////////
 
 yield left procedure {:layer 2} Main({:linear_in} ps: Set (One Permission))
 requires call YieldInit#1(ps);
-requires {:layer 2} ps->val == (lambda {:pool "A"} p: One Permission ::IsPid(p->val->i));
+requires {:layer 2} ps->dom == (lambda {:pool "A"} p: One Permission ::IsPid(p->val->i));
 requires {:layer 2} values == MultisetEmpty;
-requires {:layer 2} usedPermissions == Set_Empty();
+requires {:layer 2} usedPermissions->dom == Set_Empty();
 ensures {:layer 2} (forall j: pid:: IsPid(j) ==> decision[j] == max((lambda v: val:: value_card(v, value, n))));
 modifies values, usedPermissions, decision;
 {
@@ -119,14 +119,13 @@ modifies values, usedPermissions, decision;
 
   assume {:add_to_pool "A", Broadcast(1)} true;
   psc := ps;
-  psb := Set((lambda p: One Permission:: p->val is Broadcast && IsPid(p->val->i)));
-  call Set_Get(psc, psb);
+  call psb := Map_Split(psc, (lambda p: One Permission:: p->val is Broadcast && IsPid(p->val->i)));
   i := 1;
   while (i <= n)
   invariant {:layer 1,2} 1 <= i && i <= n + 1;
-  invariant {:layer 1,2} psb->val == (lambda p: One Permission:: p->val is Broadcast && i <= p->val->i && p->val->i <= n);
+  invariant {:layer 1,2} psb->dom == (lambda p: One Permission:: p->val is Broadcast && i <= p->val->i && p->val->i <= n);
   invariant {:layer 2} MultisetSubsetEq(MultisetEmpty, values) && values == (lambda v: val:: value_card(v, value, i-1)) && card(values) == i-1;
-  invariant {:layer 2} Set((lambda p: One Permission:: p->val is Broadcast && IsPid(p->val->i))) == Set_Union(usedPermissions, psb);
+  invariant {:layer 2} (lambda p: One Permission:: p->val is Broadcast && IsPid(p->val->i)) == Set_Union(usedPermissions->dom, psb->dom);
   {
     s := One(Broadcast(i));
     call One_Get(psb, s);
@@ -139,8 +138,8 @@ modifies values, usedPermissions, decision;
   i := 1;
   while (i <= n)
   invariant {:layer 1,2} 1 <= i && i <= n + 1;
-  invariant {:layer 1,2} psc->val == (lambda p: One Permission:: p->val is Collect && i <= p->val->i && p->val->i <= n);
-  invariant {:layer 2} (forall q: One Permission:: q->val is Broadcast && IsPid(q->val->i) ==> Set_Contains(usedPermissions, q));
+  invariant {:layer 1,2} psc->dom == (lambda p: One Permission:: p->val is Collect && i <= p->val->i && p->val->i <= n);
+  invariant {:layer 2} (forall q: One Permission:: q->val is Broadcast && IsPid(q->val->i) ==> Map_Contains(usedPermissions, q));
   invariant {:layer 2} (forall j: pid:: 1 <= j && j < i ==> decision[j] == max(values));
   {
     r := One(Collect(i));

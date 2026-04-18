@@ -32,5 +32,5 @@ yield procedure {:layer 0} Incr();
 refines AtomicIncr;
 
 yield invariant {:layer 1} Yield({:linear} p: Set (One int), v: int);
-preserves Set_Contains(p, One(1));
+preserves Map_Contains(p, One(1));
 preserves x == v;

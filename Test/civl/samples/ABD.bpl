@@ -103,7 +103,7 @@ axiom (forall rs1: ReplicaSet, rs2: ReplicaSet ::
   IsQuorum(rs1) && IsQuorum(rs2) ==> (exists r: ReplicaId :: IsReplica(r) && rs1[r] && rs2[r])
 );
 
-axiom (forall rs1: ReplicaSet, rs2: ReplicaSet :: IsQuorum(rs1) && IsSubset(rs1, rs2) ==> IsQuorum(rs2));
+axiom (forall rs1: ReplicaSet, rs2: ReplicaSet :: IsQuorum(rs1) && Set_IsSubset(rs1, rs2) ==> IsQuorum(rs2));
 
 function {:inline} lt(ts1: TimeStamp, ts2: TimeStamp) : bool {
     (ts1->t < ts2->t) || (ts1->t == ts2->t && ts1->pid < ts2->pid)
@@ -393,7 +393,7 @@ preserves call TimeStampQuorum();
 {
     call ts := Begin#0(one_pid);
     call {:layer 2} tsq := CalculateQuorum(replica_ts, ts);
-    assert {:layer 2} (exists q: ReplicaSet:: IsQuorum(q) && IsSubset(q, tsq));
+    assert {:layer 2} (exists q: ReplicaSet:: IsQuorum(q) && Set_IsSubset(q, tsq));
 }
 
 pure action CalculateQuorum(replica_ts: [ReplicaId]TimeStamp, ts: TimeStamp) returns (w: ReplicaSet)

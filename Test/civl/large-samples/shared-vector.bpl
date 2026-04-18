@@ -23,7 +23,7 @@ preserves Map_Contains(IntArrayPoolLow, One(loc_iv));
 preserves
   (var intvec_low, intvec_high := Map_At(IntArrayPoolLow, One(loc_iv)), Map_At(IntArrayPool, One(loc_iv));
     intvec_low->mutexes->dom == intvec_low->values->dom &&
-    intvec_low->mutexes->dom->val == (lambda i: int :: 0 <= i && i < Vec_Len(intvec_high)) &&
+    intvec_low->mutexes->dom == (lambda i: int :: 0 <= i && i < Vec_Len(intvec_high)) &&
     (forall j: int:: 0 <= j && j < Vec_Len(intvec_high) ==> Map_Contains(MutexPool, Map_At(intvec_low->mutexes, j)->val)) &&
     (forall j: int:: 0 <= j && j < Vec_Len(intvec_high) ==> Map_At(intvec_low->values, j)->val == Vec_Nth(intvec_high, j)));
 
@@ -59,7 +59,7 @@ preserves call IntArrayDom();
   while (i < Vec_Len(v))
   invariant {:layer 2} 0 <= i && i <= Vec_Len(v);
   invariant {:layer 2} mutexes->dom == values->dom;
-  invariant {:layer 2} mutexes->dom->val == (lambda j: int :: 0 <= j && j < i);
+  invariant {:layer 2} mutexes->dom == (lambda j: int :: 0 <= j && j < i);
   invariant {:layer 2} (forall j: int:: 0 <= j && j < i ==> Map_Contains(MutexPool, Map_At(mutexes, j)->val));
   invariant {:layer 2} (forall j: int:: 0 <= j && j < i ==> Map_At(values, j)->val == Vec_Nth(v, j));
   invariant {:layer 2} Set_IsSubset(OldMutexPool->dom, MutexPool->dom);

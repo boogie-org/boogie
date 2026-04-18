@@ -13,7 +13,7 @@ yield procedure {:layer 1} D()
     var c: One X;
     var d: One X;
 
-    b->val[a] := true;
+    b->dom[a] := true;
 
     a := c;
 

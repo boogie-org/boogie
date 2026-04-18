@@ -5,7 +5,7 @@ var {:layer 0,1} {:linear} usedPermissions: Set (One int);
 var {:layer 0,1} g: int;
 
 invariant {:layer 1} Inv();
-preserves Set_Contains(usedPermissions, One(0));
+preserves Map_Contains(usedPermissions, One(0));
 preserves g == 0;
 
 yield procedure {:layer 1} Foo()

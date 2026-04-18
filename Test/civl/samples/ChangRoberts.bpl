@@ -28,7 +28,7 @@ function {:inline} Pid(pos: int) : int { (ExpectedLeader + pos) mod N }
 
 yield left procedure {:layer 1} main()
 requires {:layer 1} leader == MapConst(false);
-ensures {:layer 1} leader == MapOne(ExpectedLeader);
+ensures {:layer 1} leader == Set_Singleton(ExpectedLeader);
 modifies leader;
 {
   var pos: int;
@@ -44,7 +44,7 @@ modifies leader;
   pos := N - 1;
   while (0 <= pos)
   invariant {:layer 1} pos < N;
-  invariant {:layer 1} if 0 <= pos then leader == MapConst(false) else leader == MapOne(ExpectedLeader);
+  invariant {:layer 1} if 0 <= pos then leader == MapConst(false) else leader == Set_Singleton(ExpectedLeader);
   {
     pid := Pid(pos);
     async call {:sync} p(Next(pid), pid);
@@ -56,7 +56,7 @@ yield left procedure {:layer 1} p(self: int, pid: int)
 requires {:layer 1} ValidPid(self) && ValidPid(pid);
 requires {:layer 1} leader == MapConst(false);
 requires {:layer 1} pid == ExpectedLeader || (ExpectedLeader - self) mod N < (ExpectedLeader - pid) mod N;
-ensures {:layer 1} if pid == ExpectedLeader then leader == MapOne(ExpectedLeader) else leader == MapConst(false);
+ensures {:layer 1} if pid == ExpectedLeader then leader == Set_Singleton(ExpectedLeader) else leader == MapConst(false);
 modifies leader;
 {
   if (self == pid)

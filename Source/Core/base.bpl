@@ -23,25 +23,6 @@ function {:builtin "MapGe"} MapGe<T>([T]int, [T]int) : [T]bool;
 function {:builtin "MapLt"} MapLt<T>([T]int, [T]int) : [T]bool;
 function {:builtin "MapLe"} MapLe<T>([T]int, [T]int) : [T]bool;
 
-function {:inline} MapOne<T>(t: T): [T]bool
-{
-  MapConst(false)[t := true]
-}
-
-function {:inline} ToMultiset<T>(set: [T]bool): [T]int
-{
-  MapIte(set, MapConst(1), MapConst(0))
-}
-
-function {:inline} IsSubset<T>(a: [T]bool, b: [T]bool) : bool
-{
-  MapImp(a, b) == MapConst(true)
-}
-
-function {:inline} IsDisjoint<T>(a: [T]bool, b: [T]bool) : bool {
-  MapAnd(a, b) == MapConst(false)
-}
-
 function {:inline} Id<T>(t: T): T
 {
   t
@@ -147,73 +128,66 @@ function {:builtin "seq.unit"} Seq_Unit<T>(v: T): Seq T;
 function {:builtin "seq.nth"} Seq_Nth<T>(a: Seq T, i: int): T;
 function {:builtin "seq.extract"} Seq_Extract<T>(a: Seq T, pos: int, length: int): Seq T;
 
-/// finite sets
-datatype Set<T> { Set(val: [T]bool) }
-
-function {:inline} Set_Empty<T>(): Set T
+/// wrappers for set operations
+function {:inline} Set_Empty<T>(): [T]bool
 {
-  Set(MapConst(false))
+  MapConst(false)
 }
 
-function {:inline} Set_Contains<T>(a: Set T, t: T): bool
+function {:inline} Set_Contains<T>(a: [T]bool, t: T): bool
 {
-  a->val[t]
+  a[t]
 }
 
-function {:inline} Set_IsSubset<T>(a: Set T, b: Set T): bool
+function {:inline} Set_IsSubset<T>(a: [T]bool, b: [T]bool): bool
 {
-  IsSubset(a->val, b->val)
+  MapImp(a, b) == MapConst(true)
 }
 
-function {:inline} Set_IsDisjoint<T>(a: Set T, b: Set T): bool
+function {:inline} Set_IsDisjoint<T>(a: [T]bool, b: [T]bool): bool
 {
   Set_Intersection(a, b) == Set_Empty()
 }
 
-function {:inline} Set_Add<T>(a: Set T, t: T): Set T
+function {:inline} Set_Add<T>(a: [T]bool, t: T): [T]bool
 {
-  Set(a->val[t := true])
+  a[t := true]
 }
 
-function {:inline} Set_Singleton<T>(t: T): Set T
+function {:inline} Set_Singleton<T>(t: T): [T]bool
 {
   Set_Add(Set_Empty(), t)
 }
 
-function {:inline} Set_Remove<T>(a: Set T, t: T): Set T
+function {:inline} Set_Remove<T>(a: [T]bool, t: T): [T]bool
 {
-  Set(a->val[t := false])
+  a[t := false]
 }
 
-function {:inline} Set_Union<T>(a: Set T, b: Set T): Set T
+function {:inline} Set_Union<T>(a: [T]bool, b: [T]bool): [T]bool
 {
-  Set(MapOr(a->val, b->val))
+  MapOr(a, b)
 }
 
-function {:inline} Set_Difference<T>(a: Set T, b: Set T): Set T
+function {:inline} Set_Difference<T>(a: [T]bool, b: [T]bool): [T]bool
 {
-  Set(MapDiff(a->val, b->val))
+  MapDiff(a, b)
 }
 
-function {:inline} Set_Intersection<T>(a: Set T, b: Set T): Set T
+function {:inline} Set_Intersection<T>(a: [T]bool, b: [T]bool): [T]bool
 {
-  Set(MapAnd(a->val, b->val))
-}
-
-function {:inline} Set_Collector<T>(a: Set T): [T]bool
-{
-  a->val
+  MapAnd(a, b)
 }
 
 function Choice<T>(a: [T]bool): T;
 axiom (forall<T> a: [T]bool :: {Choice(a)} a == MapConst(false) || a[Choice(a)]);
 
 /// finite maps
-datatype Map<T,U> { Map(dom: Set T, val: [T]U) }
+datatype Map<T,U> { Map(dom: [T]bool, val: [T]U) }
 
 function {:inline} Map_Empty<T,U>(): Map T U
 {
-  Map(Set(MapConst(false)), MapConst(Default()))
+  Map(MapConst(false), MapConst(Default()))
 }
 
 function {:inline} Map_Singleton<T,U>(t: T, u: U): Map T U
@@ -251,29 +225,29 @@ function {:inline} Map_Swap<T,U>(a: Map T U, t1: T, t2: T): Map T U
   (var u1, u2 := Map_At(a, t1), Map_At(a, t2); Map_Update(Map_Update(a, t1, u2), t2, u1))
 }
 
-function {:inline} Map_Extract<T,U>(a: Map T U, t: Set T): Map T U
+function {:inline} Map_Extract<T,U>(a: Map T U, t: [T]bool): Map T U
 {
-  Map(t, MapIte(t->val, a->val, MapConst(Default())))
+  Map(t, MapIte(t, a->val, MapConst(Default())))
 }
 
-function {:inline} Map_Exclude<T,U>(a: Map T U, t: Set T): Map T U
+function {:inline} Map_Exclude<T,U>(a: Map T U, t: [T]bool): Map T U
 {
-  Map(Set_Difference(a->dom, t), MapIte(t->val, MapConst(Default()), a->val))
+  Map(Set_Difference(a->dom, t), MapIte(t, MapConst(Default()), a->val))
 }
 
 function {:inline} Map_Union<T,U>(a: Map T U, b: Map T U): Map T U
 {
-  Map(Set_Union(a->dom, b->dom), MapIte(a->dom->val, a->val, b->val))
+  Map(Set_Union(a->dom, b->dom), MapIte(a->dom, a->val, b->val))
 }
 
 function {:inline} Map_WellFormed<T,U>(a: Map T U): bool
 {
-  a->val == MapIte(a->dom->val, a->val, MapConst(Default()))
+  a->val == MapIte(a->dom, a->val, MapConst(Default()))
 }
 
 function {:inline} Map_Collector<T,U>(a: Map T U): [T]bool
 {
-  Set_Collector(a->dom)
+  a->dom
 }
 
 function {:inline} Map_Collector_Empty<T,U,P>(a: Map T U): [P]bool
@@ -286,19 +260,15 @@ datatype One<T> { One(val: T) }
 
 function {:inline} One_Collector<T>(a: One T): [One T]bool
 {
-  MapOne(a)
+  Set_Singleton(a)
 }
 
 /// singleton map
 datatype Cell<T,U> { Cell(key: One T, val: U) }
 
+type Set K = Map K Unit;
+
 /// linear primitives
-pure procedure {:inline 1} Set_MakeEmpty<K>() returns ({:linear} l: Set K)
-{
-  l := Set_Empty();
-}
-pure procedure Set_Get<K>({:linear} path: Set K, {:linear_out} l: Set K);
-pure procedure Set_Put<K>({:linear} path: Set K, {:linear_in} l: Set K);
 pure procedure One_Get<K>({:linear} path: Set K, {:linear_out} l: K);
 pure procedure One_Put<K>({:linear} path: Set K, {:linear_in} l: K);
 
@@ -308,6 +278,8 @@ pure procedure {:inline 1} Map_MakeEmpty<K,V>() returns ({:linear} m: Map K V)
 }
 pure procedure Map_Get<K,V>({:linear} path: Map K V, {:linear_out} k: K) returns ({:linear} v: V);
 pure procedure Map_Put<K,V>({:linear} path: Map K V, {:linear_in} k: K, {:linear_in} v: V);
+pure procedure Map_Split<K,V>({:linear} path: Map K V, k: [K]bool) returns ({:linear} l: Map K V);
+pure procedure Map_Join<K,V>({:linear} path: Map K V, {:linear_in} l: Map K V);
 
 type Loc;
 
@@ -326,10 +298,10 @@ pure procedure {:inline 1} Tag_New() returns ({:linear} {:pool "Loc_New"} l: One
   tag := One(Tag(l->val, Unit()));
 }
 
-pure procedure {:inline 1} Tags_New<V>(vals: Set V) returns ({:linear} {:pool "Loc_New"} l: One Loc, {:linear} tags: Set (One (Tag V)))
+pure procedure {:inline 1} Tags_New<V>(vals: [V]bool) returns ({:linear} {:pool "Loc_New"} l: One Loc, {:linear} tags: Set (One (Tag V)))
 {
   assume {:add_to_pool "Loc_New", l} true;
-  tags := Set((lambda x: One (Tag V) :: x->val->loc == l->val && Set_Contains(vals, x->val->val)));
+  tags := Map((lambda x: One (Tag V) :: x->val->loc == l->val && Set_Contains(vals, x->val->val)), MapConst(Unit()));
 }
 
 /// Helpers
@@ -339,8 +311,7 @@ ensures v' == v;
 pure procedure Assume(b: bool);
 ensures b;
 
-pure procedure Move<T>({:linear_in} v: T, {:linear_out} v': T);
-requires v == v';
+pure procedure Move<T>({:linear_in} u: T, {:linear_out} v: T);
 
 pure action Assert(b: bool)
 {

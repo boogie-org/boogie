@@ -2,7 +2,7 @@
 //// Entry procedure
 
 yield atomic procedure {:layer 2} Paxos({:layer 1,2}{:linear_in} ps: Set (One Permission))
-requires {:layer 1,2} ps->val == (lambda p: One Permission :: true);
+requires {:layer 1,2} ps->dom == (lambda p: One Permission :: true);
 requires {:layer 2} (forall r: Round :: Round(r) ==> status[r] == Inactive() && voteInfo[r] == MapConst(false));
 preserves call YieldInv();
 {
@@ -14,15 +14,14 @@ preserves call YieldInv();
   ps' := ps;
   while (*)
   invariant {:layer 1,2} Round(r);
-  invariant {:layer 1,2} (forall r': Round :: r <= r' ==> Set_IsSubset(AllPermissions(r'), ps'));
+  invariant {:layer 1,2} (forall r': Round :: r <= r' ==> Set_IsSubset(AllPermissions(r'), ps'->dom));
   invariant {:layer 2} (forall r': Round :: r <= r' ==> status[r'] == Inactive() && voteInfo[r'] == MapConst(false));
   invariant {:layer 2} JoinLt(r, joinChannelPermissions, usedPermissions);
   invariant {:layer 2} VoteLt(r, voteChannelPermissions, usedPermissions);
   invariant {:layer 2} VoteQuorumLt(r, status, voteInfo);
   invariant {:layer 2} SpecLt(r, status);
   {
-    allRoundPermissions := AllPermissions(r);
-    call {:layer 1,2} Set_Get(ps', allRoundPermissions);
+    call {:layer 1,2} allRoundPermissions := Map_Split(ps', AllPermissions(r));
     async call {:sync} ExecuteRound(r, allRoundPermissions);
     r := r + 1;
   }
@@ -32,7 +31,7 @@ preserves call YieldInv();
 //// Proposer procedures
 
 yield left procedure {:layer 2} ExecuteRound(r: Round, {:layer 1,2}{:linear_in} allRoundPermissions: Set (One Permission))
-requires {:layer 1,2} Round(r) && allRoundPermissions == AllPermissions(r);
+requires {:layer 1,2} Round(r) && allRoundPermissions->dom == AllPermissions(r);
 preserves call YieldInv();
 requires {:layer 2} status[r] == Inactive() && voteInfo[r] == MapConst(false);
 ensures {:layer 2} status == old(status)[r := status[r]] && voteInfo == old(voteInfo)[r := voteInfo[r]];
@@ -48,11 +47,11 @@ ensures {:layer 2} SpecLe(r, status);
   var {:layer 1,2} roundPermission: One Permission;
   var {:layer 1,2} joinPermissions: Set (One Permission);
   var {:layer 1,2} votePermissions: Set (One Permission);
-  var {:layer 2} joinPerms: Set (One Permission);
+  var {:layer 2} joinPerms: [One Permission]bool;
   var maxRound: Round;
   var maxValue: Value;
   var count: int;
-  var {:layer 2} joinAcceptPerms: Set (One Permission);
+  var {:layer 2} joinAcceptPerms: [One Permission]bool;
 
   call {:layer 1,2} roundPermission, joinPermissions, votePermissions := SplitPermissions(r, allRoundPermissions);
   call joinPerms := SendJoinRequests(r, joinPermissions);
@@ -67,13 +66,13 @@ ensures {:layer 2} SpecLe(r, status);
 }
 
 yield left procedure {:layer 2} SendJoinRequests(
-  r: Round, {:layer 1,2}{:linear_in} joinPermissions: Set (One Permission)) returns ({:layer 2} joinPerms: Set (One Permission))
+  r: Round, {:layer 1,2}{:linear_in} joinPermissions: Set (One Permission)) returns ({:layer 2} joinPerms: [One Permission]bool)
 preserves call YieldInv();
-requires {:layer 1,2} Round(r) && joinPermissions == JoinPermissions(r);
+requires {:layer 1,2} Round(r) && joinPermissions->dom == JoinPermissions(r);
 requires {:layer 2} JoinLt(r, joinChannelPermissions, usedPermissions);
 requires {:layer 2} VoteLt(r, voteChannelPermissions, usedPermissions);
 ensures {:layer 2} JoinLe(r, joinChannelPermissions, usedPermissions);
-ensures {:layer 2} joinPerms == Set_Intersection(JoinPermissions(r), joinChannelPermissions);
+ensures {:layer 2} joinPerms == Set_Intersection(JoinPermissions(r), joinChannelPermissions->dom);
 ensures {:layer 2} Set_Size(joinPerms) == numNodes;
 {
   var n: int;
@@ -85,11 +84,11 @@ ensures {:layer 2} Set_Size(joinPerms) == numNodes;
   call {:layer 2} joinPerms := Copy(Set_Empty());
   while (n <= numNodes)
   invariant {:layer 1,2} 1 <= n && n <= numNodes+1;
-  invariant {:layer 1,2} (forall n': Node :: n <= n' && n' <= numNodes ==> Set_Contains(joinPermissions', One(JoinPerm(r, n'))));
-  invariant {:layer 2} joinPerms == Set_Intersection(JoinPermissions(r), joinChannelPermissions);
+  invariant {:layer 1,2} (forall n': Node :: n <= n' && n' <= numNodes ==> Set_Contains(joinPermissions'->dom, One(JoinPerm(r, n'))));
+  invariant {:layer 2} joinPerms == Set_Intersection(JoinPermissions(r), joinChannelPermissions->dom);
   invariant {:layer 2} Set_Size(joinPerms) == n - 1;
   invariant {:layer 2} JoinLt(r, joinChannelPermissions, usedPermissions);
-  invariant {:layer 2} Set_IsSubset(JoinPermissionsUpto(r, n), Set_Union(joinChannelPermissions, usedPermissions));
+  invariant {:layer 2} Set_IsSubset(JoinPermissionsUpto(r, n), Set_Union(joinChannelPermissions->dom, usedPermissions->dom));
   {
     p := One(JoinPerm(r, n));
     call {:layer 1,2} One_Get(joinPermissions', p);
@@ -100,7 +99,7 @@ ensures {:layer 2} Set_Size(joinPerms) == numNodes;
   }
 }
 
-pure procedure SpecProof(r: Round, maxRound: Round, maxValue: Value, joinAcceptPerms: Set (One Permission), status: [Round]RoundStatus, voteInfo: [Round]NodeSet)
+pure procedure SpecProof(r: Round, maxRound: Round, maxValue: Value, joinAcceptPerms: [One Permission]bool, status: [Round]RoundStatus, voteInfo: [Round]NodeSet)
 requires Round(r);
 requires VoteQuorumLt(r, status, voteInfo);
 requires SpecLt(r, status);
@@ -114,11 +113,11 @@ ensures (forall r': Round:: Round(r') && r' < r && status[r'] is Decided ==> sta
 }
 
 yield left procedure {:layer 2} CollectJoinResponses(
-  r: Round, {:layer 1,2}{:linear} roundPermission: One Permission, {:layer 1,2}{:linear} votePermissions: Set (One Permission), {:layer 2} joinPerms: Set (One Permission))
-returns (maxRound: Round, maxValue: Value, count: int, {:layer 2} joinAcceptPerms: Set (One Permission))
-requires {:layer 1,2} Round(r) && roundPermission->val == RoundPerm(r) && votePermissions == VotePermissions(r);
+  r: Round, {:layer 1,2}{:linear} roundPermission: One Permission, {:layer 1,2}{:linear} votePermissions: Set (One Permission), {:layer 2} joinPerms: [One Permission]bool)
+returns (maxRound: Round, maxValue: Value, count: int, {:layer 2} joinAcceptPerms: [One Permission]bool)
+requires {:layer 1,2} Round(r) && roundPermission->val == RoundPerm(r) && votePermissions->dom == VotePermissions(r);
 preserves call YieldInv();
-requires {:layer 2} joinPerms == Set_Intersection(JoinPermissions(r), joinChannelPermissions);
+requires {:layer 2} joinPerms == Set_Intersection(JoinPermissions(r), joinChannelPermissions->dom);
 requires {:layer 2} Set_Size(joinPerms) == numNodes;
 requires {:layer 2} JoinLe(r, joinChannelPermissions, usedPermissions);
 ensures {:layer 2} JoinLe(r, joinChannelPermissions, usedPermissions);
@@ -131,7 +130,7 @@ ensures {:layer 2} (forall n: Node, r': Round:: Set_Contains(joinAcceptPerms, On
 {
   var n: int;
   var joinResponse: JoinResponse;
-  var {:layer 2} joinPerms': Set (One Permission);
+  var {:layer 2} joinPerms': [One Permission]bool;
 
   n := 0;
   count := 0;
@@ -142,12 +141,12 @@ ensures {:layer 2} (forall n: Node, r': Round:: Set_Contains(joinAcceptPerms, On
   invariant {:layer 1} {:yields} true;
   invariant {:layer 1,2} 0 <= n && n <= numNodes;
   invariant call YieldInv();
-  invariant {:layer 2} joinPerms' == Set_Intersection(JoinPermissions(r), joinChannelPermissions);
+  invariant {:layer 2} joinPerms' == Set_Intersection(JoinPermissions(r), joinChannelPermissions->dom);
   invariant {:layer 2} Set_Size(joinPerms') + n == numNodes;
   invariant {:layer 2} JoinLe(r, joinChannelPermissions, usedPermissions);
   invariant {:layer 2} VoteLt(r, voteChannelPermissions, usedPermissions);
   invariant {:layer 2} count == Set_Size(joinAcceptPerms);
-  invariant {:layer 2} Set_IsSubset(joinAcceptPerms, usedPermissions);
+  invariant {:layer 2} Set_IsSubset(joinAcceptPerms, usedPermissions->dom);
   invariant {:layer 2} (forall p: One Permission:: Set_Contains(joinAcceptPerms, p) ==> Set_Contains(JoinPermissions(r), p));
   invariant {:layer 2} maxRound == 0 || (Round(maxRound) && maxRound < r && IsActive(status[maxRound], maxValue));
   invariant {:layer 2} (forall n: Node, r': Round:: Set_Contains(joinAcceptPerms, One(JoinPerm(r, n))) && maxRound < r' && r' < r ==> !voteInfo[r'][n]);
@@ -172,7 +171,7 @@ ensures {:layer 2} (forall n: Node, r': Round:: Set_Contains(joinAcceptPerms, On
 yield procedure {:layer 1} UpdateStatusToProposed(
   r: Round, v: Value, {:layer 1}{:linear} roundPermission: One Permission, {:layer 1}{:linear} votePermissions: Set (One Permission))
 refines left action {:layer 2} _ {
-  assert Round(r) && roundPermission->val == RoundPerm(r) && votePermissions == VotePermissions(r);
+  assert Round(r) && roundPermission->val == RoundPerm(r) && votePermissions->dom == VotePermissions(r);
   assert voteInfo[r] == MapConst(false);
   assert status[r] == Inactive();
   status[r] := Proposed(v);
@@ -184,15 +183,15 @@ refines left action {:layer 2} _ {
 
 yield procedure {:layer 1} DropPermissions({:layer 1}{:linear_in} ps: Set (One Permission))
 refines left action {:layer 2} _ {
-  call Set_Put(usedPermissions, ps);
+  call Map_Join(usedPermissions, ps);
 }
 {
-  call {:layer 1} Set_Put(usedPermissions, ps);
+  call {:layer 1} Map_Join(usedPermissions, ps);
 }
 
 yield left procedure {:layer 2} Propose(
   r: Round, v: Value, {:layer 1,2}{:linear_in} roundPermission: One Permission, {:layer 1,2}{:linear_in} votePermissions: Set (One Permission))
-requires {:layer 1,2} Round(r) && roundPermission->val == RoundPerm(r) && votePermissions == VotePermissions(r);
+requires {:layer 1,2} Round(r) && roundPermission->val == RoundPerm(r) && votePermissions->dom == VotePermissions(r);
 preserves call YieldInv();
 requires {:layer 2} status[r] == Proposed(v) && voteInfo[r] == MapConst(false);
 ensures {:layer 2} status == old(status)[r := status[r]] && voteInfo == old(voteInfo)[r := voteInfo[r]];
@@ -208,23 +207,23 @@ ensures {:layer 2} SpecLe(r, status);
   var n: int;
   var {:layer 1,2} ps': Set (One Permission);
   var {:layer 1,2} p: One Permission;
-  var {:layer 2} votePerms: Set (One Permission);
+  var {:layer 2} votePerms: [One Permission]bool;
   var count: int;
-  var {:layer 2} voteAcceptPerms: Set (One Permission);
+  var {:layer 2} voteAcceptPerms: [One Permission]bool;
 
   ps' := votePermissions;
   n := 1;
   call {:layer 2} votePerms := Copy(Set_Empty());
   while (n <= numNodes)
   invariant {:layer 1,2} 1 <= n && n <= numNodes+1;
-  invariant {:layer 1,2} (forall n': Node :: n <= n' && n' <= numNodes ==> Set_Contains(ps', One(VotePerm(r, n'))));
+  invariant {:layer 1,2} (forall n': Node :: n <= n' && n' <= numNodes ==> Set_Contains(ps'->dom, One(VotePerm(r, n'))));
   invariant {:layer 2} (forall n': Node :: n <= n' && n' <= numNodes ==> !voteInfo[r][n']);
   invariant {:layer 2} voteInfo == old(voteInfo)[r := voteInfo[r]];
-  invariant {:layer 2} votePerms == Set_Intersection(VotePermissions(r), voteChannelPermissions);
+  invariant {:layer 2} votePerms == Set_Intersection(VotePermissions(r), voteChannelPermissions->dom);
   invariant {:layer 2} Set_Size(votePerms) == n - 1;
   invariant {:layer 2} JoinLe(r, joinChannelPermissions, usedPermissions);
   invariant {:layer 2} VoteLt(r, voteChannelPermissions, usedPermissions);
-  invariant {:layer 2} Set_IsSubset(VotePermissionsUpto(r, n), Set_Union(voteChannelPermissions, usedPermissions));
+  invariant {:layer 2} Set_IsSubset(VotePermissionsUpto(r, n), Set_Union(voteChannelPermissions->dom, usedPermissions->dom));
   {
     p := One(VotePerm(r, n));
     call {:layer 1,2} One_Get(ps', p);
@@ -241,13 +240,13 @@ ensures {:layer 2} SpecLe(r, status);
 }
 
 yield left procedure {:layer 2} CollectVoteResponses(
-  r: Round, v: Value, {:layer 1,2}{:linear} roundPermission: One Permission, {:layer 2} votePerms: Set (One Permission))
-  returns (count: int, {:layer 2} voteAcceptPerms: Set (One Permission))
+  r: Round, v: Value, {:layer 1,2}{:linear} roundPermission: One Permission, {:layer 2} votePerms: [One Permission]bool)
+  returns (count: int, {:layer 2} voteAcceptPerms: [One Permission]bool)
 requires {:layer 1,2} Round(r) && roundPermission->val == RoundPerm(r);
 preserves call YieldInv();
 requires {:layer 2} status[r] == Proposed(v);
 ensures {:layer 2} status == old(status)[r := status[r]] && voteInfo == old(voteInfo)[r := voteInfo[r]];
-requires {:layer 2} votePerms == Set_Intersection(VotePermissions(r), voteChannelPermissions);
+requires {:layer 2} votePerms == Set_Intersection(VotePermissions(r), voteChannelPermissions->dom);
 requires {:layer 2} Set_Size(votePerms) == numNodes;
 requires {:layer 2} JoinLe(r, joinChannelPermissions, usedPermissions);
 ensures {:layer 2} JoinLe(r, joinChannelPermissions, usedPermissions);
@@ -258,7 +257,7 @@ ensures {:layer 2} (forall p: One Permission:: Set_Contains(voteAcceptPerms, p) 
 {
   var n: int;
   var voteResponse: VoteResponse;
-  var {:layer 2} votePerms': Set (One Permission);
+  var {:layer 2} votePerms': [One Permission]bool;
   
   n := 0;
   count := 0;
@@ -268,13 +267,13 @@ ensures {:layer 2} (forall p: One Permission:: Set_Contains(voteAcceptPerms, p) 
   invariant {:layer 1} {:yields} true;
   invariant {:layer 1} 0 <= n && n <= numNodes;
   invariant call YieldInv();
-  invariant {:layer 2} votePerms' == Set_Intersection(VotePermissions(r), voteChannelPermissions);
+  invariant {:layer 2} votePerms' == Set_Intersection(VotePermissions(r), voteChannelPermissions->dom);
   invariant {:layer 2} Set_Size(votePerms') + n == numNodes;
   invariant {:layer 2} JoinLe(r, joinChannelPermissions, usedPermissions);
   invariant {:layer 2} VoteLe(r, voteChannelPermissions, usedPermissions);
   invariant {:layer 2} count == Set_Size(voteAcceptPerms);
   invariant {:layer 2} (forall p: One Permission:: Set_Contains(voteAcceptPerms, p) ==> Set_Contains(VotePermissions(r), p) && voteInfo[p->val->r][p->val->n]);
-  invariant {:layer 2} Set_IsSubset(voteAcceptPerms, usedPermissions);
+  invariant {:layer 2} Set_IsSubset(voteAcceptPerms, usedPermissions->dom);
   {
     call voteResponse := ProcessVoteResponse(r, roundPermission);
     call {:layer 2} votePerms' := Lemma_SetSize_Remove(votePerms', One(VotePerm(r, voteResponse->from)));
@@ -429,10 +428,8 @@ returns ({:linear} roundPermission: One Permission, {:linear} joinPermissions: S
   ps := allRoundPermissions;
   roundPermission := One(RoundPerm(r));
   call One_Get(ps, roundPermission);
-  joinPermissions := JoinPermissions(r);
-  call Set_Get(ps, joinPermissions);
-  votePermissions := VotePermissions(r);
-  call Set_Get(ps, votePermissions);
+  call joinPermissions := Map_Split(ps, JoinPermissions(r));
+  call votePermissions := Map_Split(ps, VotePermissions(r));
 }
 
 pure action MovePermission(p: Permission, {:linear_in} from: Set (One Permission), {:linear_in} to: Set (One Permission))
