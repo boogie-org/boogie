@@ -164,14 +164,6 @@ public class LinearRewriter
     return oneConstructor;
   }
 
-  private Function SetConstructor(Type type)
-  {
-    var actualTypeParams = new List<Type>() { type };
-    var setTypeCtorDecl = (DatatypeTypeCtorDecl)monomorphizer.InstantiateTypeCtorDecl("Set", actualTypeParams);
-    var setConstructor = setTypeCtorDecl.Constructors[0];
-    return setConstructor;
-  }
-
   private static Expr Key(Expr path)
   {
     return ExprHelper.FieldAccess(path, "key");

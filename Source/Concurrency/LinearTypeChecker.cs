@@ -69,7 +69,7 @@ namespace Microsoft.Boogie
     private static bool IsPrimitiveLinearTypeCtorDecl(TypeCtorDecl typeCtorDecl)
     {
       var typeName = typeCtorDecl.Name;
-      return typeName == "One" || typeName == "Set" || typeName == "Map";
+      return typeName == "One" || typeName == "Map";
     }
 
     private static TypeCtorDecl GetOriginalTypeCtorDecl(Type type)

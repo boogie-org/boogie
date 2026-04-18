@@ -97,14 +97,6 @@ namespace Microsoft.Boogie
           collectors[type][type] = collector;
           AddLinearDomain(type);
         }
-        else if (typeName == "Set")
-        {
-          var keyType = actualTypeParams[0];
-          var typeParamInstantiationMap = new Dictionary<string, Type> { { "T", keyType } };
-          var collector = program.monomorphizer.InstantiateFunction("Set_Collector", typeParamInstantiationMap);
-          collectors[type][keyType] = collector;
-          AddLinearDomain(keyType);
-        }
         else if (typeName == "Map")
         {
           var keyType = actualTypeParams[0];
@@ -148,7 +140,7 @@ namespace Microsoft.Boogie
         var datatypeTypeCtorDecl = (DatatypeTypeCtorDecl)ctorType.Decl;
         var originalTypeCtorDecl = Monomorphizer.GetOriginalDecl(datatypeTypeCtorDecl);
         var typeName = originalTypeCtorDecl.Name;
-        if (typeName == "One" || typeName == "Set" || typeName == "Map")
+        if (typeName == "One" || typeName == "Map")
         {
           continue;
         }

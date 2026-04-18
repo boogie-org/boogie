@@ -102,7 +102,7 @@ namespace Microsoft.Boogie
       {
         var originalTypeCtorDecl = Monomorphizer.GetOriginalDecl(datatypeTypeCtorDecl);
         var typeName = originalTypeCtorDecl.Name;
-        if (!(typeName == "One" || typeName == "Set" || typeName == "Map"))
+        if (!(typeName == "One" || typeName == "Map"))
         {
           VisitDatatype(ctorType, visitedTypes);
           return;
