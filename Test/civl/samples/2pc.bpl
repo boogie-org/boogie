@@ -49,23 +49,23 @@ function noConflicts(xids: [TransactionId]bool, xid: TransactionId) : bool
     !(exists x: TransactionId :: Set_Contains(xids, x) && Conflict[x][xid])
 }
 
-function {:inline} VoteRequests(xid: TransactionId, i: int, j: int) : UnitMap (One VoteRequest)
+function {:inline} VoteRequests(xid: TransactionId, i: int, j: int) : [One VoteRequest]bool
 {
-    Map((lambda vr: One VoteRequest :: vr->val->xid == xid &&  i <= vr->val->rid && vr->val->rid <= j), MapConst(Unit()))
+    (lambda vr: One VoteRequest :: vr->val->xid == xid &&  i <= vr->val->rid && vr->val->rid <= j)
 }
 
-function allVoteRequests(xid: TransactionId) : UnitMap (One VoteRequest)
+function allVoteRequests(xid: TransactionId) : [One VoteRequest]bool
 {
     VoteRequests(xid, 1, n)
 }
 
-function remainingVoteRequests(xid: TransactionId, i: int) : UnitMap (One VoteRequest)
+function remainingVoteRequests(xid: TransactionId, i: int) : [One VoteRequest]bool
 {
     VoteRequests(xid, i, n)
 }
 
 yield procedure {:layer 1} TPC({:linear} xid: One TransactionId, {:linear_in} vrs: (UnitMap (One VoteRequest)))
-requires {:layer 1} vrs == allVoteRequests(xid->val);
+requires {:layer 1} vrs->dom == allVoteRequests(xid->val);
 requires call LockedNoConflicts();
 requires call CommittedSubsetLocked();
 requires call XidNotInCommitted(xid);
@@ -102,9 +102,9 @@ requires call XidNotInCommitted(xid);
 }
 
 yield right procedure {:layer 1} vote_all(xid: TransactionId, {:linear_in} vrs: UnitMap (One VoteRequest), i: int) returns (votes: [ReplicaId]Vote, {:linear} vrs': UnitMap (One VoteRequest))
-requires {:layer 1} vrs == VoteRequests(xid, 1, i);
+requires {:layer 1} vrs->dom == VoteRequests(xid, 1, i);
 ensures {:layer 1} (forall j:int :: 1 <= j && j < i+1 && votes[j] == YES() ==> Set_Contains(locked_transactions[j], xid));
-ensures {:layer 1} vrs' == VoteRequests(xid, 1, i);
+ensures {:layer 1} vrs'->dom == VoteRequests(xid, 1, i);
 preserves {:layer 1} LockedNoConflicts(locked_transactions);
 preserves {:layer 1} CommittedSubsetLocked(locked_transactions, committed_transactions);
 ensures {:layer 1} (forall j:int :: 1 <= j && j < n+1 ==> Set_IsSubset(old(locked_transactions)[j], locked_transactions[j]));
@@ -126,7 +126,7 @@ modifies locked_transactions;
 }
 
 yield left procedure {:layer 1} finalize_all(d: Decision, {:linear} xid: One TransactionId, {:linear_in} vrs: UnitMap (One VoteRequest))
-requires {:layer 1} vrs == allVoteRequests(xid->val);
+requires {:layer 1} vrs->dom == allVoteRequests(xid->val);
 requires {:layer 1}  (forall j:int :: {:add_to_pool "J", j} d == COMMIT() &&  1 <= j && j < n+1 ==> Set_Contains(locked_transactions[j], xid->val));
 ensures {:layer 1}  (forall j:int :: d == COMMIT() && 1 <=j && j < n+1 ==> Set_Contains(locked_transactions[j], xid->val));
 preserves {:layer 1} LockedNoConflicts(locked_transactions);
@@ -145,7 +145,7 @@ modifies locked_transactions;
     while (i <= n)
     invariant {:layer 1} (forall j:int :: d == COMMIT() && 1 <= j && j < i ==> Set_Contains(locked_transactions[j], xid->val));
     invariant {:layer 1} (forall j:int :: d == COMMIT() && (i <= j) && (j < n+1)  ==> Set_Contains(locked_transactions[j], xid->val));
-    invariant {:layer 1} vrs' == remainingVoteRequests(xid->val, i);
+    invariant {:layer 1} vrs'->dom == remainingVoteRequests(xid->val, i);
     invariant {:layer 1} (forall  j:int,  xid1: TransactionId, xid2: TransactionId :: (1 <= j && j < n+1 && xid1 != xid2 && Set_Contains(locked_transactions[j], xid1) && Set_Contains(locked_transactions[j], xid2)) ==> !Conflict[xid1][xid2]);
     invariant {:layer 1} (forall j:int, xid0: TransactionId ::  1 <= j && j < n+1 && Set_Contains(committed_transactions, xid0) ==> Set_Contains(locked_transactions[j], xid0));
     invariant {:layer 1} !Set_Contains(committed_transactions, xid->val);

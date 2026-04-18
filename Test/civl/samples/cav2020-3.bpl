@@ -6,7 +6,7 @@ datatype Perm { Left(i: int), Right(i: int) }
 datatype Tid { Tid(i: int, ps: UnitMap (One Perm)) }
 
 function {:inline} All(i: int): Tid {
-    Tid(i, Map(Set_Add(Set_Singleton(One(Left(i))), One(Right(i))), MapConst(Unit())))
+    Tid(i, Map_Update(Map_Singleton(One(Left(i)), Unit()), One(Right(i)), Unit()))
 }
 
 const N: int;
