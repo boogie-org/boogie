@@ -252,16 +252,6 @@ namespace Microsoft.Boogie
     {
       return new SimpleAssignLhs(Token.NoToken, Expr.Ident(v));
     }
-
-    public static FieldAssignLhs FieldAssignLhs(AssignLhs path, string fieldName)
-    {
-      return new FieldAssignLhs(Token.NoToken, path, new FieldAccess(Token.NoToken, fieldName));
-    }
-    
-    public static FieldAssignLhs FieldAssignLhs(Expr path, string fieldName)
-    {
-      return new FieldAssignLhs(Token.NoToken, ExprToAssignLhs(path), new FieldAccess(Token.NoToken, fieldName));
-    }
     
     public static AssignLhs ExprToAssignLhs(Expr e)
     {
@@ -272,13 +262,14 @@ namespace Microsoft.Boogie
       var naryExpr = (NAryExpr)e;
       if (naryExpr.Fun is FieldAccess fieldAccess)
       {
-        return FieldAssignLhs(naryExpr.Args[0], fieldAccess.FieldName);
+        var datatype = ExprToAssignLhs(naryExpr.Args[0]);
+        return datatype == null ? null : new FieldAssignLhs(datatype, new FieldAccess(fieldAccess.FieldName));
       }
       if (naryExpr.Fun is MapSelect)
       {
-        return new MapAssignLhs(Token.NoToken, ExprToAssignLhs(naryExpr.Args[0]), naryExpr.Args.ToList().GetRange(1, naryExpr.Args.Count - 1));
+        var map = ExprToAssignLhs(naryExpr.Args[0]);
+        return map == null ? null : new MapAssignLhs(map, naryExpr.Args.ToList().GetRange(1, naryExpr.Args.Count - 1));
       }
-      Contract.Assume(false, "Unexpected expression");
       return null;
     }
     

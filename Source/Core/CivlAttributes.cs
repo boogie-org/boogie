@@ -210,6 +210,7 @@ namespace Microsoft.Boogie
       "Loc_New", "Tag_New", "Tags_New", "Move",
       "Map_MakeEmpty", "Map_Get", "Map_Put", "Map_Split", "Map_Join",
       "One_Get", "One_Put",
+      "Path_Load", "Path_Store",
     };
 
     public static bool IsPrimitive(DeclWithFormals decl)
@@ -242,6 +243,7 @@ namespace Microsoft.Boogie
         case "Tags_New":
         case "Map_MakeEmpty":
         case "Move":
+        case "Path_Load":
           return null;
         default:
           return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);

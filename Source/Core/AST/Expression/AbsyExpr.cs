@@ -3446,11 +3446,15 @@ namespace Microsoft.Boogie
       this.tok = tok;
       this.FieldName = fieldName;
     }
+
+    public FieldAccess(string fieldName)
+      : this(Token.NoToken, fieldName)
+    {
+    }
     
     public FieldAccess(IToken tok, string fieldName, DatatypeTypeCtorDecl datatypeTypeCtorDecl, List<DatatypeAccessor> accessors)
+      : this(tok, fieldName)
     {
-      this.tok = tok;
-      this.FieldName = fieldName;
       this.DatatypeTypeCtorDecl = datatypeTypeCtorDecl;
       this.Accessors = accessors;
     }

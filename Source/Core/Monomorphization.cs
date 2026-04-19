@@ -2057,6 +2057,15 @@ namespace Microsoft.Boogie
     {
       return decl.OriginalTypeCtorDecl ?? decl;
     }
+
+    public static TypeCtorDecl GetOriginalDecl(Type type)
+    {
+      if (type is CtorType ctorType)
+      {
+        return GetOriginalDecl(ctorType.Decl);
+      }
+      return null;
+    }
     
     public List<Type> GetTypeInstantiation(TypeCtorDecl decl)
     {

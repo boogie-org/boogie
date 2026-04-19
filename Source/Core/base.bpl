@@ -282,6 +282,8 @@ pure procedure Map_Get<K,V>({:linear} path: Map K V, {:linear_out} k: K) returns
 pure procedure Map_Put<K,V>({:linear} path: Map K V, {:linear_in} k: K, {:linear_in} v: V);
 pure procedure Map_Split<K,V>({:linear} path: Map K V, k: [K]bool) returns ({:linear} l: Map K V);
 pure procedure Map_Join<K,V>({:linear} path: Map K V, {:linear_in} l: Map K V);
+pure procedure Path_Load<V>(path: V) returns (v: V);
+pure procedure Path_Store<V>(path: V, v: V);
 
 type Loc;
 

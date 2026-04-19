@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using Microsoft.Boogie.GraphUtil;
 
@@ -99,6 +100,26 @@ namespace Microsoft.Boogie
     public Formal Formal(string name, Type type, bool incoming)
     {
       return VarHelper.Formal($"{namePrefix}{name}", type, incoming);
+    }
+
+    public AssignLhs ExprToAssignLhs(Expr expr)
+    {
+      var assignLhs = CmdHelper.ExprToAssignLhs(expr);
+      Debug.Assert(assignLhs != null, "Unexpected expression");
+      ResolveAndTypecheck([assignLhs]);
+      return assignLhs;
+    }
+
+    public void ResolveAndTypecheck(IEnumerable<Absy> absys)
+    {
+      var rc = new ResolutionContext(null, Options);
+      absys.ForEach(absy => absy.Resolve(rc));
+      if (rc.ErrorCount != 0)
+      {
+        return;
+      }
+      var tc = new TypecheckingContext(null, Options);
+      absys.ForEach(absy => absy.Typecheck(tc));
     }
 
     public void TypeCheck()

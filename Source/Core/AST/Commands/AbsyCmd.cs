@@ -828,6 +828,11 @@ namespace Microsoft.Boogie
       Indexes = indexes;
     }
 
+    public MapAssignLhs(AssignLhs map, List<Expr> indexes)
+      : this(Token.NoToken, map, indexes)
+    {
+    }
+
     public override void Resolve(ResolutionContext rc)
     {
       Map.Resolve(rc);
@@ -947,6 +952,11 @@ namespace Microsoft.Boogie
     {
       Datatype = datatype;
       this.FieldAccess = fieldAccess;
+    }
+
+    public FieldAssignLhs(AssignLhs datatype, FieldAccess fieldAccess)
+      : this(Token.NoToken, datatype, fieldAccess)
+    {
     }
 
     public override void Resolve(ResolutionContext rc)

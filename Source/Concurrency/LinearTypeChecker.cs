@@ -45,7 +45,7 @@ namespace Microsoft.Boogie
       errors.Add((node, message));
       checkingContext.Error(node, message);
     }
-    
+
     public bool IsOrdinaryType(Type type)
     {
       return !collectors.ContainsKey(type);
@@ -58,27 +58,13 @@ namespace Microsoft.Boogie
 
     private static bool IsPrimitiveLinearType(Type type)
     {
-      var originalTypeCtorDecl = GetOriginalTypeCtorDecl(type);
-      if (originalTypeCtorDecl == null)
+      var typeCtorDecl = Monomorphizer.GetOriginalDecl(type);
+      if (typeCtorDecl == null)
       {
         return false;
       }
-      return IsPrimitiveLinearTypeCtorDecl(originalTypeCtorDecl);
-    }
-
-    private static bool IsPrimitiveLinearTypeCtorDecl(TypeCtorDecl typeCtorDecl)
-    {
       var typeName = typeCtorDecl.Name;
       return typeName == "One" || typeName == "Map";
-    }
-
-    private static TypeCtorDecl GetOriginalTypeCtorDecl(Type type)
-    {
-      if (type is CtorType ctorType)
-      {
-        return Monomorphizer.GetOriginalDecl(ctorType.Decl);
-      }
-      return null;
     }
 
     // This method checks that assignLhs does not modify the contents of a
@@ -97,14 +83,83 @@ namespace Microsoft.Boogie
         return IsLegalAssignmentTarget(mapAssignLhs.Map);
       }
       var fieldAssignLhs = (FieldAssignLhs)assignLhs;
-      var typeCtorDecl = GetOriginalTypeCtorDecl(fieldAssignLhs.Datatype.Type);
-      if (typeCtorDecl != null && IsPrimitiveLinearTypeCtorDecl(typeCtorDecl))
+      if (IsPrimitiveLinearType(fieldAssignLhs.Datatype.Type))
       {
-        var typeName = typeCtorDecl.Name;
-        var fieldName = fieldAssignLhs.FieldAccess.FieldName;
-        return typeName == "Map" && fieldName == "val";
+        return false;
       }
       return IsLegalAssignmentTarget(fieldAssignLhs.Datatype);
+    }
+
+    private void CheckPrimitiveCall(CallCmd callCmd)
+    {
+      switch (Monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
+      {
+        case "Loc_New":
+        case "Tag_New":
+        case "Tags_New":
+        case "Map_MakeEmpty":
+          return;
+        case "Move":
+          if (callCmd.Ins[0] is not IdentifierExpr)
+          {
+            Error(callCmd, "argument at position 0 must be a variable");
+          }
+          if (callCmd.Ins[1] is not IdentifierExpr)
+          {
+            Error(callCmd, "argument at position 1 must be a variable");
+          }
+          return;
+        case "One_Get":
+        case "One_Put":
+        case "Map_Get":
+        case "Map_Put":
+        case "Map_Split":
+        case "Map_Join":
+        case "Path_Load":
+        case "Path_Store":
+          if (!IsLegalPathExpr(callCmd.Ins[0]))
+          {
+            Error(callCmd, "illegal path expression at position 0");
+          }
+          return;
+        default:
+          Debug.Assert(false, "Unreachable");
+          return;
+      }
+    }
+
+    private bool IsLegalPathExpr(Expr expr)
+    {
+      var assignLhs = civlTypeChecker.ExprToAssignLhs(expr);
+      if (assignLhs == null)
+      {
+        return false;
+      }
+      return IsLegalPathAssignLhs(assignLhs);
+    }
+
+    private static bool IsLegalPathAssignLhs(AssignLhs assignLhs)
+    {
+      if (assignLhs is SimpleAssignLhs)
+      {
+        return true;
+      }
+      if (assignLhs is MapAssignLhs mapAssignLhs)
+      {
+        return IsLegalPathAssignLhs(mapAssignLhs.Map);
+      }
+      var fieldAssignLhs = (FieldAssignLhs)assignLhs;
+      var datatype = fieldAssignLhs.Datatype;
+      var typeName = Monomorphizer.GetOriginalDecl(datatype.Type).Name;
+      if (typeName == "One")
+      {
+        return false;
+      }
+      if (typeName == "Map" && fieldAssignLhs.FieldAccess.FieldName == "dom")
+      {
+        return false;
+      }
+      return IsLegalPathAssignLhs(fieldAssignLhs.Datatype);
     }
 
     private void AddAvailableVars(CallCmd callCmd, HashSet<Variable> start)
@@ -512,6 +567,10 @@ namespace Microsoft.Boogie
     public override Cmd VisitCallCmd(CallCmd node)
     {
       var isPrimitive = CivlPrimitives.IsPrimitive(node.Proc);
+      if (isPrimitive)
+      {
+        CheckPrimitiveCall(node);
+      }
       var inVars = new HashSet<Variable>();
       var globalInVars = new HashSet<Variable>();
       for (int i = 0; i < node.Proc.InParams.Count; i++)
@@ -860,49 +919,5 @@ namespace Microsoft.Boogie
     }
 
     #endregion
-  }
-
-  public class LinearStoreVisitor : ReadOnlyVisitor
-  {
-    private bool hasLinearStoreAccess = false;
-
-    public static bool HasLinearStoreAccess(Expr expr)
-    {
-      var heapLookupVisitor = new LinearStoreVisitor();
-      heapLookupVisitor.Visit(expr);
-      return heapLookupVisitor.hasLinearStoreAccess;
-    }
-
-    public static bool HasLinearStoreAccess(AssignLhs assignLhs)
-    {
-      var heapLookupVisitor = new LinearStoreVisitor();
-      heapLookupVisitor.Visit(assignLhs);
-      return heapLookupVisitor.hasLinearStoreAccess;
-    }
-
-    public override Expr VisitIdentifierExpr(IdentifierExpr node)
-    {
-      CheckType(node.Type);
-      return base.VisitIdentifierExpr(node);
-    }
-
-    public override Expr VisitNAryExpr(NAryExpr node)
-    {
-      CheckType(node.Type);
-      return base.VisitNAryExpr(node);
-    }
-
-    private void CheckType(Type type)
-    {
-      if (type is not CtorType ctorType)
-      {
-        return;
-      }
-      var typeCtorDeclName = Monomorphizer.GetOriginalDecl(ctorType.Decl).Name;
-      if (typeCtorDeclName == "Map")
-      {
-        hasLinearStoreAccess = true;
-      }
-    }
   }
 }

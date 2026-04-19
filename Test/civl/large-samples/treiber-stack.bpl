@@ -235,25 +235,23 @@ preserves call TopInStack(loc_t);
 yield procedure {:layer 0} LoadNode#0(loc_t: Loc, loc_n: Loc) returns (node: Node X);
 refines right action {:layer 1} _
 {
-  assert Map_Contains(TreiberPoolLow, One(loc_t));
-  assert Map_Contains(Map_At(TreiberPoolLow, One(loc_t))->nodes, One(loc_n));
-  node := TreiberPoolLow->val[One(loc_t)]->nodes->val[One(loc_n)];
+  call node := Path_Load(TreiberPoolLow->val[One(loc_t)]->nodes->val[One(loc_n)]);
 }
 
 yield procedure {:layer 0} ReadTopOfStack#0(loc_t: Loc) returns (loc_n: Option Loc);
 refines atomic action {:layer 1} _
 {
-  assert Map_Contains(TreiberPoolLow, One(loc_t));
-  loc_n := TreiberPoolLow->val[One(loc_t)]->top;
+  call loc_n := Path_Load(TreiberPoolLow->val[One(loc_t)]->top);
 }
 
 yield procedure {:layer 0} WriteTopOfStack#0(
   loc_t: Loc, old_loc_n: Option Loc, new_loc_n: Option Loc) returns (success: bool);
 refines atomic action {:layer 1,2} _
 {
-  assert Map_Contains(TreiberPoolLow, One(loc_t));
-  if (old_loc_n == TreiberPoolLow->val[One(loc_t)]->top) {
-    TreiberPoolLow->val[One(loc_t)]->top := new_loc_n;
+  var loc_n: Option Loc;
+  call loc_n := Path_Load(TreiberPoolLow->val[One(loc_t)]->top);
+  if (old_loc_n == loc_n) {
+    call Path_Store(TreiberPoolLow->val[One(loc_t)]->top, new_loc_n);
     success := true;
   } else {
     success := false;
