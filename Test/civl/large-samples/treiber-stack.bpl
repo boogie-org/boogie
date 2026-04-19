@@ -261,13 +261,7 @@ refines atomic action {:layer 1,2} _
 yield procedure {:layer 0} AllocNode#0(loc_t: Loc, {:linear_in} one_loc_n: One Loc, node: Node X);
 refines atomic action {:layer 1} _
 {
-  var one_loc_t: One Loc;
-  var treiber: Treiber X;
-
-  one_loc_t := One(loc_t);
-  call treiber := Map_Get(TreiberPoolLow, one_loc_t);
-  call Map_Put(treiber->nodes, one_loc_n, node);
-  call Map_Put(TreiberPoolLow, one_loc_t, treiber);
+  call Map_Put(TreiberPoolLow->val[One(loc_t)]->nodes, one_loc_n, node);
 }
 
 yield procedure {:layer 0} AllocTreiber#0({:linear_in} one_loc_t: One Loc, {:linear_in} treiber: Treiber X);
