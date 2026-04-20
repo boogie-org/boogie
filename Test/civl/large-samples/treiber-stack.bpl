@@ -30,7 +30,7 @@ preserves Map_Contains(TreiberPoolLow, One(loc_t));
 preserves (var t := Map_At(TreiberPoolLow, One(loc_t)); Between(t->nodes->val, t->top, t->top, None()));
 preserves (var t := Map_At(TreiberPoolLow, One(loc_t)); ListInDomain(t->top, t->nodes));
 preserves (var loc_n := Map_At(TreiberPoolLow, One(loc_t))->top; loc_n is None || Set_Contains(Domain(TreiberPoolLow, loc_t), One(loc_n->t)));
-preserves (var t := Map_At(TreiberPoolLow, One(loc_t)); Map_At(TreiberPool, One(loc_t)) == Abs(t->top, t->nodes));
+preserves (var t := Map_At(TreiberPoolLow, One(loc_t)); Map_At(TreiberPool, One(loc_t)) == StackAbs(t->top, t->nodes));
 
 yield invariant {:layer 2} StackDom();
 preserves TreiberPool->dom == TreiberPoolLow->dom;
@@ -69,7 +69,7 @@ preserves call StackDom();
   call one_loc_t, tag := Tag_New();
   call AllocTreiber#0(one_loc_t, treiber);
   call {:layer 2} TreiberPool := Copy(Map_Update(TreiberPool, one_loc_t, Vec_Empty()));
-  call {:layer 2} AbsLemma(treiber->top, treiber->nodes);
+  call {:layer 2} StackAbsLemma(treiber->top, treiber->nodes);
 }
 
 atomic action {:layer 3} AtomicPush(loc_t: Loc, x: X) returns (success: bool)
@@ -81,7 +81,7 @@ atomic action {:layer 3} AtomicPush(loc_t: Loc, x: X) returns (success: bool)
     success := false;
   }
 }
-yield procedure {:layer 2} {:vcs_split_on_every_assert} Push(loc_t: Loc, x: X) returns (success: bool)
+yield procedure {:layer 2} Push(loc_t: Loc, x: X) returns (success: bool)
 refines AtomicPush;
 preserves call TopInStack(loc_t);
 preserves call ReachInStack(loc_t);
@@ -95,7 +95,7 @@ preserves call StackDom();
   call {:layer 2} old_treiber := Copy(TreiberPoolLow->val[One(loc_t)]);
   call old_top, tag := AllocNode#1(loc_t, x);
   call {:layer 2} mid_treiber := Copy(TreiberPoolLow->val[One(loc_t)]);
-  call {:layer 2} FrameLemma(old_treiber->top, old_treiber->nodes, mid_treiber->nodes);
+  call {:layer 2} StackFrameLemma(old_treiber->top, old_treiber->nodes, mid_treiber->nodes);
   new_top := tag->val->loc;
   call ReachInStack(loc_t) | StackDom() | PushLocInStack(loc_t, new_top, Node(old_top, x), tag);
   call success := WriteTopOfStack#0(loc_t, old_top, Some(new_top));
@@ -103,7 +103,7 @@ preserves call StackDom();
     call {:layer 2} new_treiber := Copy(TreiberPoolLow->val[One(loc_t)]);
     assert {:layer 2} Map_Contains(TreiberPool, One(loc_t));
     call {:layer 2} TreiberPool := Copy(Map_Update(TreiberPool, One(loc_t), Vec_Append(Map_At(TreiberPool, One(loc_t)), x)));
-    call {:layer 2} AbsLemma(new_treiber->top, new_treiber->nodes);
+    call {:layer 2} StackAbsLemma(new_treiber->top, new_treiber->nodes);
   }
 }
 
@@ -134,7 +134,7 @@ preserves call StackDom();
   var {:layer 2} treiber: Treiber X;
 
   call {:layer 2} treiber := Copy(TreiberPoolLow->val[One(loc_t)]);
-  call {:layer 2} AbsLemma(treiber->top, treiber->nodes);
+  call {:layer 2} StackAbsLemma(treiber->top, treiber->nodes);
   call success, x_opt := PopIntermediate(loc_t);
   if (x_opt is Some) {
     assert {:layer 2} Vec_Len(Map_At(TreiberPool, One(loc_t))) > 0;
@@ -268,69 +268,4 @@ yield procedure {:layer 0} AllocTreiber#0({:linear_in} one_loc_t: One Loc, {:lin
 refines atomic action {:layer 1,2} _
 {
   call Map_Put(TreiberPoolLow, one_loc_t, treiber);
-}
-
-/// Proof of abstraction with a manual encoding of termination
-
-function {:inline} ListInDomain(start: Option Loc, nodes: Map (One Loc) (Node X)): bool {
-  (forall x: Loc:: BetweenSet(nodes->val, start, None())[x] ==> Set_Contains(nodes->dom, One(x)))
-}
-
-// Abs and AbsDefinition together model the abstraction function
-function Abs(start: Option Loc, nodes: Map (One Loc) (Node X)): Vec X;
-function {:inline} AbsDefinition(start: Option Loc, nodes: Map (One Loc) (Node X)): Vec X {
-if start == None() then
-  Vec_Empty() else
-  (var n := Map_At(nodes, One(start->t)); Vec_Append(Abs(n->next, nodes), n->val))
-}
-
-pure procedure AbsCompute(start: Option Loc, nodes: Map (One Loc) (Node X), nodes': Map (One Loc) (Node X)) returns (absStack: Vec X)
-requires Set_IsSubset(nodes->dom, nodes'->dom);
-requires MapIte(nodes->dom, nodes->val, MapConst(Default())) ==
-         MapIte(nodes->dom, nodes'->val, MapConst(Default()));
-requires Between(nodes->val, start, start, None());
-requires ListInDomain(start, nodes);
-ensures absStack == AbsDefinition(start, nodes);
-ensures absStack == AbsDefinition(start, nodes');
-free ensures absStack == Abs(start, nodes);
-free ensures absStack == Abs(start, nodes');
-{
-  var loc_n: Option Loc;
-  var n: Node X;
-
-  if (start == None()) {
-      absStack := Vec_Empty();
-  } else {
-      loc_n := start;
-      assert Map_Contains(nodes, One(loc_n->t));
-      n := Map_At(nodes, One(loc_n->t));
-      // Use well-founded list reachability to prove that recursion will terminate:
-      // start@caller --> start@callee --> None()
-      assert Between(nodes->val, loc_n, n->next, None());
-      call absStack := AbsCompute(n->next, nodes, nodes');
-      absStack := Vec_Append(absStack, n->val);
-  }
-}
-
-/// Useful lemmas obtained by wrapping AbsCompute
-
-pure procedure AbsLemma(start: Option Loc, nodes: Map (One Loc) (Node X))
-requires Between(nodes->val, start, start, None());
-requires ListInDomain(start, nodes);
-ensures Abs(start, nodes) == AbsDefinition(start, nodes);
-{
-  var absStack: Vec X;
-  call absStack := AbsCompute(start, nodes, nodes);
-}
-
-pure procedure FrameLemma(start: Option Loc, nodes: Map (One Loc) (Node X), nodes': Map (One Loc) (Node X))
-requires Set_IsSubset(nodes->dom, nodes'->dom);
-requires MapIte(nodes->dom, nodes->val, MapConst(Default())) ==
-         MapIte(nodes->dom, nodes'->val, MapConst(Default()));
-requires Between(nodes->val, start, start, None());
-requires ListInDomain(start, nodes);
-ensures Abs(start, nodes) == Abs(start, nodes');
-{
-  var absStack: Vec X;
-  call absStack := AbsCompute(start, nodes, nodes');
 }

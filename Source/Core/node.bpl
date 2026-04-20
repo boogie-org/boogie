@@ -76,3 +76,38 @@ axiom {:ctor "Node"} (forall<T> f: [One Loc]Node T, u: Option Loc, v: Option Loc
     (Avoiding(f, u, v, Some(p)) && Avoiding(f, u, v, x)) || 
     (Avoiding(f, u, Some(p), x) && Some(p) != x && Avoiding(f, q->next, v, Some(p)) && Avoiding(f, q->next, v, x))
 );
+
+function {:inline} ListInDomain<V>(start: Option Loc, nodes: Map (One Loc) (Node V)): bool {
+  (forall x: Loc:: BetweenSet(nodes->val, start, None())[x] ==> Set_Contains(nodes->dom, One(x)))
+}
+
+function StackAbs<V>(start: Option Loc, nodes: Map (One Loc) (Node V)): Vec V;
+function {:inline} StackAbsDef<V>(start: Option Loc, nodes: Map (One Loc) (Node V)): Vec V {
+if start == None() then
+  Vec_Empty() else
+  (var n := Map_At(nodes, One(start->t)); Vec_Append(StackAbs(n->next, nodes), n->val))
+}
+
+pure procedure StackAbsCompute<V>(start: Option Loc, nodes: Map (One Loc) (Node V), nodes': Map (One Loc) (Node V)) returns (absStack: Vec V);
+requires Set_IsSubset(nodes->dom, nodes'->dom);
+requires MapIte(nodes->dom, nodes->val, MapConst(Default())) ==
+         MapIte(nodes->dom, nodes'->val, MapConst(Default()));
+requires Between(nodes->val, start, start, None());
+requires ListInDomain(start, nodes);
+ensures absStack == StackAbsDef(start, nodes);
+ensures absStack == StackAbsDef(start, nodes');
+free ensures absStack == StackAbs(start, nodes);
+free ensures absStack == StackAbs(start, nodes');
+
+pure procedure StackAbsLemma<V>(start: Option Loc, nodes: Map (One Loc) (Node V));
+requires Between(nodes->val, start, start, None());
+requires ListInDomain(start, nodes);
+ensures StackAbs(start, nodes) == StackAbsDef(start, nodes);
+
+pure procedure StackFrameLemma<V>(start: Option Loc, nodes: Map (One Loc) (Node V), nodes': Map (One Loc) (Node V));
+requires Set_IsSubset(nodes->dom, nodes'->dom);
+requires MapIte(nodes->dom, nodes->val, MapConst(Default())) ==
+         MapIte(nodes->dom, nodes'->val, MapConst(Default()));
+requires Between(nodes->val, start, start, None());
+requires ListInDomain(start, nodes);
+ensures StackAbs(start, nodes) == StackAbs(start, nodes');
