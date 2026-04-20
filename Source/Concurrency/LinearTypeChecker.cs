@@ -92,13 +92,14 @@ namespace Microsoft.Boogie
 
     private void CheckPrimitiveCall(CallCmd callCmd)
     {
-      switch (Monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
+      var procName = Monomorphizer.GetOriginalDecl(callCmd.Proc).Name;
+      switch (procName)
       {
         case "Loc_New":
         case "Tag_New":
         case "Tags_New":
         case "Map_MakeEmpty":
-          return;
+          break;
         case "Move":
           if (callCmd.Ins[0] is not IdentifierExpr)
           {
@@ -108,7 +109,7 @@ namespace Microsoft.Boogie
           {
             Error(callCmd, "argument at position 1 must be a variable");
           }
-          return;
+          break;
         case "One_Get":
         case "One_Put":
         case "Map_Get":
@@ -121,10 +122,15 @@ namespace Microsoft.Boogie
           {
             Error(callCmd, "illegal path expression at position 0");
           }
-          return;
+          if ((procName == "Path_Load" || procName == "Path_Store") &&
+              !IsOrdinaryType(callCmd.Ins[0].Type))
+          {
+            Error(callCmd, "argument at position 0 must have ordinary type");
+          }
+          break;
         default:
           Debug.Assert(false, "Unreachable");
-          return;
+          break;
       }
     }
 
