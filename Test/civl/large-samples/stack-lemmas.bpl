@@ -1,6 +1,7 @@
 // RUN: %parallel-boogie -lib:base -lib:node "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
+/// Stack abstraction
 pure procedure StackAbsCompute<V>(start: Option Loc, nodes: Map (One Loc) (Node V), nodes': Map (One Loc) (Node V))
   returns (absStack: Vec V)
 requires Set_IsSubset(nodes->dom, nodes'->dom);
@@ -40,4 +41,46 @@ implementation StackFrameLemma<V>(start: Option Loc, nodes: Map (One Loc) (Node 
 {
   var absStack: Vec V;
   call absStack := StackAbsCompute(start, nodes, nodes');
+}
+
+/// Set abstraction
+pure procedure SetAbsCompute<V>(start: Option Loc, nodes: Map (One Loc) (Node V), nodes': Map (One Loc) (Node V))
+  returns (absSet: [V]bool)
+requires Set_IsSubset(nodes->dom, nodes'->dom);
+requires MapIte(nodes->dom, nodes->val, MapConst(Default())) ==
+         MapIte(nodes->dom, nodes'->val, MapConst(Default()));
+requires Between(nodes->val, start, start, None());
+requires InDomain(nodes, start);
+ensures absSet == SetAbsDef(start, nodes);
+ensures absSet == SetAbsDef(start, nodes');
+free ensures absSet == SetAbs(start, nodes);
+free ensures absSet == SetAbs(start, nodes');
+{
+  var loc_n: Option Loc;
+  var n: Node V;
+
+  if (start == None()) {
+      absSet := Set_Empty();
+  } else {
+      loc_n := start;
+      assert Map_Contains(nodes, One(loc_n->t));
+      n := Map_At(nodes, One(loc_n->t));
+      // Use well-founded list reachability to prove that recursion will terminate:
+      // start@caller --> start@callee --> None()
+      assert Between(nodes->val, loc_n, n->next, None());
+      call absSet := SetAbsCompute(n->next, nodes, nodes');
+      absSet := Set_Add(absSet, n->val);
+  }
+}
+
+implementation SetAbsLemma<V>(start: Option Loc, nodes: Map (One Loc) (Node V))
+{
+  var absSet: [V]bool;
+  call absSet := SetAbsCompute(start, nodes, nodes);
+}
+
+implementation SetFrameLemma<V>(start: Option Loc, nodes: Map (One Loc) (Node V), nodes': Map (One Loc) (Node V))
+{
+  var absSet: [V]bool;
+  call absSet := SetAbsCompute(start, nodes, nodes');
 }

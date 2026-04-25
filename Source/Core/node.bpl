@@ -85,6 +85,7 @@ function {:inline} Reachable<V>(nodes: Map (One Loc) (Node V), start: Option Loc
   Between(nodes->val, start, elem, elem)
 }
 
+/// Stack abstraction
 function StackAbs<V>(start: Option Loc, nodes: Map (One Loc) (Node V)): Vec V;
 function {:inline} StackAbsDef<V>(start: Option Loc, nodes: Map (One Loc) (Node V)): Vec V {
 if start == None() then
@@ -104,3 +105,24 @@ requires MapIte(nodes->dom, nodes->val, MapConst(Default())) ==
 requires Between(nodes->val, start, start, None());
 requires InDomain(nodes, start);
 ensures StackAbs(start, nodes) == StackAbs(start, nodes');
+
+/// Set abstraction
+function SetAbs<V>(start: Option Loc, nodes: Map (One Loc) (Node V)): [V]bool;
+function {:inline} SetAbsDef<V>(start: Option Loc, nodes: Map (One Loc) (Node V)): [V]bool {
+if start == None() then
+  Set_Empty() else
+  (var n := Map_At(nodes, One(start->t)); Set_Add(SetAbs(n->next, nodes), n->val))
+}
+
+pure procedure SetAbsLemma<V>(start: Option Loc, nodes: Map (One Loc) (Node V));
+requires Between(nodes->val, start, start, None());
+requires InDomain(nodes, start);
+ensures SetAbs(start, nodes) == SetAbsDef(start, nodes);
+
+pure procedure SetFrameLemma<V>(start: Option Loc, nodes: Map (One Loc) (Node V), nodes': Map (One Loc) (Node V));
+requires Set_IsSubset(nodes->dom, nodes'->dom);
+requires MapIte(nodes->dom, nodes->val, MapConst(Default())) ==
+         MapIte(nodes->dom, nodes'->val, MapConst(Default()));
+requires Between(nodes->val, start, start, None());
+requires InDomain(nodes, start);
+ensures SetAbs(start, nodes) == SetAbs(start, nodes');
