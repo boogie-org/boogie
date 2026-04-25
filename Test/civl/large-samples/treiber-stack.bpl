@@ -27,8 +27,8 @@ preserves loc_n is None || Set_Contains(Domain(TreiberPoolLow, loc_t), One(loc_n
 
 yield invariant {:layer 2} ReachInStack(loc_t: Loc);
 preserves Map_Contains(TreiberPoolLow, One(loc_t));
-preserves (var t := Map_At(TreiberPoolLow, One(loc_t)); Between(t->nodes->val, t->top, t->top, None()));
-preserves (var t := Map_At(TreiberPoolLow, One(loc_t)); ListInDomain(t->top, t->nodes));
+preserves (var t := Map_At(TreiberPoolLow, One(loc_t)); Reachable(t->nodes, t->top, None()));
+preserves (var t := Map_At(TreiberPoolLow, One(loc_t)); InDomain(t->nodes, t->top));
 preserves (var loc_n := Map_At(TreiberPoolLow, One(loc_t))->top; loc_n is None || Set_Contains(Domain(TreiberPoolLow, loc_t), One(loc_n->t)));
 preserves (var t := Map_At(TreiberPoolLow, One(loc_t)); Map_At(TreiberPool, One(loc_t)) == StackAbs(t->top, t->nodes));
 
@@ -40,7 +40,7 @@ preserves Map_Contains(TreiberPoolLow, One(loc_t));
 preserves new_top == tag->val->loc;
 preserves Set_Contains(Domain(TreiberPoolLow, loc_t), One(new_top));
 preserves (var t := Map_At(TreiberPoolLow, One(loc_t));
-            Map_At(t->nodes, One(new_top)) == new_node && !BetweenSet(t->nodes->val, t->top, None())[new_top]);
+            Map_At(t->nodes, One(new_top)) == new_node && !Between(t->nodes->val, t->top, Some(new_top), None()));
 
 /// Layered implementation
 

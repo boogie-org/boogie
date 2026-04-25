@@ -8,17 +8,15 @@ var ts: Map Loc (Treiber X);
 
 function {:inline} SubsetInv(ts: Map Loc (Treiber X), ref_t: Loc): bool
 {
-  (var t := Map_At(ts, ref_t);
-    (var m := t->nodes; 
-      (forall x: Loc:: BetweenSet(m->val, t->top, None())[x] ==> Set_Contains(m->dom, One(x)))))
+  (var t := Map_At(ts, ref_t); InDomain(t->nodes, t->top))
 }
 
 procedure YieldInv(ref_t: Loc)
 requires Map_Contains(ts, ref_t);
-requires (var t := Map_At(ts, ref_t); Between(t->nodes->val, t->top, None(), None()));
+requires (var t := Map_At(ts, ref_t); Reachable(t->nodes, t->top, None()));
 requires SubsetInv(ts, ref_t);
 ensures Map_Contains(ts, ref_t);
-ensures (var t := Map_At(ts, ref_t); Between(t->nodes->val, t->top, None(), None()));
+ensures (var t := Map_At(ts, ref_t); Reachable(t->nodes, t->top, None()));
 ensures SubsetInv(ts, ref_t);
 modifies ts;
 {

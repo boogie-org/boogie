@@ -1,7 +1,17 @@
 // RUN: %parallel-boogie -lib:base -lib:node "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-implementation StackAbsCompute<V>(start: Option Loc, nodes: Map (One Loc) (Node V), nodes': Map (One Loc) (Node V)) returns (absStack: Vec V)
+pure procedure StackAbsCompute<V>(start: Option Loc, nodes: Map (One Loc) (Node V), nodes': Map (One Loc) (Node V))
+  returns (absStack: Vec V)
+requires Set_IsSubset(nodes->dom, nodes'->dom);
+requires MapIte(nodes->dom, nodes->val, MapConst(Default())) ==
+         MapIte(nodes->dom, nodes'->val, MapConst(Default()));
+requires Between(nodes->val, start, start, None());
+requires InDomain(nodes, start);
+ensures absStack == StackAbsDef(start, nodes);
+ensures absStack == StackAbsDef(start, nodes');
+free ensures absStack == StackAbs(start, nodes);
+free ensures absStack == StackAbs(start, nodes');
 {
   var loc_n: Option Loc;
   var n: Node V;
