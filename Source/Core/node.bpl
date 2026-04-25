@@ -126,3 +126,24 @@ requires MapIte(nodes->dom, nodes->val, MapConst(Default())) ==
 requires Between(nodes->val, start, start, None());
 requires InDomain(nodes, start);
 ensures SetAbs(start, nodes) == SetAbs(start, nodes');
+
+/// Queue abstraction
+function QueueAbs<V>(in_queue: Vec V, start: Option Loc, nodes: Map (One Loc) (Node V)): Vec V;
+function {:inline} QueueAbsDef<V>(in_queue: Vec V, start: Option Loc, nodes: Map (One Loc) (Node V)): Vec V {
+if start == None() then
+  in_queue else
+  (var n := Map_At(nodes, One(start->t)); QueueAbs(Vec_Append(in_queue, n->val), n->next, nodes))
+}
+
+pure procedure QueueAbsLemma<V>(in_queue: Vec V, start: Option Loc, nodes: Map (One Loc) (Node V));
+requires Between(nodes->val, start, start, None());
+requires InDomain(nodes, start);
+ensures QueueAbs(in_queue, start, nodes) == QueueAbsDef(in_queue, start, nodes);
+
+pure procedure QueueFrameLemma<V>(in_queue: Vec V, start: Option Loc, nodes: Map (One Loc) (Node V), nodes': Map (One Loc) (Node V));
+requires Set_IsSubset(nodes->dom, nodes'->dom);
+requires MapIte(nodes->dom, nodes->val, MapConst(Default())) ==
+         MapIte(nodes->dom, nodes'->val, MapConst(Default()));
+requires Between(nodes->val, start, start, None());
+requires InDomain(nodes, start);
+ensures QueueAbs(in_queue, start, nodes) == QueueAbs(in_queue, start, nodes');
