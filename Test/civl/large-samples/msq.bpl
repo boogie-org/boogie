@@ -24,10 +24,10 @@ preserves Between(queue->nodes->val, Some(queue->head), Some(queue->tail), None(
 preserves (forall loc: Loc :: Map_Contains(queue->nodes, One(loc)) ==> InDomain(queue->nodes, Some(loc)));
 preserves (forall loc: Loc :: Between(queue->nodes->val, Some(queue->tail), Some(loc), None()) ==> Map_Contains(tags, One (Tag(loc, Unit()))));
 
-yield invariant {:layer 1} TagInv({:linear} tag: Option (One (Tag Unit)));
-preserves tag is None || (var loc := tag->t->val->loc; Map_Contains(queue->nodes, One(loc)) && Map_At(queue->nodes, One(loc))->next == None());
-preserves tag is None || 
-          (var loc := tag->t->val->loc; 
+yield invariant {:layer 1} TagInv({:linear} tag_opt: Option (One (Tag Unit)));
+preserves tag_opt is None || (var loc := tag_opt->t->val->loc; Map_Contains(queue->nodes, One(loc)) && Map_At(queue->nodes, One(loc))->next == None());
+preserves tag_opt is None || 
+          (var loc := tag_opt->t->val->loc; 
             (forall loc': Loc:: Map_Contains(queue->nodes, One(loc')) && Between(queue->nodes->val, Some(loc'), Some(loc), None()) ==> loc' == loc));
 
 yield invariant {:layer 1} ReachesTail(a: Loc);
@@ -52,34 +52,29 @@ ensures (forall loc: Loc:: Map_Contains(nodes, One(loc)) && Between(nodes->val, 
 yield procedure {:layer 1} Enqueue(v: X)
 preserves call QueueInv();
 {
-  var t, t': Loc;
-  var next: Option Loc;
-  var loc_n: Loc;
-  var success, dummy: bool;
   var one_loc_n: One Loc;
-  var {:layer 1} old_queue: MSQueue;
   var _tag: One (Tag Unit);
-  var tag: Option (One (Tag Unit));
-
+  var tag_opt: Option (One (Tag Unit));
+  var {:layer 1} old_queue: MSQueue;
+  
   call {:layer 1} old_queue := Copy(queue);
-
   call one_loc_n, _tag := Tag_New();
-  tag := Some(_tag);
+  tag_opt := Some(_tag);
   call AllocNode(one_loc_n, Node(None(), v));
   call {:layer 1} Lemma(old_queue->nodes, queue->nodes, one_loc_n->val, Node(None(), v));
   
-  while (tag is Some)
+  while (tag_opt is Some)
   invariant {:yields} true;
-  invariant call TagInv(tag);
   invariant call QueueInv();
+  invariant call TagInv(tag_opt);
   {
-    call tag := EnqueueHelper(tag);
-  }
+    call tag_opt := EnqueueHelper(tag_opt);
 }
 
-yield procedure {:layer 1} EnqueueHelper({:linear_in} tag: Option (One (Tag Unit))) returns ({:linear} tag': Option (One (Tag Unit)))
-requires {:layer 1} tag is Some;
-requires call TagInv(tag);
+yield procedure {:layer 1} {:vcs_split_on_every_assert} EnqueueHelper({:linear_in} tag_opt: Option (One (Tag Unit)))
+returns ({:linear} tag': Option (One (Tag Unit)))
+requires {:layer 1} tag_opt is Some;
+requires call TagInv(tag_opt);
 ensures call TagInv(tag');
 preserves call QueueInv();
 {
@@ -88,20 +83,19 @@ preserves call QueueInv();
   var dummy: bool;
   var loc_n: Loc;
 
-  tag' := tag;
+  tag' := tag_opt;
   call t := ReadTail();
-  call TagInv(tag') | ReachesTail(t) | QueueInv();
+  call QueueInv() | TagInv(tag') | ReachesTail(t);
   call next := ReadNext(t);
-  call TagInv(tag') | ReachesTail(t) | NextStable(t, next) | QueueInv();
+  call QueueInv() | TagInv(tag') | ReachesTail(t) | NextStable(t, next);
   call t' := ReadTail();
-  call TagInv(tag') | ReachesTail(t) | NextStable(t, next) | QueueInv();
+  call QueueInv() | TagInv(tag') | ReachesTail(t) | NextStable(t, next);
   if (t != t') { return; }
   if (next is None) {
-    
     loc_n := tag'->t->val->loc;
     call tag' := CASTailNext(t, tag');
     if (tag' is None) {
-      call Reaches(t, loc_n) | QueueInv();
+      call QueueInv() | Reaches(t, loc_n);
       call dummy := CASTail(t, loc_n);
     }
   } else {
@@ -115,8 +109,7 @@ preserves call QueueInv();
   var h, h': Loc;
   var t: Loc;
   var next: Option Loc;
-  var success: bool;
-  var head_node: Node X;
+  var dummy, success: bool;
   var x: X;
 
   while (true)
@@ -125,25 +118,22 @@ preserves call QueueInv();
   {
     call h := ReadHead();
     call QueueInv() | ReachesTail(h);
-
     call t := ReadTail();
-    call QueueInv() | ReachesTail(h) | ReachesTail(t) | Reaches(h, t);
-
+    call QueueInv() | Reaches(h, t) | ReachesTail(t);
     call next := ReadNext(h);
-    call QueueInv() | ReachesTail(h) | ReachesTail(t) | Reaches(h, t) | NextStable(h, next);
-
+    call QueueInv() | Reaches(h, t) | ReachesTail(t) | NextStable(h, next);
     call h' := ReadHead();
-    call QueueInv() | ReachesTail(h) | ReachesTail(t) | Reaches(h, t) | NextStable(h, next);
+    call QueueInv() | Reaches(h, t) | ReachesTail(t) | NextStable(h, next);
     if (h == h') {
       if (h == t) {
         if (next is None) {
           value := None();
           return;
         }
-        call success := CASTail(t, next->t);
+        call dummy := CASTail(t, next->t);
       } else {
         call x := ReadValue(next->t);
-        call QueueInv() | ReachesTail(h) | ReachesTail(t) | Reaches(h, t) | NextStable(h, next);
+        call QueueInv() | Reaches(h, t) | ReachesTail(t) | NextStable(h, next);
         call success := CASHead(h, next->t);
         if (success) {
           value := Some(x);
@@ -216,7 +206,8 @@ refines atomic action {:layer 1} _
   }
 }
 
-yield procedure {:layer 0} CASTailNext(t: Loc, {:linear_in} tag: Option (One (Tag Unit))) returns ({:linear} tag': Option (One (Tag Unit)));
+yield procedure {:layer 0} CASTailNext(t: Loc, {:linear_in} tag: Option (One (Tag Unit)))
+returns ({:linear} tag': Option (One (Tag Unit)));
 refines atomic action {:layer 1} _
 {
   var node: Node X;
