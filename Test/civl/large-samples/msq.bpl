@@ -53,13 +53,13 @@ yield procedure {:layer 1} Enqueue(v: X)
 preserves call QueueInv();
 {
   var one_loc_n: One Loc;
-  var _tag: One (Tag Unit);
+  var tag: One (Tag Unit);
   var tag_opt: Option (One (Tag Unit));
   var {:layer 1} old_queue: MSQueue;
   
   call {:layer 1} old_queue := Copy(queue);
-  call one_loc_n, _tag := Tag_New();
-  tag_opt := Some(_tag);
+  call one_loc_n, tag := Tag_New();
+  tag_opt := Some(tag);
   call AllocNode(one_loc_n, Node(None(), v));
   call {:layer 1} Lemma(old_queue->nodes, queue->nodes, one_loc_n->val, Node(None(), v));
   
@@ -69,13 +69,14 @@ preserves call QueueInv();
   invariant call TagInv(tag_opt);
   {
     call tag_opt := EnqueueHelper(tag_opt);
+  }
 }
 
 yield procedure {:layer 1} {:vcs_split_on_every_assert} EnqueueHelper({:linear_in} tag_opt: Option (One (Tag Unit)))
-returns ({:linear} tag': Option (One (Tag Unit)))
+returns ({:linear} tag_opt': Option (One (Tag Unit)))
 requires {:layer 1} tag_opt is Some;
 requires call TagInv(tag_opt);
-ensures call TagInv(tag');
+ensures call TagInv(tag_opt');
 preserves call QueueInv();
 {
   var t, t': Loc;
@@ -83,18 +84,18 @@ preserves call QueueInv();
   var dummy: bool;
   var loc_n: Loc;
 
-  tag' := tag_opt;
+  tag_opt' := tag_opt;
   call t := ReadTail();
-  call QueueInv() | TagInv(tag') | ReachesTail(t);
+  call QueueInv() | TagInv(tag_opt') | ReachesTail(t);
   call next := ReadNext(t);
-  call QueueInv() | TagInv(tag') | ReachesTail(t) | NextStable(t, next);
+  call QueueInv() | TagInv(tag_opt') | ReachesTail(t) | NextStable(t, next);
   call t' := ReadTail();
-  call QueueInv() | TagInv(tag') | ReachesTail(t) | NextStable(t, next);
+  call QueueInv() | TagInv(tag_opt') | ReachesTail(t) | NextStable(t, next);
   if (t != t') { return; }
   if (next is None) {
-    loc_n := tag'->t->val->loc;
-    call tag' := CASTailNext(t, tag');
-    if (tag' is None) {
+    loc_n := tag_opt'->t->val->loc;
+    call tag_opt' := CASTailNext(t, tag_opt');
+    if (tag_opt' is None) {
       call QueueInv() | Reaches(t, loc_n);
       call dummy := CASTail(t, loc_n);
     }
@@ -206,24 +207,23 @@ refines atomic action {:layer 1} _
   }
 }
 
-yield procedure {:layer 0} CASTailNext(t: Loc, {:linear_in} tag: Option (One (Tag Unit)))
-returns ({:linear} tag': Option (One (Tag Unit)));
+yield procedure {:layer 0} CASTailNext(t: Loc, {:linear_in} tag_opt: Option (One (Tag Unit)))
+returns ({:linear} tag_opt': Option (One (Tag Unit)));
 refines atomic action {:layer 1} _
 {
-  var node: Node X;
   var one_loc: One Loc;
   var old_next: Option Loc;
-  var _tag: One (Tag Unit);
+  var tag: One (Tag Unit);
 
-  assert tag is Some;
-  tag' := tag;
+  assert tag_opt is Some;
+  tag_opt' := tag_opt;
   one_loc := One(t);
   call old_next := Path_Load(queue->nodes->val[one_loc]->next);
   if (old_next == None()) {
-    Some(_tag) := tag';
-    call Path_Store(queue->nodes->val[one_loc]->next, Some(_tag->val->loc));
-    call One_Put(tags, _tag);
-    tag' := None(); 
+    Some(tag) := tag_opt';
+    call Path_Store(queue->nodes->val[one_loc]->next, Some(tag->val->loc));
+    call One_Put(tags, tag);
+    tag_opt' := None(); 
   }
 }
 
