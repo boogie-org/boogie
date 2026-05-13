@@ -41,28 +41,16 @@ preserves Between(queue->nodes->val, Some(a), Some(b), None());
 yield invariant {:layer 1} NextStable(a: Loc, next: Option Loc);
 preserves next == None() || (Map_Contains(queue->nodes, One(a)) && queue->nodes->val[One(a)]->next == next);
 
-pure procedure Lemma(old_nodes: Map (One Loc) (Node X), nodes: Map (One Loc) (Node X), loc_n: Loc, n: Node X);
-requires !Map_Contains(old_nodes, One(loc_n));
-requires nodes == Map_Update(old_nodes, One(loc_n), n);
-requires n->next == None();
-requires (forall loc: Loc :: Map_Contains(old_nodes, One(loc)) ==> InDomain(old_nodes, Some(loc)));
-ensures (forall loc: Loc :: Map_Contains(nodes, One(loc)) ==> InDomain(nodes, Some(loc)));
-ensures (forall loc: Loc:: Map_Contains(nodes, One(loc)) && Between(nodes->val, Some(loc), Some(loc_n), None()) ==> loc == loc_n);
-
 yield procedure {:layer 1} Enqueue(v: X)
 preserves call QueueInv();
 {
   var one_loc_n: One Loc;
   var tag: One (Tag Unit);
   var tag_opt: Option (One (Tag Unit));
-  var {:layer 1} old_queue: MSQueue;
-  
-  call {:layer 1} old_queue := Copy(queue);
+
   call one_loc_n, tag := Tag_New();
   tag_opt := Some(tag);
   call AllocNode(one_loc_n, Node(None(), v));
-  call {:layer 1} Lemma(old_queue->nodes, queue->nodes, one_loc_n->val, Node(None(), v));
-  
   while (tag_opt is Some)
   invariant {:yields} true;
   invariant call QueueInv();
@@ -72,7 +60,7 @@ preserves call QueueInv();
   }
 }
 
-yield procedure {:layer 1} {:vcs_split_on_every_assert} EnqueueHelper({:linear_in} tag_opt: Option (One (Tag Unit)))
+yield procedure {:layer 1} EnqueueHelper({:linear_in} tag_opt: Option (One (Tag Unit)))
 returns ({:linear} tag_opt': Option (One (Tag Unit)))
 requires {:layer 1} tag_opt is Some;
 requires call TagInv(tag_opt);

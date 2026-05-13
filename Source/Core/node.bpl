@@ -78,11 +78,8 @@ axiom {:ctor "Node"} (forall<T> f: [One Loc]Node T, u: Option Loc, v: Option Loc
 );
 
 function {:inline} InDomain<V>(nodes: Map (One Loc) (Node V), start: Option Loc): bool {
+  Between(nodes->val, start, start, None()) &&
   (forall x: Loc:: Between(nodes->val, start, Some(x), None()) ==> Set_Contains(nodes->dom, One(x)))
-}
-
-function {:inline} Reachable<V>(nodes: Map (One Loc) (Node V), start: Option Loc, elem: Option Loc): bool {
-  Between(nodes->val, start, elem, elem)
 }
 
 /// Stack abstraction

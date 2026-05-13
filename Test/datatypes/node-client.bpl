@@ -13,10 +13,8 @@ function {:inline} SubsetInv(ts: Map Loc (Treiber X), ref_t: Loc): bool
 
 procedure YieldInv(ref_t: Loc)
 requires Map_Contains(ts, ref_t);
-requires (var t := Map_At(ts, ref_t); Reachable(t->nodes, t->top, None()));
 requires SubsetInv(ts, ref_t);
 ensures Map_Contains(ts, ref_t);
-ensures (var t := Map_At(ts, ref_t); Reachable(t->nodes, t->top, None()));
 ensures SubsetInv(ts, ref_t);
 modifies ts;
 {
