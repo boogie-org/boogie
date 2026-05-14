@@ -1,0 +1,8 @@
+triggerLegality.bpl(15,28): Error: trigger expression refers to the inline function 'IllegalInline' whose body contains boolean operators, which are not allowed in triggers
+triggerLegality.bpl(15,28): Error: trigger expression refers to the inline function 'IllegalInline' whose body contains arithmetic comparisons, which are not allowed in triggers
+triggerLegality.bpl(15,28): Error: trigger expression refers to the inline function 'IllegalInline' whose body contains arithmetic comparisons, which are not allowed in triggers
+triggerLegality.bpl(42,28): Error: trigger expression refers to the inline function 'InnerInline' whose body contains boolean operators, which are not allowed in triggers
+triggerLegality.bpl(42,28): Error: trigger expression refers to the inline function 'InnerInline' whose body contains arithmetic comparisons, which are not allowed in triggers
+triggerLegality.bpl(42,28): Error: trigger expression refers to the inline function 'InnerInline' whose body contains arithmetic comparisons, which are not allowed in triggers
+triggerLegality.bpl(53,28): Error: trigger expression refers to the inline function 'HasEquality' whose body contains equality, which is not allowed in triggers
+7 name resolution errors detected in triggerLegality.bpl
