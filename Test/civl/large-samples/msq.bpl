@@ -60,7 +60,7 @@ preserves call QueueInv();
   }
 }
 
-yield procedure {:layer 1} EnqueueHelper({:linear_in} tag_opt: Option (One (Tag Unit)))
+yield procedure {:layer 1} {:vcs_split_on_every_assert} EnqueueHelper({:linear_in} tag_opt: Option (One (Tag Unit)))
 returns ({:linear} tag_opt': Option (One (Tag Unit)))
 requires {:layer 1} tag_opt is Some;
 requires call TagInv(tag_opt);
@@ -69,8 +69,9 @@ preserves call QueueInv();
 {
   var t, t': Loc;
   var next: Option Loc;
-  var dummy: bool;
-  var loc_n: Loc;
+  var success, dummy: bool;
+  var loc: Loc;
+  var tag: One (Tag Unit);
 
   tag_opt' := tag_opt;
   call t := ReadTail();
@@ -81,18 +82,21 @@ preserves call QueueInv();
   call QueueInv() | TagInv(tag_opt') | ReachesTail(t) | NextStable(t, next);
   if (t != t') { return; }
   if (next is None) {
-    loc_n := tag_opt'->t->val->loc;
-    call tag_opt' := CASTailNext(t, tag_opt');
-    if (tag_opt' is None) {
-      call QueueInv() | Reaches(t, loc_n);
-      call dummy := CASTail(t, loc_n);
+    loc := tag_opt'->t->val->loc;
+    call success := CASTailNext(t, loc);
+    if (success) {
+      Some(tag) := tag_opt';
+      call AddTag(tag);
+      tag_opt' := None();
+      call QueueInv() | Reaches(t, loc);
+      call dummy := CASTail(t, loc);
     }
   } else {
     call dummy := CASTail(t, next->t);
   }
 }
 
-yield procedure {:layer 1} Dequeue() returns (value: Option X)
+yield procedure {:layer 1} {:vcs_split_on_every_assert} Dequeue() returns (value: Option X)
 preserves call QueueInv();
 {
   var h, h': Loc;
@@ -195,24 +199,25 @@ refines atomic action {:layer 1} _
   }
 }
 
-yield procedure {:layer 0} CASTailNext(t: Loc, {:linear_in} tag_opt: Option (One (Tag Unit)))
-returns ({:linear} tag_opt': Option (One (Tag Unit)));
+yield procedure {:layer 0} CASTailNext(t: Loc, loc: Loc) returns (success: bool);
 refines atomic action {:layer 1} _
 {
   var one_loc: One Loc;
   var old_next: Option Loc;
-  var tag: One (Tag Unit);
 
-  assert tag_opt is Some;
-  tag_opt' := tag_opt;
+  success := false;
   one_loc := One(t);
   call old_next := Path_Load(queue->nodes->val[one_loc]->next);
   if (old_next == None()) {
-    Some(tag) := tag_opt';
-    call Path_Store(queue->nodes->val[one_loc]->next, Some(tag->val->loc));
-    call One_Put(tags, tag);
-    tag_opt' := None(); 
+    call Path_Store(queue->nodes->val[one_loc]->next, Some(loc));
+    success := true;
   }
+}
+
+yield procedure {:layer 0} AddTag({:linear_in} tag: One (Tag Unit));
+refines left action {:layer 1} _
+{
+  call One_Put(tags, tag);
 }
 
 yield procedure {:layer 0} AllocNode({:linear_in} one_loc_n: One Loc, node: Node X);
