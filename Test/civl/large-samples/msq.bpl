@@ -12,17 +12,16 @@
 
 type X; // queue element type
 
-datatype MSQueue { MSQueue(head: Loc, tail: Loc, nodes: Map (One Loc) (Node X)) }
+datatype MSQueue { MSQueue(head: Loc, tail: Loc, nodes: Map (One Loc) (Node X), tags: UnitMap (One (Tag Unit))) }
 
 var {:layer 0, 1} {:linear} queue: MSQueue;
-var {:layer 0, 1} {:linear} tags: UnitMap (One (Tag Unit));
 
 yield invariant {:layer 1} QueueInv();
 preserves Map_Contains(queue->nodes, One(queue->head));
 preserves Map_Contains(queue->nodes, One(queue->tail));
 preserves Between(queue->nodes->val, Some(queue->head), Some(queue->tail), None());
 preserves (forall loc: Loc :: Map_Contains(queue->nodes, One(loc)) ==> InDomain(queue->nodes, Some(loc)));
-preserves (forall loc: Loc :: Between(queue->nodes->val, Some(queue->tail), Some(loc), None()) ==> Map_Contains(tags, One (Tag(loc, Unit()))));
+preserves (forall loc: Loc :: Between(queue->nodes->val, Some(queue->tail), Some(loc), None()) ==> Map_Contains(queue->tags, One (Tag(loc, Unit()))));
 
 yield invariant {:layer 1} TagInv({:linear} tag_opt: Option (One (Tag Unit)));
 preserves tag_opt is None || (var loc := tag_opt->t->val->loc; Map_Contains(queue->nodes, One(loc)) && Map_At(queue->nodes, One(loc))->next == None());
@@ -217,7 +216,7 @@ refines atomic action {:layer 1} _
 yield procedure {:layer 0} AddTag({:linear_in} tag: One (Tag Unit));
 refines left action {:layer 1} _
 {
-  call One_Put(tags, tag);
+  call One_Put(queue->tags, tag);
 }
 
 yield procedure {:layer 0} AllocNode({:linear_in} one_loc_n: One Loc, node: Node X);
