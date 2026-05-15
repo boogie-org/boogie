@@ -1,54 +1,39 @@
-var {:layer 0, 1} A: [int]int;
-// length of array
-const N: int;
-axiom N > 0;
-
-yield left procedure {:layer 1} Reduce({:linear} ps: UnitMap (One int))
+yield left procedure {:layer 1} Reduce({:linear_in} A: Map (One int) int, N: int)
+returns ({:linear} A': Map (One int) int)
 {
   var n: int;
   var stride: int;
 
+  A' := A;
   n := N;
   while (n > 1)
   {
     stride := n div 2;
     n := n - stride;
-    call Add(ps, 0, stride);
+    call A' := Add(A', 0, stride);
   }
-  // A[0] contains the sum A[0] + ... + A[N-1]
+  // A'[0] contains the sum A[0] + ... + A[N-1]
 }
 
-yield left procedure {:layer 1} Add({:linear} ps: UnitMap (One int), i: int, stride: int)
+yield left procedure {:layer 1} Add({:linear_in} A: Map (One int) int, i: int, stride: int)
+returns ({:linear} A': Map (One int) int)
 {
-  var ps': UnitMap (One int);
-  var tps: UnitMap (One int);
+  var B: Map (One int) int;
 
+  A' := A;
   if (i == stride) { return; }
-  ps' := ps;
-  call tps := Map_Split(ps', Set_Add(Set_Singleton(One(i)), One(i + stride)));
-  call T(tps, i, stride) | Add(ps', i + 1, stride);
-  call Map_Join(ps', tps);
-  call Move(ps', ps);
+  call B := Map_Split(A', Set_Add(Set_Singleton(One(i)), One(i + stride)));
+  call B := AddOne(B, i, stride) | A' := Add(A', i + 1, stride);
+  call Map_Join(A', B);
 }
 
-yield left procedure {:layer 1} T({:linear} ps: UnitMap (One int), i: int, stride: int)
+yield left procedure {:layer 1} AddOne({:linear_in} B: Map (One int) int, i: int, stride: int)
+returns ({:linear} B': Map (One int) int)
 {
   var v, v': int;
 
-  call v := Read(ps, i);
-  call v' := Read(ps, i + stride);
-  call Write(ps, i, v + v');
+  B' := B;
+  call v := Path_Load(B'->val[One(i)]);
+  call v' := Path_Load(B'->val[One(i + stride)]);
+  call Path_Store(B'->val[One(i)], v + v');
 }
-
-yield procedure {:layer 0} Read({:linear} ps: UnitMap (One int), i: int) returns (v: int);
-refines both action {:layer 1} _ {
-  assert Map_Contains(ps, One(i));
-  v := A[i];
-}
-
-yield procedure {:layer 0} Write({:linear} ps: UnitMap (One int), i: int, v: int);
-refines both action {:layer 1} _ {
-  assert Map_Contains(ps, One(i));
-  A[i] := v;
-}
-
