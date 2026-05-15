@@ -7,7 +7,6 @@ pure procedure StackAbsCompute<V>(start: Option Loc, nodes: Map (One Loc) (Node 
 requires Set_IsSubset(nodes->dom, nodes'->dom);
 requires MapIte(nodes->dom, nodes->val, MapConst(Default())) ==
          MapIte(nodes->dom, nodes'->val, MapConst(Default()));
-requires Between(nodes->val, start, start, None());
 requires InDomain(nodes, start);
 ensures absStack == StackAbsDef(start, nodes);
 ensures absStack == StackAbsDef(start, nodes');
@@ -49,7 +48,6 @@ pure procedure SetAbsCompute<V>(start: Option Loc, nodes: Map (One Loc) (Node V)
 requires Set_IsSubset(nodes->dom, nodes'->dom);
 requires MapIte(nodes->dom, nodes->val, MapConst(Default())) ==
          MapIte(nodes->dom, nodes'->val, MapConst(Default()));
-requires Between(nodes->val, start, start, None());
 requires InDomain(nodes, start);
 ensures absSet == SetAbsDef(start, nodes);
 ensures absSet == SetAbsDef(start, nodes');
@@ -91,7 +89,6 @@ pure procedure QueueAbsCompute<V>(in_queue: Vec V, start: Option Loc, nodes: Map
 requires Set_IsSubset(nodes->dom, nodes'->dom);
 requires MapIte(nodes->dom, nodes->val, MapConst(Default())) ==
          MapIte(nodes->dom, nodes'->val, MapConst(Default()));
-requires Between(nodes->val, start, start, None());
 requires InDomain(nodes, start);
 ensures out_queue == QueueAbsDef(in_queue, start, nodes);
 ensures out_queue == QueueAbsDef(in_queue, start, nodes');

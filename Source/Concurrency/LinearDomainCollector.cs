@@ -160,10 +160,19 @@ namespace Microsoft.Boogie
       var collectionTarget = collectors[ctorType][permissionType].InParams[0];
       foreach (var constructor in datatypeTypeCtorDecl.Constructors)
       {
-        foreach (var formal in constructor.InParams.Where(formal => linearTypes.ContainsKey(formal.TypedIdent.Type)))
+        foreach (var formal in constructor.InParams)
         {
+          var formalType = formal.TypedIdent.Type;
+          if (!linearTypes.ContainsKey(formalType))
+          {
+            continue;
+          }
+          if (!collectors[formalType].ContainsKey(permissionType))
+          {
+            continue;
+          }
           var permissionExpr = ExprHelper.FunctionCall(
-            collectors[formal.TypedIdent.Type][permissionType],
+            collectors[formalType][permissionType],
             ExprHelper.FieldAccess(Expr.Ident(collectionTarget), formal.Name));
           constructorToPermissionExprs[constructor].Add(permissionExpr);
         }

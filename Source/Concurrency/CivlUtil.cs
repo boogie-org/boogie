@@ -257,18 +257,18 @@ namespace Microsoft.Boogie
     {
       if (e is IdentifierExpr ie)
       {
-        return SimpleAssignLhs(ie.Decl);
+        return new SimpleAssignLhs(e.tok, Expr.Ident(ie.Decl));
       }
       var naryExpr = (NAryExpr)e;
       if (naryExpr.Fun is FieldAccess fieldAccess)
       {
         var datatype = ExprToAssignLhs(naryExpr.Args[0]);
-        return datatype == null ? null : new FieldAssignLhs(datatype, new FieldAccess(fieldAccess.FieldName));
+        return datatype == null ? null : new FieldAssignLhs(fieldAccess.tok, datatype, new FieldAccess(fieldAccess.FieldName));
       }
       if (naryExpr.Fun is MapSelect)
       {
         var map = ExprToAssignLhs(naryExpr.Args[0]);
-        return map == null ? null : new MapAssignLhs(map, naryExpr.Args.ToList().GetRange(1, naryExpr.Args.Count - 1));
+        return map == null ? null : new MapAssignLhs(naryExpr.tok, map, naryExpr.Args.ToList().GetRange(1, naryExpr.Args.Count - 1));
       }
       return null;
     }

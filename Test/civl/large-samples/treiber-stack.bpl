@@ -27,7 +27,6 @@ preserves loc_n is None || Set_Contains(Domain(TreiberPoolLow, loc_t), One(loc_n
 
 yield invariant {:layer 2} ReachInStack(loc_t: Loc);
 preserves Map_Contains(TreiberPoolLow, One(loc_t));
-preserves (var t := Map_At(TreiberPoolLow, One(loc_t)); Reachable(t->nodes, t->top, None()));
 preserves (var t := Map_At(TreiberPoolLow, One(loc_t)); InDomain(t->nodes, t->top));
 preserves (var loc_n := Map_At(TreiberPoolLow, One(loc_t))->top; loc_n is None || Set_Contains(Domain(TreiberPoolLow, loc_t), One(loc_n->t)));
 preserves (var t := Map_At(TreiberPoolLow, One(loc_t)); Map_At(TreiberPool, One(loc_t)) == StackAbs(t->top, t->nodes));
@@ -72,16 +71,11 @@ preserves call StackDom();
   call {:layer 2} StackAbsLemma(treiber->top, treiber->nodes);
 }
 
-atomic action {:layer 3} AtomicPush(loc_t: Loc, x: X) returns (success: bool)
+atomic action {:layer 3} AtomicPush(loc_t: Loc, x: X)
 {
-  if (*) {
-    TreiberPool := Map_Update(TreiberPool, One(loc_t), Vec_Append(Map_At(TreiberPool, One(loc_t)), x));
-    success := true;
-  } else {
-    success := false;
-  }
+  TreiberPool := Map_Update(TreiberPool, One(loc_t), Vec_Append(Map_At(TreiberPool, One(loc_t)), x));
 }
-yield procedure {:layer 2} Push(loc_t: Loc, x: X) returns (success: bool)
+yield procedure {:layer 2} Push(loc_t: Loc, x: X)
 refines AtomicPush;
 preserves call TopInStack(loc_t);
 preserves call ReachInStack(loc_t);
@@ -91,54 +85,68 @@ preserves call StackDom();
   var new_top: Loc;
   var tag: One (Tag Unit);
   var {:layer 2} old_treiber, mid_treiber, new_treiber: Treiber X;
+  var success: bool;
 
-  call {:layer 2} old_treiber := Copy(TreiberPoolLow->val[One(loc_t)]);
-  call old_top, tag := AddNode(loc_t, x);
-  call {:layer 2} mid_treiber := Copy(TreiberPoolLow->val[One(loc_t)]);
-  call {:layer 2} StackFrameLemma(old_treiber->top, old_treiber->nodes, mid_treiber->nodes);
-  new_top := tag->val->loc;
-  call ReachInStack(loc_t) | StackDom() | PushLocInStack(loc_t, new_top, Node(old_top, x), tag);
-  call success := WriteTopOfStack(loc_t, old_top, Some(new_top));
-  if (success) {
-    call {:layer 2} new_treiber := Copy(TreiberPoolLow->val[One(loc_t)]);
-    assert {:layer 2} Map_Contains(TreiberPool, One(loc_t));
-    call {:layer 2} TreiberPool := Copy(Map_Update(TreiberPool, One(loc_t), Vec_Append(Map_At(TreiberPool, One(loc_t)), x)));
-    call {:layer 2} StackAbsLemma(new_treiber->top, new_treiber->nodes);
+  while (true)
+  invariant {:yields} true;
+  invariant call TopInStack(loc_t);
+  invariant call ReachInStack(loc_t);
+  invariant call StackDom();
+  {
+    call {:layer 2} old_treiber := Copy(TreiberPoolLow->val[One(loc_t)]);
+    call old_top, tag := AddNode(loc_t, x);
+    call {:layer 2} mid_treiber := Copy(TreiberPoolLow->val[One(loc_t)]);
+    call {:layer 2} StackFrameLemma(old_treiber->top, old_treiber->nodes, mid_treiber->nodes);
+    new_top := tag->val->loc;
+    call ReachInStack(loc_t) | StackDom() | PushLocInStack(loc_t, new_top, Node(old_top, x), tag);
+    call success := WriteTopOfStack(loc_t, old_top, Some(new_top));
+    if (success) {
+      call {:layer 2} new_treiber := Copy(TreiberPoolLow->val[One(loc_t)]);
+      assert {:layer 2} Map_Contains(TreiberPool, One(loc_t));
+      call {:layer 2} TreiberPool := Copy(Map_Update(TreiberPool, One(loc_t), Vec_Append(Map_At(TreiberPool, One(loc_t)), x)));
+      call {:layer 2} StackAbsLemma(new_treiber->top, new_treiber->nodes);
+      break;
+    }
   }
 }
 
-atomic action {:layer 3} AtomicPop(loc_t: Loc) returns (success: bool, x_opt: Option X)
+atomic action {:layer 3} AtomicPop(loc_t: Loc) returns (x_opt: Option X)
 {
   var stack: Vec X;
 
-  if (*) {
-    stack := Map_At(TreiberPool, One(loc_t));
-    if (Vec_Len(stack) > 0) {
-      x_opt := Some(Vec_Nth(stack, Vec_Len(stack) - 1));
-      TreiberPool := Map_Update(TreiberPool, One(loc_t), Vec_Remove(stack));
-    } else {
-      x_opt := None();
-    }
-    success := true;
+  stack := Map_At(TreiberPool, One(loc_t));
+  if (Vec_Len(stack) > 0) {
+    x_opt := Some(Vec_Nth(stack, Vec_Len(stack) - 1));
+    TreiberPool := Map_Update(TreiberPool, One(loc_t), Vec_Remove(stack));
   } else {
-    success := false;
     x_opt := None();
   }
 }
-yield procedure {:layer 2} Pop(loc_t: Loc) returns (success: bool, x_opt: Option X)
+yield procedure {:layer 2} Pop(loc_t: Loc) returns (x_opt: Option X)
 refines AtomicPop;
 preserves call TopInStack(loc_t);
 preserves call ReachInStack(loc_t);
 preserves call StackDom();
 {
   var {:layer 2} treiber: Treiber X;
+  var success: bool;
 
-  call {:layer 2} treiber := Copy(TreiberPoolLow->val[One(loc_t)]);
-  call {:layer 2} StackAbsLemma(treiber->top, treiber->nodes);
-  call success, x_opt := PopIntermediate(loc_t);
-  if (x_opt is Some) {
-    assert {:layer 2} Vec_Len(Map_At(TreiberPool, One(loc_t))) > 0;
-    call {:layer 2} TreiberPool := Copy(Map_Update(TreiberPool, One(loc_t), Vec_Remove(Map_At(TreiberPool, One(loc_t)))));
+  while (true)
+  invariant {:yields} true;
+  invariant call TopInStack(loc_t);
+  invariant call ReachInStack(loc_t);
+  invariant call StackDom();
+  {
+    call {:layer 2} treiber := Copy(TreiberPoolLow->val[One(loc_t)]);
+    call {:layer 2} StackAbsLemma(treiber->top, treiber->nodes);
+    call success, x_opt := PopIntermediate(loc_t);
+    if (x_opt is Some) {
+      assert {:layer 2} Vec_Len(Map_At(TreiberPool, One(loc_t))) > 0;
+      call {:layer 2} TreiberPool := Copy(Map_Update(TreiberPool, One(loc_t), Vec_Remove(Map_At(TreiberPool, One(loc_t)))));
+    }
+    if (success) {
+      break;
+    }
   }
 }
 
