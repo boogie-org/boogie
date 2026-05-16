@@ -1,3 +1,6 @@
+// RUN: %parallel-boogie -lib:base "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
 yield left procedure {:layer 1} Reduce({:linear_in} A: Map (One int) int, N: int)
 returns ({:linear} A': Map (One int) int)
 requires {:layer 1} 0 < N;
