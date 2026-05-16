@@ -1498,7 +1498,7 @@ namespace Microsoft.Boogie
       {
         callCmd.Resolve(rc);
       }
-      if (errorCount > rc.ErrorCount)
+      if (rc.ErrorCount > errorCount)
       {
         return;
       }
