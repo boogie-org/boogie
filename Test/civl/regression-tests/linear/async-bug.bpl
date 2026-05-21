@@ -2,7 +2,7 @@
 // RUN: %diff "%s.expect" "%t"
 
 yield invariant {:layer 100} Yield({:linear} tid: One int);
-invariant tid->val == GcTid;
+preserves tid->val == GcTid;
 
 const GcTid:int;
 

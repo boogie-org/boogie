@@ -1,0 +1,2 @@
+loopconc2.bpl(12,4): Error: measure command in a yield procedure must specify at least one layer
+1 name resolution errors detected in loopconc2.bpl

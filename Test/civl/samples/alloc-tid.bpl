@@ -3,18 +3,18 @@
 
 var {:layer 0,2} a: [int]int;
 var {:layer 0,1} count: int;
-var {:layer 1,2} {:linear} unallocated: Set int;
+var {:layer 1,2} {:linear} unallocated: UnitMap (One int);
 
 yield invariant {:layer 1} Yield1();
-invariant AllocInv(count, unallocated);
+preserves AllocInv(count, unallocated);
 
 yield invariant {:layer 2} Yield2({:linear} tid: One int, v: int);
-invariant a[tid->val] == v;
+preserves a[tid->val] == v;
 
 yield procedure {:layer 2} main()
 requires call Yield1();
 {
-  var {:layer 1,2} {:linear} tid: One int;
+  var {:layer 1,2} tid: One int;
   var i: int;
 
   while (true)
@@ -35,15 +35,16 @@ ensures call Yield2(tid, old(a)[tid->val] + 1);
   var t:int;
 
   call t := Read(tid, i);
-  par Yield1() | Yield2(tid, t);
+  call Yield1() | Yield2(tid, t);
   call Write(tid, i, t + 1);
 }
 
 atomic action {:layer 2,2} AtomicAllocate() returns ({:linear} tid: One int, i: int)
 modifies unallocated;
 {
-  assume Set_Contains(unallocated, i);
-  call tid := One_Get(unallocated, i);
+  assume Map_Contains(unallocated, One(i));
+  tid := One(i);
+  call One_Get(unallocated, tid);
 }
 
 yield procedure {:layer 1}
@@ -85,9 +86,9 @@ preserves call Yield1();
   call WriteLow(i, val);
 }
 
-function {:inline} AllocInv(count: int, unallocated: Set int): bool
+function {:inline} AllocInv(count: int, unallocated: UnitMap (One int)): bool
 {
-  (forall x: int :: Set_Contains(unallocated, x) || x < count)
+  (forall x: int :: Map_Contains(unallocated, One(x)) || x < count)
 }
 
 atomic action {:layer 1,1} AtomicReadLow(i: int) returns (val: int)
@@ -117,9 +118,10 @@ refines AtomicWriteLow;
 yield procedure {:layer 0} AllocateLow() returns (i: int);
 refines AtomicAllocateLow;
 
-pure action MakeLinear(i: int, {:linear_in} unallocated: Set int)
-returns ({:linear} tid: One int, {:linear} unallocated': Set int)
+pure action MakeLinear(i: int, {:linear_in} unallocated: UnitMap (One int))
+returns ({:linear} tid: One int, {:linear} unallocated': UnitMap (One int))
 {
   unallocated' := unallocated;
-  call tid := One_Get(unallocated', i);
+  tid := One(i);
+  call One_Get(unallocated', tid);
 }

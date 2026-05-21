@@ -1,6 +1,6 @@
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.Contracts;
-using System.Linq;
 
 namespace Microsoft.Boogie;
 
@@ -8,9 +8,9 @@ public class LinearRewriter
 {
   private CivlTypeChecker civlTypeChecker;
 
-  private Monomorphizer monomorphizer => civlTypeChecker.program.monomorphizer;
+  private LinearTypeChecker linearTypeChecker => civlTypeChecker.linearTypeChecker;
 
-  private ConcurrencyOptions options => civlTypeChecker.Options;
+  private Monomorphizer monomorphizer => civlTypeChecker.program.monomorphizer;
 
   public LinearRewriter(CivlTypeChecker civlTypeChecker)
   {
@@ -37,11 +37,6 @@ public class LinearRewriter
         {
           newCmdSeq.AddRange(RewriteCallCmd(callCmd));
         }
-        else if (Monomorphizer.GetOriginalDecl(callCmd.Proc).Name == "create_asyncs")
-        {
-          newCmdSeq.AddRange(PreconditionsForCreateAsyncs(callCmd));
-          newCmdSeq.Add(cmd);
-        }
         else
         {
           newCmdSeq.Add(cmd);
@@ -55,126 +50,33 @@ public class LinearRewriter
     return newCmdSeq;
   }
 
-  private List<Cmd> PreconditionsForCreateAsyncs(CallCmd callCmd)
-  {
-    var cmds = new List<Cmd>();
-    var attr = QKeyValue.FindAttribute(callCmd.Attributes, x => x.Key == "linear");
-    if (attr == null)
-    {
-      return cmds;
-    }
-
-    var sources = attr.Params.OfType<Expr>();
-    var pendingAsyncType = civlTypeChecker.program.monomorphizer.GetTypeInstantiation(callCmd.Proc)["T"];
-    var actionDecl = civlTypeChecker.linearTypeChecker.GetActionDeclFromCreateAsyncs(callCmd);
-    var iter = Enumerable.Range(0, actionDecl.InParams.Count).Where(i => {
-      var inParam = actionDecl.InParams[i];
-      if (LinearTypeChecker.FindLinearKind(inParam) == LinearKind.ORDINARY)
-      {
-        return false;
-      }
-      if (inParam.TypedIdent.Type is not CtorType ctorType)
-      {
-        return false;
-      }
-      var originalTypeCtorDecl = Monomorphizer.GetOriginalDecl(ctorType.Decl);
-      return originalTypeCtorDecl.Name == "One" || originalTypeCtorDecl.Name == "Set";
-    });
-    var datatypeTypeCtorDecl = (DatatypeTypeCtorDecl) actionDecl.PendingAsyncType.Decl;
-    var constructor = datatypeTypeCtorDecl.Constructors[0];
-
-    var paVar = civlTypeChecker.BoundVariable("pa", actionDecl.PendingAsyncType);
-    var containsExpr = NAryExpr.Select(callCmd.Ins[0], Expr.Ident(paVar));
-    var containsCheckExprs = iter.Zip(sources).Select(kv => {
-      var i = kv.First;
-      var sourceExpr = kv.Second;
-      var inParam = actionDecl.InParams[i];
-      var ctorType = (CtorType)inParam.TypedIdent.Type;
-      var originalTypeCtorDecl = Monomorphizer.GetOriginalDecl(ctorType.Decl);
-      var instanceType = civlTypeChecker.program.monomorphizer.GetTypeInstantiation(ctorType.Decl)[0];
-      var fieldAccess = ExprHelper.FieldAccess(Expr.Ident(paVar), constructor.InParams[i].Name);
-      if (originalTypeCtorDecl.Name == "One")
-      {
-        fieldAccess = ExprHelper.FieldAccess(fieldAccess, "val");
-        return ExprHelper.FunctionCall(SetContains(instanceType), sourceExpr, fieldAccess);
-      }
-      else
-      {
-        return ExprHelper.FunctionCall(SetIsSubset(instanceType), fieldAccess, sourceExpr);
-      }
-    });
-    var containsCheckExpr = ExprHelper.ForallExpr(
-      new List<Variable>(){ paVar },
-      Expr.Imp(containsExpr, Expr.And(containsCheckExprs)));
-    cmds.Add(CmdHelper.AssertCmd(callCmd.tok, containsCheckExpr, "Contains check failed"));
-
-    var paVar1 = civlTypeChecker.BoundVariable("pa1", actionDecl.PendingAsyncType);
-    var paVar2 = civlTypeChecker.BoundVariable("pa2", actionDecl.PendingAsyncType);
-    var guardExprs = new List<Expr>() {
-      NAryExpr.Select(callCmd.Ins[0], Expr.Ident(paVar1)),
-      NAryExpr.Select(callCmd.Ins[0], Expr.Ident(paVar2)),
-      Expr.Neq(Expr.Ident(paVar1), Expr.Ident(paVar2))
-    };
-    var distinctCheckExprs = iter.Select(i => {
-      var inParam = actionDecl.InParams[i];
-      var ctorType = (CtorType)inParam.TypedIdent.Type;
-      var originalTypeCtorDecl = Monomorphizer.GetOriginalDecl(ctorType.Decl);
-      var instanceType = civlTypeChecker.program.monomorphizer.GetTypeInstantiation(ctorType.Decl)[0];
-      var fieldAccess1 = ExprHelper.FieldAccess(Expr.Ident(paVar1), constructor.InParams[i].Name);
-      var fieldAccess2 = ExprHelper.FieldAccess(Expr.Ident(paVar2), constructor.InParams[i].Name);
-      if (originalTypeCtorDecl.Name == "One")
-      {
-        return Expr.Neq(fieldAccess1, fieldAccess2);
-      }
-      else
-      {
-        return ExprHelper.FunctionCall(SetIsDisjoint(instanceType), fieldAccess1, fieldAccess2);
-      }
-    });
-    var distinctCheckExpr = ExprHelper.ForallExpr(
-      new List<Variable>(){ paVar1, paVar2 },
-      Expr.Imp(Expr.And(guardExprs), Expr.And(distinctCheckExprs)));
-    cmds.Add(CmdHelper.AssertCmd(callCmd.tok, distinctCheckExpr, "Distinct check failed"));
-
-    ResolveAndTypecheck(options, cmds);
-    return cmds;
-  }
-
   public List<Cmd> RewriteCallCmd(CallCmd callCmd)
   {
     switch (Monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
     {
       case "Loc_New":
-      case "TaggedLocSet_New":
-      case "Set_MakeEmpty":
+      case "Tag_New":
+      case "Tags_New":
       case "Map_MakeEmpty":
-      case "Map_Pack":
-      case "Map_Unpack":
-        return new List<Cmd>{callCmd};
-      case "Set_Split":
-        return RewriteSetSplit(callCmd);
-      case "Set_Get":
-        return RewriteSetGet(callCmd);
-      case "Set_Put":
-        return RewriteSetPut(callCmd);
-      case "One_Split":
-        return RewriteOneSplit(callCmd);
+        return [callCmd];
+      case "Move":
+        return RewriteMove(callCmd);
       case "One_Get":
         return RewriteOneGet(callCmd);
       case "One_Put":
         return RewriteOnePut(callCmd);
-      case "Map_Split":
-        return RewriteMapSplit(callCmd);
-      case "Map_Join":
-        return RewriteMapJoin(callCmd);
       case "Map_Get":
         return RewriteMapGet(callCmd);
       case "Map_Put":
         return RewriteMapPut(callCmd);
-      case "Map_GetValue":
-        return RewriteMapGetValue(callCmd);
-      case "Map_PutValue":
-        return RewriteMapPutValue(callCmd);
+      case "Map_Split":
+        return RewriteMapSplit(callCmd);
+      case "Map_Join":
+        return RewriteMapJoin(callCmd);
+      case "Path_Load":
+        return RewritePathLoad(callCmd);
+      case "Path_Store":
+        return RewritePathStore(callCmd);
       default:
         Contract.Assume(false);
         return null;
@@ -265,14 +167,6 @@ public class LinearRewriter
     return oneConstructor;
   }
 
-  private Function SetConstructor(Type type)
-  {
-    var actualTypeParams = new List<Type>() { type };
-    var setTypeCtorDecl = (DatatypeTypeCtorDecl)monomorphizer.InstantiateTypeCtorDecl("Set", actualTypeParams);
-    var setConstructor = setTypeCtorDecl.Constructors[0];
-    return setConstructor;
-  }
-
   private static Expr Key(Expr path)
   {
     return ExprHelper.FieldAccess(path, "key");
@@ -283,78 +177,25 @@ public class LinearRewriter
     return ExprHelper.FieldAccess(path, "dom");
   }
 
+  private static FieldAssignLhs Dom(AssignLhs assignLhs)
+  {
+    return new FieldAssignLhs(assignLhs, new FieldAccess("dom"));
+  }
+
   private static Expr Val(Expr path)
   {
     return ExprHelper.FieldAccess(path, "val");
   }
 
-  private List<Cmd> RewriteSetSplit(CallCmd callCmd)
+  private List<Cmd> RewriteMove(CallCmd callCmd)
   {
     var cmdSeq = new List<Cmd>();
-    var path = callCmd.Ins[0];
-    var l = callCmd.Ins[1];
+    var u = callCmd.Ins[0];
+    var v = callCmd.Ins[1];
 
-    var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
-    var type = instantiation["K"];
-    var isSubsetFunc = SetIsSubset(type);
-    var setDifferenceFunc = SetDifference(type);
-    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(isSubsetFunc, l, path), "Set_Split failed"));
-    cmdSeq.Add(CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(setDifferenceFunc, path, l)));
+    cmdSeq.Add(AssertCmd(callCmd.tok, Expr.Eq(u, v), "Move failed"));
 
-    ResolveAndTypecheck(options, cmdSeq);
-    return cmdSeq;
-  }
-
-  private List<Cmd> RewriteSetGet(CallCmd callCmd)
-  {
-    var cmdSeq = new List<Cmd>();
-    var path = callCmd.Ins[0];
-    var k = callCmd.Ins[1];
-    var l = callCmd.Outs[0];
-
-    var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
-    var type = instantiation["K"];
-    var setConstructor = SetConstructor(type);
-    var isSubsetFunc = SetIsSubset(type);
-    var setDifferenceFunc = SetDifference(type);
-    cmdSeq.Add(CmdHelper.AssignCmd(l.Decl, ExprHelper.FunctionCall(setConstructor, k)));
-    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(isSubsetFunc, l, path), "Set_Get failed"));
-    cmdSeq.Add(CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(setDifferenceFunc, path, l)));
-
-    ResolveAndTypecheck(options, cmdSeq);
-    return cmdSeq;
-  }
-
-  private List<Cmd> RewriteSetPut(CallCmd callCmd)
-  {
-    var cmdSeq = new List<Cmd>();
-    var path = callCmd.Ins[0];
-    var l = callCmd.Ins[1];
-
-    var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
-    var type = instantiation["K"];
-    var setUnionFunc = SetUnion(type);
-    cmdSeq.Add(CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(setUnionFunc, path, l)));
-
-    ResolveAndTypecheck(options, cmdSeq);
-    return cmdSeq;
-  }
-
-  private List<Cmd> RewriteOneSplit(CallCmd callCmd)
-  {
-    var cmdSeq = new List<Cmd>();
-    var path = callCmd.Ins[0];
-    var l = callCmd.Ins[1];
-
-    var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
-    var type = instantiation["K"];
-    var setContainsFunc = SetContains(type);
-    var setRemoveFunc = SetRemove(type);
-    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(setContainsFunc, path, Val(l)), "One_Split failed"));
-    cmdSeq.Add(
-      CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(setRemoveFunc, path, Val(l))));
-
-    ResolveAndTypecheck(options, cmdSeq);
+    civlTypeChecker.ResolveAndTypecheck(cmdSeq);
     return cmdSeq;
   }
 
@@ -362,20 +203,18 @@ public class LinearRewriter
   {
     var cmdSeq = new List<Cmd>();
     var path = callCmd.Ins[0];
-    var k = callCmd.Ins[1];
-    var l = callCmd.Outs[0];
+    var l = callCmd.Ins[1];
 
     var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
     var type = instantiation["K"];
     var setContainsFunc = SetContains(type);
     var setRemoveFunc = SetRemove(type);
-    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(setContainsFunc, path, k), "One_Get failed"));
-    cmdSeq.Add(
-      CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(setRemoveFunc, path, k)));
-    var oneConstructor = OneConstructor(type);
-    cmdSeq.Add(CmdHelper.AssignCmd(l.Decl, ExprHelper.FunctionCall(oneConstructor, k)));
+    var assignLhs = civlTypeChecker.ExprToAssignLhs(path);
+    cmdSeq.AddRange(PathAsserts(assignLhs));
+    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(setContainsFunc, Dom(path), l), "One_Get failed"));
+    cmdSeq.Add(CmdHelper.AssignCmd(Dom(assignLhs), ExprHelper.FunctionCall(setRemoveFunc, Dom(path), l)));
 
-    ResolveAndTypecheck(options, cmdSeq);
+    civlTypeChecker.ResolveAndTypecheck(cmdSeq);
     return cmdSeq;
   }
 
@@ -388,98 +227,15 @@ public class LinearRewriter
     var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
     var type = instantiation["K"];
     var setAddFunc = SetAdd(type);
-    cmdSeq.Add(CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(setAddFunc, path, Val(l))));
+    var assignLhs = civlTypeChecker.ExprToAssignLhs(path);
+    cmdSeq.AddRange(PathAsserts(assignLhs));
+    cmdSeq.Add(CmdHelper.AssignCmd(Dom(assignLhs), ExprHelper.FunctionCall(setAddFunc, Dom(path), l)));
 
-    ResolveAndTypecheck(options, cmdSeq);
-    return cmdSeq;
-  }
-
-  private List<Cmd> RewriteMapSplit(CallCmd callCmd)
-  {
-    var cmdSeq = new List<Cmd>();
-    var path = callCmd.Ins[0];
-    var s = callCmd.Ins[1];
-    var m = callCmd.Outs[0];
-
-    var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
-    var domain = instantiation["K"];
-    var range = instantiation["V"];
-    var isSubsetFunc = SetIsSubset(domain);
-    var mapExtractFunc = MapExtract(domain, range);
-    var mapExcludeFunc = MapExclude(domain, range);
-    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(isSubsetFunc, s, Dom(path)), "Map_Split failed"));
-    cmdSeq.Add(CmdHelper.AssignCmd(m.Decl, ExprHelper.FunctionCall(mapExtractFunc, path, s)));
-    cmdSeq.Add(
-      CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(mapExcludeFunc, path, s)));
-
-    ResolveAndTypecheck(options, cmdSeq);
-    return cmdSeq;
-  }
-
-  private List<Cmd> RewriteMapJoin(CallCmd callCmd)
-  {
-    var cmdSeq = new List<Cmd>();
-    var path = callCmd.Ins[0];
-    var m = callCmd.Ins[1];
-
-    var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
-    var domain = instantiation["K"];
-    var range = instantiation["V"];
-    var mapUnionFunc = MapUnion(domain, range);
-    cmdSeq.Add(
-      CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(mapUnionFunc, path, m)));
-    
-    ResolveAndTypecheck(options, cmdSeq);
+    civlTypeChecker.ResolveAndTypecheck(cmdSeq);
     return cmdSeq;
   }
 
   private List<Cmd> RewriteMapGet(CallCmd callCmd)
-  {
-    var cmdSeq = new List<Cmd>();
-    var path = callCmd.Ins[0];
-    var k = callCmd.Ins[1];
-    var l = callCmd.Outs[0];
-    var v = callCmd.Outs[1];
-
-    var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
-    var domain = instantiation["K"];
-    var range = instantiation["V"];
-    var mapContainsFunc = MapContains(domain, range);
-    var mapRemoveFunc = MapRemove(domain, range);
-    var mapAtFunc = MapAt(domain, range);
-    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(mapContainsFunc, path, k), "Map_Get failed"));
-    var oneConstructor = OneConstructor(domain);
-    cmdSeq.Add(CmdHelper.AssignCmd(l.Decl, ExprHelper.FunctionCall(oneConstructor, k)));
-    cmdSeq.Add(CmdHelper.AssignCmd(v.Decl, ExprHelper.FunctionCall(mapAtFunc, path, k)));
-    cmdSeq.Add(
-      CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(mapRemoveFunc, path, k)));
-
-    ResolveAndTypecheck(options, cmdSeq);
-    return cmdSeq;
-  }
-
-  private List<Cmd> RewriteMapPut(CallCmd callCmd)
-  {
-    var cmdSeq = new List<Cmd>();
-    var path = callCmd.Ins[0];
-    var l = callCmd.Ins[1];
-    var v = callCmd.Ins[2];
-
-    var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
-    var domain = instantiation["K"];
-    var range = instantiation["V"];
-    var mapContainsFunc = MapContains(domain, range);
-    var mapUpdateFunc = MapUpdate(domain, range);
-    var attribute = new QKeyValue(Token.NoToken, "linear", new List<object>(), null);
-    cmdSeq.Add(new AssumeCmd(Token.NoToken, Expr.Not(ExprHelper.FunctionCall(mapContainsFunc, path, Val(l))), attribute));
-    cmdSeq.Add(
-      CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(mapUpdateFunc, path, Val(l), v)));
-
-    ResolveAndTypecheck(options, cmdSeq);
-    return cmdSeq;
-  }
-
-  private List<Cmd> RewriteMapGetValue(CallCmd callCmd)
   {
     var cmdSeq = new List<Cmd>();
     var path = callCmd.Ins[0];
@@ -492,17 +248,17 @@ public class LinearRewriter
     var mapContainsFunc = MapContains(domain, range);
     var mapRemoveFunc = MapRemove(domain, range);
     var mapAtFunc = MapAt(domain, range);
-    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(mapContainsFunc, path, k), "Map_GetValue failed"));
-    var oneConstructor = OneConstructor(domain);
+    var assignLhs = civlTypeChecker.ExprToAssignLhs(path);
+    cmdSeq.AddRange(PathAsserts(assignLhs));
+    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(mapContainsFunc, path, k), "Map_Get failed"));
     cmdSeq.Add(CmdHelper.AssignCmd(v.Decl, ExprHelper.FunctionCall(mapAtFunc, path, k)));
-    cmdSeq.Add(
-      CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(mapRemoveFunc, path, k)));
+    cmdSeq.Add(CmdHelper.AssignCmd(assignLhs, ExprHelper.FunctionCall(mapRemoveFunc, path, k)));
 
-    ResolveAndTypecheck(options, cmdSeq);
+    civlTypeChecker.ResolveAndTypecheck(cmdSeq);
     return cmdSeq;
   }
 
-  private List<Cmd> RewriteMapPutValue(CallCmd callCmd)
+  private List<Cmd> RewriteMapPut(CallCmd callCmd)
   {
     var cmdSeq = new List<Cmd>();
     var path = callCmd.Ins[0];
@@ -512,71 +268,138 @@ public class LinearRewriter
     var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
     var domain = instantiation["K"];
     var range = instantiation["V"];
-    var mapContainsFunc = MapContains(domain, range);
     var mapUpdateFunc = MapUpdate(domain, range);
-    cmdSeq.Add(
-      CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(mapUpdateFunc, path, k, v)));
+    var assignLhs = civlTypeChecker.ExprToAssignLhs(path);
+    cmdSeq.AddRange(PathAsserts(assignLhs));
+    if (k is IdentifierExpr ie && !linearTypeChecker.IsOrdinaryType(ie.Decl.TypedIdent.Type))
+    {
+      var mapContainsFunc = MapContains(domain, range);
+      cmdSeq.Add(new AssumeCmd(Token.NoToken, Expr.Not(ExprHelper.FunctionCall(mapContainsFunc, path, k))));
+    }
+    cmdSeq.Add(CmdHelper.AssignCmd(assignLhs, ExprHelper.FunctionCall(mapUpdateFunc, path, k, v)));
 
-    ResolveAndTypecheck(options, cmdSeq);
+    civlTypeChecker.ResolveAndTypecheck(cmdSeq);
     return cmdSeq;
   }
 
-  private void ResolveAndTypecheck(CoreOptions options, IEnumerable<Absy> absys)
+  private List<Cmd> RewriteMapSplit(CallCmd callCmd)
   {
-    var rc = new ResolutionContext(null, options);
-    absys.ForEach(absy => absy.Resolve(rc));
-    if (rc.ErrorCount != 0)
-    {
-      return;
-    }
-    var tc = new TypecheckingContext(null, options);
-    absys.ForEach(absy => absy.Typecheck(tc));
+    var cmdSeq = new List<Cmd>();
+    var path = callCmd.Ins[0];
+    var k = callCmd.Ins[1];
+    var l = callCmd.Outs[0];
+
+    var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
+    var domain = instantiation["K"];
+    var range = instantiation["V"];
+    var isSubsetFunc = SetIsSubset(domain);
+    var mapExtractFunc = MapExtract(domain, range);
+    var mapExcludeFunc = MapExclude(domain, range);
+    var assignLhs = civlTypeChecker.ExprToAssignLhs(path);
+    cmdSeq.AddRange(PathAsserts(assignLhs));
+    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(isSubsetFunc, k, Dom(path)), "Map_Split failed"));
+    cmdSeq.Add(CmdHelper.AssignCmd(l.Decl, ExprHelper.FunctionCall(mapExtractFunc, path, k)));
+    cmdSeq.Add(CmdHelper.AssignCmd(assignLhs, ExprHelper.FunctionCall(mapExcludeFunc, path, k)));
+
+    civlTypeChecker.ResolveAndTypecheck(cmdSeq);
+    return cmdSeq;
   }
 
-  private List<Cmd> CreateAccessAsserts(Expr expr, IToken tok, string msg)
+  private List<Cmd> RewriteMapJoin(CallCmd callCmd)
   {
-    if (expr is NAryExpr nAryExpr)
+    var cmdSeq = new List<Cmd>();
+    var path = callCmd.Ins[0];
+    var l = callCmd.Ins[1];
+
+    var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
+    var domain = instantiation["K"];
+    var range = instantiation["V"];
+    var mapUnionFunc = MapUnion(domain, range);
+    var assignLhs = civlTypeChecker.ExprToAssignLhs(path);
+    cmdSeq.AddRange(PathAsserts(assignLhs));
+    cmdSeq.Add(CmdHelper.AssignCmd(assignLhs, ExprHelper.FunctionCall(mapUnionFunc, path, l)));
+
+    civlTypeChecker.ResolveAndTypecheck(cmdSeq);
+    return cmdSeq;
+  }
+
+  private List<Cmd> RewritePathLoad(CallCmd callCmd)
+  {
+    var cmdSeq = new List<Cmd>();
+    var path = callCmd.Ins[0];
+    var v = callCmd.Outs[0];
+
+    var assignLhs = civlTypeChecker.ExprToAssignLhs(path);
+    cmdSeq.AddRange(PathAsserts(assignLhs));
+    cmdSeq.Add(CmdHelper.AssignCmd(v.Decl, path));
+
+    civlTypeChecker.ResolveAndTypecheck(cmdSeq);
+    return cmdSeq;
+  }
+
+  private List<Cmd> RewritePathStore(CallCmd callCmd)
+  {
+    var cmdSeq = new List<Cmd>();
+    var path = callCmd.Ins[0];
+    var v = callCmd.Ins[1];
+
+    var assignLhs = civlTypeChecker.ExprToAssignLhs(path);
+    cmdSeq.AddRange(PathAsserts(assignLhs));
+    cmdSeq.Add(CmdHelper.AssignCmd(assignLhs, v));
+
+    civlTypeChecker.ResolveAndTypecheck(cmdSeq);
+    return cmdSeq;
+  }
+
+  private List<Cmd> PathAsserts(AssignLhs assignLhs)
+  {
+    if (assignLhs is SimpleAssignLhs)
     {
-      if (nAryExpr.Fun is FieldAccess)
+      return [];
+    }
+    else if (assignLhs is MapAssignLhs mapAssignLhs)
+    {
+      var map = mapAssignLhs.Map;
+      var pathAsserts = PathAsserts(map);
+      if (map is FieldAssignLhs fieldAssignLhs)
       {
-        return CreateAccessAsserts(nAryExpr.Args[0], tok, msg);
-      }
-      if (nAryExpr.Fun is MapSelect)
-      {
-        var mapExpr = nAryExpr.Args[0];
-        if (mapExpr is NAryExpr mapValExpr &&
-            mapValExpr.Fun is FieldAccess fa &&
-            fa.FieldName == "val" &&
-            mapValExpr.Args[0].Type is CtorType ctorType &&
-            Monomorphizer.GetOriginalDecl(ctorType.Decl).Name == "Map")
+        var ctorType = (CtorType)fieldAssignLhs.Datatype.Type;
+        var typeCtorDecl = Monomorphizer.GetOriginalDecl(ctorType);
+        if (typeCtorDecl != null && typeCtorDecl.Name == "Map")
         {
-          var cmdSeq = CreateAccessAsserts(mapValExpr.Args[0], tok, msg);
-          var mapContainsFunc = MapContains(nAryExpr.Args[1].Type, nAryExpr.Type);
-          cmdSeq.Add(AssertCmd(tok, ExprHelper.FunctionCall(mapContainsFunc, mapValExpr.Args[0], nAryExpr.Args[1]), msg));
-          return cmdSeq;
+          var instantiation = monomorphizer.GetTypeInstantiation(ctorType.Decl);
+          var domain = instantiation[0];
+          var range = instantiation[1];
+          var mapContainsFunc = MapContains(domain, range);
+          var assertExpr = ExprHelper.FunctionCall(mapContainsFunc, fieldAssignLhs.Datatype.AsExpr, mapAssignLhs.Indexes[0]);
+          pathAsserts.Add(CmdHelper.AssertCmd(assignLhs.tok, assertExpr, "map lookup failed"));
         }
       }
+      return pathAsserts;
     }
-    return new List<Cmd>();
-  }
-
-  private List<Cmd> CreateAccessAsserts(AssignLhs assignLhs, IToken tok, string msg)
-  {
-    if (assignLhs is FieldAssignLhs fieldAssignLhs)
+    else if (assignLhs is FieldAssignLhs fieldAssignLhs)
     {
-      return CreateAccessAsserts(fieldAssignLhs.Datatype, tok, msg);
+      var datatype = fieldAssignLhs.Datatype;
+      var pathAsserts = PathAsserts(datatype);
+      var datatypeTypeCtorDecl = fieldAssignLhs.FieldAccess.DatatypeTypeCtorDecl;
+      if (datatypeTypeCtorDecl.Constructors.Count > 1)
+      {
+        Expr assertExpr = Expr.False;
+        fieldAssignLhs.FieldAccess.Accessors.ForEach(accessor =>
+        {
+          var constructor = datatypeTypeCtorDecl.Constructors[accessor.ConstructorIndex];
+          var condExpr = new NAryExpr(Token.NoToken,
+            new IsConstructor(Token.NoToken, datatypeTypeCtorDecl, accessor.ConstructorIndex), [datatype.AsExpr]);
+          assertExpr = Expr.Or(assertExpr, condExpr);
+        });
+        pathAsserts.Add(CmdHelper.AssertCmd(assignLhs.tok, assertExpr, "field lookup failed"));
+      }
+      return pathAsserts;
     }
-    if (assignLhs is MapAssignLhs mapAssignLhs &&
-        mapAssignLhs.Map is FieldAssignLhs fieldAssignLhs1 &&
-        fieldAssignLhs1.FieldAccess.FieldName == "val" &&
-        fieldAssignLhs1.Datatype.Type is CtorType ctorType &&
-        Monomorphizer.GetOriginalDecl(ctorType.Decl).Name == "Map")
+    else
     {
-      var cmdSeq = CreateAccessAsserts(mapAssignLhs.Map, tok, msg);
-      var mapContainsFunc = MapContains(mapAssignLhs.Indexes[0].Type, mapAssignLhs.Map.Type);
-      cmdSeq.Add(AssertCmd(tok, ExprHelper.FunctionCall(mapContainsFunc, fieldAssignLhs1.Datatype.AsExpr, mapAssignLhs.Indexes[0]), msg));
-      return cmdSeq;
+      Debug.Assert(false); // unreachable
+      return [];
     }
-    return new List<Cmd>();
   }
 }

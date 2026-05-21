@@ -1,22 +1,21 @@
 // RUN: %parallel-boogie /lib:base /lib:node "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type TaggedLocNode V = TaggedLoc (Node V) Unit;
-
-datatype Treiber<V> { Treiber(top: Option (LocNode V), {:linear} nodes: Map (LocNode V) (Node V)) }
-type LocTreiber V = Loc (Treiber V);
-type TaggedLocTreiber V = TaggedLoc (Treiber V) Unit;
+datatype Treiber<V> { Treiber(top: Option Loc, nodes: Map (One Loc) (Node V)) }
 
 type X;
-var ts: Map (LocTreiber X) (Treiber X);
+var ts: Map Loc (Treiber X);
 
-procedure YieldInv(ref_t: LocTreiber X)
+function {:inline} SubsetInv(ts: Map Loc (Treiber X), ref_t: Loc): bool
+{
+  (var t := Map_At(ts, ref_t); InDomain(t->nodes, t->top))
+}
+
+procedure YieldInv(ref_t: Loc)
 requires Map_Contains(ts, ref_t);
-requires (var t := Map_At(ts, ref_t); Between(t->nodes->val, t->top, None(), None()));
-requires (var t := Map_At(ts, ref_t); (var m := t->nodes; IsSubset(BetweenSet(m->val, t->top, None()), m->dom->val)));
+requires SubsetInv(ts, ref_t);
 ensures Map_Contains(ts, ref_t);
-ensures (var t := Map_At(ts, ref_t); Between(t->nodes->val, t->top, None(), None()));
-ensures (var t := Map_At(ts, ref_t); (var m := t->nodes; IsSubset(BetweenSet(m->val, t->top, None()), m->dom->val)));
+ensures SubsetInv(ts, ref_t);
 modifies ts;
 {
   var x: X;
@@ -24,28 +23,28 @@ modifies ts;
   call AtomicPushIntermediate(ref_t, x);
 }
 
-procedure {:inline 1} AtomicPopIntermediate(loc_t: LocTreiber X) returns (x: X)
+procedure {:inline 1} AtomicPopIntermediate(loc_t: Loc) returns (x: X)
 modifies ts;
 {
   var treiber: Treiber X;
-  var loc_n_opt: Option (LocNode X);
+  var loc_n_opt: Option (Loc);
   assert Map_Contains(ts, loc_t);
   treiber := Map_At(ts, loc_t);
-  assume treiber->top is Some && Map_Contains(treiber->nodes, treiber->top->t);
-  Node(loc_n_opt, x) := Map_At(treiber->nodes, treiber->top->t);
+  assume treiber->top is Some && Map_Contains(treiber->nodes, One(treiber->top->t));
+  Node(loc_n_opt, x) := Map_At(treiber->nodes, One(treiber->top->t));
   treiber->top := loc_n_opt;
   ts := Map_Update(ts, loc_t, treiber);
 }
 
-procedure {:inline 1} AtomicPushIntermediate(loc_t: LocTreiber X, x: X)
+procedure {:inline 1} AtomicPushIntermediate(loc_t: Loc, x: X)
 modifies ts;
 {
   var treiber: Treiber X;
-  var loc_n: LocNode X;
+  var loc_n: Loc;
   assert Map_Contains(ts, loc_t);
   treiber := Map_At(ts, loc_t);
-  assume !Map_Contains(treiber->nodes, loc_n);
-  treiber->nodes := Map_Update(treiber->nodes, loc_n, Node(treiber->top, x));
+  assume !Map_Contains(treiber->nodes, One(loc_n));
+  treiber->nodes := Map_Update(treiber->nodes, One(loc_n), Node(treiber->top, x));
   treiber->top := Some(loc_n);
   ts := Map_Update(ts, loc_t, treiber);
 }

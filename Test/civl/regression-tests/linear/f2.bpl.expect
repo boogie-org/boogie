@@ -1,5 +1,5 @@
-f2.bpl(26,4): Error: this assertion could not be proved
+f2.bpl(19,4): Error: this assertion could not be proved
 Execution trace:
-    f2.bpl(22,4): anon0
+    f2.bpl(15,4): anon0
 
 Boogie program verifier finished with 0 verified, 1 error

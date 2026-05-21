@@ -8,4 +8,4 @@ Execution trace:
     non-interference-2.bpl(34,3): anon0
     (0,0): inline$Civl_NoninterferenceChecker_yield_PC$0$L
 
-Boogie program verifier finished with 2 verified, 2 errors
+Boogie program verifier finished with 6 verified, 2 errors

@@ -257,7 +257,7 @@ namespace Microsoft.Boogie.SMTLib
       Stack<Function> functionDefs = new Stack<Function>();
       foreach (Function f in ctx.DefinedFunctions.Keys)
       {
-        DeclCollector.AddKnownFunction(f); // add func to knows funcs so that it does not get declared later on
+        DeclCollector.AddKnownFunction(f); // add func to known funcs so that it does not get declared later on
         functionDefs.Push(f);
       }
 
@@ -309,7 +309,7 @@ namespace Microsoft.Boogie.SMTLib
           {
             VCExprVar varExpr = v as VCExprVar;
             Contract.Assert(varExpr != null);
-            DeclCollector.AddKnownVariable(varExpr); // add var to knows vars so that it does not get declared later on
+            DeclCollector.AddKnownVariable(varExpr); // add var to known vars so that it does not get declared later on
             string printedName = Namer.GetQuotedLocalName(varExpr, varExpr.Name);
             Contract.Assert(printedName != null);
             funcDef += "(" + printedName + " " + new SMTLibExprLineariser(libOptions).TypeToString(varExpr.Type) + ") ";

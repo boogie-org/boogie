@@ -5,7 +5,42 @@ namespace Microsoft.Boogie
 {
   public class YieldingProcChecker
   {
-    public static void AddCheckers(CivlTypeChecker civlTypeChecker, List<Declaration> decls)
+    public static void AddInvariantCheckers(CivlTypeChecker civlTypeChecker, List<Declaration> decls)
+    {
+      Program program = civlTypeChecker.program;
+
+      // Generate the invariant checks for every layer
+      foreach (int layerNum in civlTypeChecker.AllInvariantLayers)
+      {
+        if (civlTypeChecker.Options.TrustLayersDownto <= layerNum ||
+            layerNum <= civlTypeChecker.Options.TrustLayersUpto)
+        {
+          continue;
+        }
+        var duplicator = new YieldingProcDuplicator(civlTypeChecker, layerNum, false);
+        foreach (var yieldProcedureDecl in civlTypeChecker.program.TopLevelDeclarations.OfType<YieldProcedureDecl>())
+        {
+          if (yieldProcedureDecl.Layer >= layerNum)
+          {
+            duplicator.VisitYieldProcedureDecl(yieldProcedureDecl);
+          }
+        }
+        // duplicator.VisitImplementation may invoke the monomorphizer which may cause more instantiations to be generated
+        // and added to program.TopLevelDeclarations; hence converting the enumeration to a new list.
+        foreach (Implementation impl in program.Implementations.Where(impl => impl.Proc is YieldProcedureDecl).ToList())
+        {
+          // create copies of all implementations that exist at layerNum
+          var yieldProcedureDecl = (YieldProcedureDecl)impl.Proc;
+          if (yieldProcedureDecl.Layer >= layerNum)
+          {
+            duplicator.VisitImplementation(impl);
+          }
+        }
+        decls.AddRange(duplicator.Collect());
+      }
+    }
+
+    public static void AddRefinementCheckers(CivlTypeChecker civlTypeChecker, List<Declaration> decls)
     {
       Program program = civlTypeChecker.program;
 
@@ -17,28 +52,26 @@ namespace Microsoft.Boogie
         {
           continue;
         }
-
-        YieldingProcDuplicator duplicator = new YieldingProcDuplicator(civlTypeChecker, layerNum);
-
+        var duplicator = new YieldingProcDuplicator(civlTypeChecker, layerNum, true);
         foreach (var yieldProcedureDecl in civlTypeChecker.program.TopLevelDeclarations.OfType<YieldProcedureDecl>())
         {
-          if (yieldProcedureDecl.Layer >= layerNum)
+          if (yieldProcedureDecl.Layer == layerNum)
           {
             duplicator.VisitYieldProcedureDecl(yieldProcedureDecl);
           }
         }
-
         // duplicator.VisitImplementation may invoke the monomorphizer which may cause more instantiations to be generated
         // and added to program.TopLevelDeclarations; hence converting the enumeration to a new list.
         foreach (Implementation impl in program.Implementations.Where(impl => impl.Proc is YieldProcedureDecl).ToList())
         {
+          // create copies of all implementations for which refinement checking is needed
+          // these implementations disappear at layerNum and their procedures are not movers
           var yieldProcedureDecl = (YieldProcedureDecl)impl.Proc;
-          if (yieldProcedureDecl.Layer >= layerNum)
+          if (yieldProcedureDecl.Layer == layerNum && !yieldProcedureDecl.MoverType.HasValue)
           {
             duplicator.VisitImplementation(impl);
           }
         }
-
         decls.AddRange(duplicator.Collect());
       }
     }

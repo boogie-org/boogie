@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
@@ -435,7 +434,7 @@ class BigBlocksResolutionContext
               new GotoCmd(whileCmd.tok, new List<string> {loopHeadLabel}));
             blocks.Add(block);
 
-            // LoopHead: assert/assume loop_invariant; goto LoopDone, LoopBody;
+            // LoopHead: assert/assume loop_invariant; measure commands; goto LoopDone, LoopBody;
             List<Cmd> ssHead = new List<Cmd>();
             foreach (CallCmd yield in whileCmd.Yields)
             {
@@ -445,7 +444,8 @@ class BigBlocksResolutionContext
             {
               ssHead.Add(inv);
             }
-
+            ssHead.AddRange(whileCmd.MeasureCmds);
+            
             block = new Block(whileCmd.tok, loopHeadLabel, ssHead,
               new GotoCmd(whileCmd.tok, new List<string> {loopDoneLabel, loopBodyLabel}));
             blocks.Add(block);

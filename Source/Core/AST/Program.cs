@@ -127,6 +127,53 @@ public class Program : Absy
         constructor.Resolve(rc);
       }
     }
+
+    CheckDatatypesWellFounded(rc);
+  }
+
+  private void CheckDatatypesWellFounded(ResolutionContext rc)
+  {
+    var allTypeCtorDecls = TopLevelDeclarations.OfType<DatatypeTypeCtorDecl>();
+    var constructibleTypeCtorDecls = new HashSet<DatatypeTypeCtorDecl>();
+
+    bool IsConstructible(Type type)
+    {
+      if (type is CtorType ctorType)
+      {
+        return ctorType.Decl is not DatatypeTypeCtorDecl decl || constructibleTypeCtorDecls.Contains(decl);
+      }
+      else if (type is MapType mapType)
+      {
+        return mapType.Arguments.All(IsConstructible) && IsConstructible(mapType.Result);
+      }
+      else
+      {
+        return true;
+      }
+    }
+
+    int count = 0;
+    do
+    {
+      count = constructibleTypeCtorDecls.Count;
+      foreach (var datatypeTypeCtorDecl in allTypeCtorDecls.Except(constructibleTypeCtorDecls))
+      {
+        foreach (var constructor in datatypeTypeCtorDecl.Constructors)
+        {
+          if (constructor.InParams.Select(inParam => inParam.TypedIdent.Type).All(IsConstructible))
+          {
+            constructibleTypeCtorDecls.Add(datatypeTypeCtorDecl);
+            break;
+          }
+        }
+      }
+    }
+    while (count < constructibleTypeCtorDecls.Count);
+    if (count < allTypeCtorDecls.Count())
+    {
+      var names = string.Join(", ", allTypeCtorDecls.Except(constructibleTypeCtorDecls).Select(decl => $"{decl.Name}"));
+      rc.Error(Token.NoToken, $"Datatype declarations are not well-founded: {names}");
+    }
   }
 
   public int Typecheck(CoreOptions options)
@@ -496,6 +543,78 @@ public class Program : Absy
 
     return callGraph;
   }
+
+  public static Graph<Implementation> BuildTransitiveCallGraph(CoreOptions options, Program program)
+  {
+    // First build direct call graph
+    var callGraph = BuildCallGraph(options, program);
+
+    // Then add transitive edges
+    AddTransitiveEdges(callGraph);
+
+    return callGraph;
+  }
+
+  private static void AddTransitiveEdges(Graph<Implementation> g)
+  {
+    // Build adjacency from existing edges
+    var adj = new Dictionary<Implementation, HashSet<Implementation>>();
+    foreach (var src in g.Nodes)
+    {
+      adj[src] = new HashSet<Implementation>();
+    }
+
+    foreach (var (from, to) in g.Edges)
+    {
+      if (!adj.TryGetValue(from, out var set))
+      {
+        set = new HashSet<Implementation>();
+        adj[from] = set;
+      }
+      set.Add(to);
+    }
+
+    // For each node, find all reachable nodes and add edges
+    foreach (var start in g.Nodes)
+    {
+      var visited = new HashSet<Implementation>();
+      var stack = new Stack<Implementation>();
+
+      // seed with direct successors
+      if (adj.TryGetValue(start, out var succ))
+      {
+        foreach (var s in succ)
+        {
+          if (visited.Add(s))
+          {
+            stack.Push(s);
+          }
+        }
+      }
+
+      while (stack.Count > 0)
+      {
+        var cur = stack.Pop();
+
+        // cur is reachable from start => ensure transitive edge exists
+        g.AddEdge(start, cur);
+
+        if (!adj.TryGetValue(cur, out var next))
+        {
+          continue;
+        }
+
+        foreach (var n in next)
+        {
+          if (visited.Add(n))
+          {
+            stack.Push(n);
+          }
+        }
+      }
+    }
+  }
+
 
   public static Graph<Block> GraphFromBlocksSubset(IList<Block> blocks, IReadOnlySet<Block> subset = null, bool forward = true)
   {

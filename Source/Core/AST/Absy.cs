@@ -4,7 +4,6 @@ using System.Collections;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
-using System.Security.Cryptography;
 using Microsoft.BaseTypes;
 
 namespace Microsoft.Boogie
@@ -155,9 +154,9 @@ namespace Microsoft.Boogie
     }
 
     /// <summary>
-    /// Gets the metatdata at specified index.
+    /// Gets the metadata at specified index.
     /// ArgumentOutOfRange exception is raised if it is not available.
-    /// InvalidCastExcpetion is raised if the metadata is available but the wrong type was requested.
+    /// InvalidCastException is raised if the metadata is available but the wrong type was requested.
     /// </summary>
     /// <returns>The stored metadata of type T</returns>
     /// <param name="index">The index of the metadata</param>
@@ -203,7 +202,7 @@ namespace Microsoft.Boogie
     }
 
     /// <summary>
-    /// Sets the metadata for this instace at a specified index.
+    /// Sets the metadata for this instance at a specified index.
     /// </summary>
     /// <param name="index">The index of the metadata</param>
     /// <param name="value">The value to set</param>
@@ -480,7 +479,7 @@ namespace Microsoft.Boogie
     }
 
     /// <summary>
-    /// Reset the abstract stated computed before
+    /// Reset the abstract state computed before
     /// </summary>
     public virtual void ResetAbstractInterpretationState()
     {
@@ -2338,6 +2337,13 @@ namespace Microsoft.Boogie
       Contract.Requires(token != null);
     }
 
+    public Requires(IToken token, bool free, Expr condition)
+      : this(token, free, condition, null, null)
+    {
+      Contract.Requires(condition != null);
+      Contract.Requires(token != null);
+    }
+
     public Requires(bool free, Expr condition)
       : this(Token.NoToken, free, condition, null)
     {
@@ -2545,29 +2551,34 @@ namespace Microsoft.Boogie
 
     public List<Requires> Requires;
 
+    public List<Requires> Preserves;
+
+    public List<Ensures> Ensures;
+
+    public List<MeasureCmd> MeasureCmds;
+
     public List<IdentifierExpr> Modifies;
     
     public IEnumerable<Variable> ModifiedVars => Modifies.Select(ie => ie.Decl).Distinct();
-    
-    public List<Ensures> Ensures;
 
     public Procedure(IToken tok, string name, List<TypeVariable> typeParams,
       List<Variable> inParams, List<Variable> outParams, bool isPure,
-      List<Requires> requires, List<IdentifierExpr> modifies, List<Ensures> ensures)
-      : this(tok, name, typeParams, inParams, outParams, isPure, requires, modifies, ensures, null)
+      List<Requires> requires, List<Requires> preserves, List<Ensures> ensures, List<MeasureCmd> measureCmds, List<IdentifierExpr> modifies)
+      : this(tok, name, typeParams, inParams, outParams, isPure, requires, preserves, ensures, measureCmds, modifies, null)
     {
     }
 
     public Procedure(IToken tok, string name, List<TypeVariable> typeParams,
       List<Variable> inParams, List<Variable> outParams, bool isPure,
-      List<Requires> @requires, List<IdentifierExpr> @modifies, List<Ensures> @ensures, QKeyValue kv
-    )
+      List<Requires> requires, List<Requires> preserves, List<Ensures> ensures, List<MeasureCmd> measureCmds, List<IdentifierExpr> modifies, QKeyValue kv)
       : base(tok, name, typeParams, inParams, outParams)
     {
       this.IsPure = isPure;
-      this.Requires = @requires;
-      this.Modifies = @modifies;
-      this.Ensures = @ensures;
+      this.Requires = requires;
+      this.Preserves = preserves;
+      this.Ensures = ensures;
+      this.MeasureCmds = measureCmds;
+      this.Modifies = modifies;
       this.Attributes = kv;
     }
 
@@ -2584,6 +2595,12 @@ namespace Microsoft.Boogie
         e.Emit(stream, level);
       }
 
+      foreach (Requires e in this.Preserves)
+      {
+        Contract.Assert(e != null);
+        e.Emit(stream, level);
+      }
+
       if (this.Modifies.Count > 0)
       {
         stream.Write(level, "modifies ");
@@ -2595,6 +2612,12 @@ namespace Microsoft.Boogie
       {
         Contract.Assert(e != null);
         e.Emit(stream, level);
+      }
+
+      foreach (MeasureCmd m in this.MeasureCmds)
+      {
+        Contract.Assert(m != null);
+        m.Emit(stream, level);
       }
     }
 
@@ -2654,6 +2677,18 @@ namespace Microsoft.Boogie
           e.Resolve(rc);
         }
 
+        foreach (MeasureCmd e in MeasureCmds)
+        {
+          Contract.Assert(e != null);
+          e.Resolve(rc);
+        }
+
+        foreach (Requires e in Preserves)
+        {
+          Contract.Assert(e != null);
+          e.Resolve(rc);
+        }
+
         RegisterFormals(OutParams, rc);
         ResolveFormals(OutParams,
           rc); // "where" clauses of out-parameters are resolved with both in- and out-parameters in scope
@@ -2667,7 +2702,7 @@ namespace Microsoft.Boogie
           Contract.Assert(e != null);
           e.Resolve(rc);
         }
-
+        
         rc.StateMode = ResolutionContext.State.Single;
         (this as ICarriesAttributes).ResolveAttributes(rc);
 
@@ -2705,16 +2740,53 @@ namespace Microsoft.Boogie
       }
       tc.GlobalAccessOnlyInOld = oldGlobalAccessOnlyInOld;
 
-      foreach (Requires e in Requires)
+      void TypecheckSpec(List<int> layers, Action<TypecheckingContext> f)
       {
-        Contract.Assert(e != null);
-        e.Typecheck(tc);
+        var oldGlobalAccessOnlyInOld = tc.GlobalAccessOnlyInOld;
+        if (this is YieldProcedureDecl yieldProcedureDecl &&
+            (!yieldProcedureDecl.MoverType.HasValue || layers.Any(layer => layer < yieldProcedureDecl.Layer)))
+        {
+          tc.GlobalAccessOnlyInOld = true;
+        }
+        f(tc);
+        tc.GlobalAccessOnlyInOld = oldGlobalAccessOnlyInOld;
       }
 
+      foreach (Requires e in Requires)
+      {
+        TypecheckSpec(e.Layers, e.Typecheck);
+      }
+      
+      foreach (MeasureCmd e in MeasureCmds)
+      {
+        var savedGlobalAccessOnlyInOld = tc.GlobalAccessOnlyInOld;
+        tc.GlobalAccessOnlyInOld = false;   // allow globals in measure without old(...)
+        e.Typecheck(tc);
+        tc.GlobalAccessOnlyInOld = savedGlobalAccessOnlyInOld;
+      }
+
+      foreach (Requires e in Preserves)
+      {
+        if (this is YieldProcedureDecl yieldProcedureDecl &&
+            (!yieldProcedureDecl.MoverType.HasValue || e.Layers.Any(layer => layer < yieldProcedureDecl.Layer)))
+        {
+          if (yieldProcedureDecl.MoverType.HasValue)
+          {
+            tc.Error(e, $"only layer {yieldProcedureDecl.Layer} allowed for preserves clause");
+          }
+          else
+          {
+            tc.Error(e, $"unexpected preserves clause");
+          }
+        }
+        else
+        {
+          e.Typecheck(tc);
+        }
+      }
       foreach (Ensures e in Ensures)
       {
-        Contract.Assert(e != null);
-        e.Typecheck(tc);
+        TypecheckSpec(e.Layers, e.Typecheck);
       }
     }
 
@@ -2728,10 +2800,13 @@ namespace Microsoft.Boogie
   {
     public int Layer; // set during registration
 
-    public YieldInvariantDecl(IToken tok, string name, List<Variable> inParams, List<Requires> requires, QKeyValue kv) :
-      base(tok, name, new List<TypeVariable>(), inParams, new List<Variable>(), false, requires, new List<IdentifierExpr>(),
-        requires.Select(x => new Ensures(x.tok, false, x.Condition, null)).ToList(), kv)
+    public bool IsGlobal;
+
+    public YieldInvariantDecl(IToken tok, string name, List<Variable> inParams, List<Requires> preserves, QKeyValue kv) :
+      base(tok, name, new List<TypeVariable>(), inParams, new List<Variable>(), false,
+            new List<Requires>(), preserves, new List<Ensures>(), new List<MeasureCmd>(), new List<IdentifierExpr>(), kv)
     {
+      IsGlobal = true;
     }
 
     public override void Register(ResolutionContext rc)
@@ -2821,18 +2896,14 @@ namespace Microsoft.Boogie
     Right,
     Left,
     Both,
-    None
   }
 
   public class ActionDecl : Procedure
   {
     public MoverType MoverType;
-    public List<ActionDeclRef> Creates;
     public ActionDeclRef RefinedAction;
-    public ActionDeclRef InvariantAction;
     public List<CallCmd> YieldRequires;
     public List<AssertCmd> Asserts;
-    public DatatypeTypeCtorDecl PendingAsyncCtorDecl;
     public bool IsAnonymous;
 
     public Implementation Impl; // set when the implementation of this action is resolved
@@ -2840,19 +2911,16 @@ namespace Microsoft.Boogie
 
     public ActionDecl(IToken tok, string name, MoverType moverType,
       List<Variable> inParams, List<Variable> outParams, bool isPure,
-      List<ActionDeclRef> creates, ActionDeclRef refinedAction, ActionDeclRef invariantAction,
-      List<Requires> requires, List<CallCmd> yieldRequires, List<AssertCmd> asserts,
-      List<IdentifierExpr> modifies, DatatypeTypeCtorDecl pendingAsyncCtorDecl, QKeyValue kv) : base(tok, name,
+      ActionDeclRef refinedAction,
+      List<Requires> requires, List<IdentifierExpr> modifies, List<CallCmd> yieldRequires, List<AssertCmd> asserts,
+      QKeyValue kv) : base(tok, name,
       new List<TypeVariable>(), inParams, outParams,
-      isPure, requires, modifies, new List<Ensures>(), kv)
+      isPure, requires, new List<Requires>(), new List<Ensures>(), new List<MeasureCmd>(), modifies, kv)
     {
       this.MoverType = moverType;
-      this.Creates = creates;
       this.RefinedAction = refinedAction;
-      this.InvariantAction = invariantAction;
       this.YieldRequires = yieldRequires;
       this.Asserts = asserts;
-      this.PendingAsyncCtorDecl = pendingAsyncCtorDecl;
       this.IsAnonymous = name == null;
       if (IsAnonymous)
       {
@@ -2882,40 +2950,9 @@ namespace Microsoft.Boogie
       Asserts.ForEach(assertCmd => assertCmd.Resolve(rc));
       rc.PopVarContext();
       rc.Proc = null;
-      if (Creates.Any())
-      {
-        if (IsPure)
-        {
-          rc.Error(this, "unnecessary creates clause for pure action");
-        }
-        else if (MoverType == MoverType.Right || MoverType == MoverType.Both)
-        {
-          rc.Error(this, "right mover may not create pending asyncs");
-        }
-      }
-      Creates.ForEach(create =>
-      {
-        create.Resolve(rc);
-        if (create.ActionDecl is { MaybePendingAsync: false })
-        {
-          rc.Error(create, $"{create.ActionName} must be an async action");
-        }
-      });
       if (RefinedAction != null)
       {
         RefinedAction.Resolve(rc);
-        if (!HasMoverType)
-        {
-          MoverType = MoverType.Atomic;
-        }
-        if (RefinedAction.ActionDecl is { HasMoverType: false })
-        {
-          RefinedAction.ActionDecl.MoverType = MoverType.Atomic;
-        }
-      }
-      if (InvariantAction != null)
-      {
-        InvariantAction.Resolve(rc);
       }
     }
 
@@ -2923,20 +2960,38 @@ namespace Microsoft.Boogie
     {
       var oldProc = tc.Proc;
       tc.Proc = this;
+      // We want to allow global variables to be accessed by the body but not the preconditions.
+      // Set Requires to empty list temporarily to enable this enforcement.
+      var savedRequires = Requires;
+      Requires = new List<Requires>();
       base.Typecheck(tc);
+      Requires = savedRequires;
+      tc.GlobalAccessOnlyInOld = true;
+      Requires.ForEach(requires => requires.Typecheck(tc));
       YieldRequires.ForEach(callCmd => callCmd.Typecheck(tc));
+      tc.GlobalAccessOnlyInOld = false;
       Asserts.ForEach(assertCmd => assertCmd.Typecheck(tc));
       Contract.Assert(tc.Proc == this);
       tc.Proc = oldProc;
 
-      Creates.ForEach(actionDeclRef =>
+      if (HasPreconditions)
       {
-        var pendingAsync = actionDeclRef.ActionDecl;
-        if (!LayerRange.Subset(pendingAsync.LayerRange))
+        if (LayerRange.LowerLayer != LayerRange.UpperLayer)
         {
-          tc.Error(this, $"pending async {pendingAsync.Name} is not available on all layers of {Name}");
+          tc.Error(this, $"action with preconditions must exist at a single layer");
         }
-      });
+        else
+        {
+          foreach (var yieldRequires in YieldRequires)
+          {
+            var yieldInvariantDecl = (YieldInvariantDecl)yieldRequires.Proc;
+            if (!yieldInvariantDecl.IsGlobal)
+            {
+              tc.Error(yieldRequires, $"called yield invariant must be global");
+            }
+          }
+        }
+      }
 
       if (RefinedAction != null)
       {
@@ -2946,53 +3001,6 @@ namespace Microsoft.Boogie
         {
           tc.Error(refinedActionDecl, $"refined action does not exist at layer {layer + 1}");
         }
-        if (InvariantAction != null)
-        {
-          var actionCreates = CreateActionDecls.ToHashSet();
-          var refinedActionCreates = refinedActionDecl.CreateActionDecls.ToHashSet();
-          var invariantActionDecl = InvariantAction.ActionDecl;
-          if (!invariantActionDecl.LayerRange.Contains(layer))
-          {
-            tc.Error(invariantActionDecl, $"invariant action does not exist at layer {layer}");
-          }
-          var invariantCreates = invariantActionDecl.CreateActionDecls.ToHashSet();
-          if (!actionCreates.IsSubsetOf(invariantCreates))
-          {
-            tc.Error(this,
-              $"each pending async created by refining action must also be created by invariant action {invariantActionDecl.Name}");
-          }
-          if (!refinedActionCreates.IsSubsetOf(invariantCreates))
-          {
-            tc.Error(this,
-              $"each pending async created by refined action must also be created by invariant action {invariantActionDecl.Name}");
-          }
-          var actionModifies = new HashSet<Variable>(Modifies.Select(ie => ie.Decl));
-          var refinedActionModifies = new HashSet<Variable>(refinedActionDecl.Modifies.Select(ie => ie.Decl));
-          var invariantModifies = new HashSet<Variable>(invariantActionDecl.Modifies.Select(ie => ie.Decl));
-          if (!actionModifies.IsSubsetOf(invariantModifies))
-          {
-            tc.Error(this, $"modifies of {Name} must be subset of modifies of {invariantActionDecl.Name}");
-          }
-          if (!refinedActionModifies.IsSubsetOf(invariantModifies))
-          {
-            tc.Error(this,
-              $"modifies of {refinedActionDecl.Name} must be subset of modifies of {invariantActionDecl.Name}");
-          }
-          foreach (var elimProc in invariantCreates.Except(refinedActionCreates))
-          {
-            var elimCreates = elimProc.CreateActionDecls.ToHashSet();
-            if (!elimCreates.IsSubsetOf(invariantCreates))
-            {
-              tc.Error(this,
-                $"each pending async created by eliminated action {elimProc.Name} must also be created by invariant action {invariantActionDecl.Name}");
-            }
-            var targetModifies = new HashSet<Variable>(elimProc.Modifies.Select(ie => ie.Decl));
-            if (!targetModifies.IsSubsetOf(invariantModifies))
-            {
-              tc.Error(this, $"modifies of {elimProc.Name} must be subset of modifies of {invariantActionDecl.Name}");
-            }
-          }
-        }
       }
     }
 
@@ -3001,10 +3009,6 @@ namespace Microsoft.Boogie
       if (IsPure)
       {
         stream.Write(this, level, "pure ");
-      }
-      if (MaybePendingAsync)
-      {
-        stream.Write(level, "async ");
       }
       if (!IsPure)
       {
@@ -3032,99 +3036,21 @@ namespace Microsoft.Boogie
       if (RefinedAction != null)
       {
         stream.Write(level, $"refines {RefinedAction.ActionName}");
-        if (InvariantAction == null)
-        {
-          stream.WriteLine(";");
-        }
-        else
-        {
-          stream.WriteLine($" using {InvariantAction.ActionName};");
-        }
-      }
-      if (Creates.Any())
-      {
-        stream.WriteLine(level, $"creates {string.Join(",", Creates.Select(x => x.ActionName))};");
+        stream.WriteLine(";");
       }
       base.EmitEnd(stream, level);
     }
 
-    public IEnumerable<ActionDecl> EliminatedActionDecls()
-    {
-      var refinedProc = RefinedAction.ActionDecl;
-      var refinedActionCreates = refinedProc.CreateActionDecls.ToHashSet();
-      HashSet<ActionDecl> FixpointCreates()
-      {
-        var currCreates = new HashSet<ActionDecl>(refinedActionCreates);
-        var frontier = CreateActionDecls.ToHashSet().Except(currCreates);
-        while (frontier.Any())
-        {
-          currCreates.UnionWith(frontier);
-          frontier = frontier.SelectMany(actionDecl => actionDecl.CreateActionDecls).Except(currCreates);
-        }
-        return currCreates;
-      }
-      var allCreates = InvariantAction == null
-        ? FixpointCreates()
-        : InvariantAction.ActionDecl.CreateActionDecls;
-      return allCreates.Except(refinedActionCreates);
-    }
-
     public IEnumerable<ActionDeclRef> ActionDeclRefs()
     {
-      return Creates.Append(RefinedAction).Append(InvariantAction);
+      return [RefinedAction];
     }
 
-    public bool IsSkippable()
-    {
-      return
-        Creates.Count == 0 &&
-        ModifiedVars.All(v => v.LayerRange.UpperLayer == LayerRange.UpperLayer) &&
-        Asserts.Count > 0 &&
-        !VariableCollector.Collect(Asserts).Any(v => v is GlobalVariable);
-    }
+    public bool HasPreconditions => Requires.Count > 0 || YieldRequires.Count > 0;
 
-    public IEnumerable<ActionDecl> CreateActionDecls => Creates.Select(x => x.ActionDecl);
-
-    public bool MaybePendingAsync => PendingAsyncCtorDecl != null;
-
-    public bool HasMoverType => MoverType != MoverType.None;
-    
     public bool IsRightMover => MoverType == MoverType.Right || MoverType == MoverType.Both;
 
     public bool IsLeftMover => MoverType == MoverType.Left || MoverType == MoverType.Both;
-    
-    public DatatypeConstructor PendingAsyncCtor => PendingAsyncCtorDecl.GetConstructor(Name);
-
-    public CtorType PendingAsyncType => new (PendingAsyncCtorDecl.tok, PendingAsyncCtorDecl, new List<Type>());
-
-    public MapType PendingAsyncMultisetType => new(Token.NoToken, new List<TypeVariable>(),
-      new List<Type> { PendingAsyncType }, Type.Int);
-
-    public Function PendingAsyncAdd => pendingAsyncAdd;
-    private Function pendingAsyncAdd;
-
-    public Function PendingAsyncConst => pendingAsyncConst;
-    private Function pendingAsyncConst;
-
-    public Function PendingAsyncIte => pendingAsyncIte;
-    private Function pendingAsyncIte;
-
-    // This method is needed to ensure that all support monomorphized functions can be generated during Civl type checking.
-    // Otherwise, during later passes, monomorphization might be invoked and cause program.TopLevelDeclarations to be modified
-    // while an iteration is being done on it.
-    public void Initialize(Monomorphizer monomorphizer)
-    {
-      if (PendingAsyncCtorDecl == null)
-      {
-        return;
-      }
-      pendingAsyncAdd =
-        monomorphizer.InstantiateFunction("MapAdd", new Dictionary<string, Type> { { "T", PendingAsyncType } });
-      pendingAsyncConst = monomorphizer.InstantiateFunction("MapConst",
-        new Dictionary<string, Type> { { "T", PendingAsyncType }, { "U", Type.Int } });
-      pendingAsyncIte = monomorphizer.InstantiateFunction("MapIte",
-        new Dictionary<string, Type> { { "T", PendingAsyncType }, { "U", Type.Int } });
-    }
     
     public override Absy StdDispatch(StandardVisitor visitor)
     {
@@ -3146,27 +3072,27 @@ namespace Microsoft.Boogie
   
   public class YieldProcedureDecl : Procedure
   {
-    public MoverType MoverType;
+    public MoverType? MoverType;
     public List<CallCmd> YieldRequires;
-    public List<CallCmd> YieldEnsures;
     public List<CallCmd> YieldPreserves;
+    public List<CallCmd> YieldEnsures;
     public ActionDeclRef RefinedAction;
 
     public int Layer; // set during registration
     public HashSet<Variable> VisibleFormals; // set during resolution
     public Dictionary<Block, YieldingLoop> YieldingLoops; // empty initially, filled up during type checking
 
-    public YieldProcedureDecl(IToken tok, string name, MoverType moverType, List<Variable> inParams,
+    public YieldProcedureDecl(IToken tok, string name, MoverType? moverType, List<Variable> inParams,
       List<Variable> outParams,
-      List<Requires> requires, List<IdentifierExpr> modifies, List<Ensures> ensures,
-      List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures, List<CallCmd> yieldPreserves,
+      List<Requires> requires, List<Requires> preserves, List<Ensures> ensures, List<MeasureCmd> measureCmds, List<IdentifierExpr> modifies,
+      List<CallCmd> yieldRequires, List<CallCmd> yieldPreserves, List<CallCmd> yieldEnsures,
       ActionDeclRef refinedAction, QKeyValue kv) : base(tok, name, new List<TypeVariable>(), inParams, outParams,
-      false, requires, modifies, ensures, kv)
+      false, requires, preserves, ensures, measureCmds, modifies, kv)
     {
       this.MoverType = moverType;
       this.YieldRequires = yieldRequires;
-      this.YieldEnsures = yieldEnsures;
       this.YieldPreserves = yieldPreserves;
+      this.YieldEnsures = yieldEnsures;
       this.RefinedAction = refinedAction;
       
       this.YieldingLoops = new Dictionary<Block, YieldingLoop>();
@@ -3212,7 +3138,7 @@ namespace Microsoft.Boogie
       rc.StateMode = oldStateMode;
       rc.Proc = null;
 
-      if (!HasMoverType)
+      if (!MoverType.HasValue)
       {
         VisibleFormals = RefinedAction == null
           ? new HashSet<Variable>()
@@ -3223,13 +3149,9 @@ namespace Microsoft.Boogie
       if (RefinedAction != null)
       {
         RefinedAction.Resolve(rc);
-        if (RefinedAction.ActionDecl is { HasMoverType: false })
-        {
-          RefinedAction.ActionDecl.MoverType = MoverType.Atomic;
-        }
       }
 
-      if (!HasMoverType)
+      if (!MoverType.HasValue)
       {
         if (Modifies.Any())
         {
@@ -3255,7 +3177,7 @@ namespace Microsoft.Boogie
         }
       }
 
-      if (HasMoverType)
+      if (MoverType.HasValue)
       {
         Modifies.Where(ie => !ie.Decl.LayerRange.Contains(Layer)).ForEach(ie =>
         {
@@ -3265,12 +3187,13 @@ namespace Microsoft.Boogie
 
       var oldProc = tc.Proc;
       tc.Proc = this;
-      tc.GlobalAccessOnlyInOld = !HasMoverType;
       base.Typecheck(tc);
-      tc.GlobalAccessOnlyInOld = false;
+      Debug.Assert(!tc.GlobalAccessOnlyInOld);
       YieldRequires.ForEach(callCmd => callCmd.Typecheck(tc));
-      YieldEnsures.ForEach(callCmd => callCmd.Typecheck(tc));
+      tc.GlobalAccessOnlyInOld = true;
       YieldPreserves.ForEach(callCmd => callCmd.Typecheck(tc));
+      YieldEnsures.ForEach(callCmd => callCmd.Typecheck(tc));
+      tc.GlobalAccessOnlyInOld = false;
       Contract.Assert(tc.Proc == this);
       tc.Proc = oldProc;
     }
@@ -3313,12 +3236,10 @@ namespace Microsoft.Boogie
     {
       return YieldEnsures.Union(YieldPreserves).Union(YieldRequires);
     }
-
-    public bool HasMoverType => MoverType != MoverType.None;
     
-    public bool IsRightMover => MoverType == MoverType.Right || MoverType == MoverType.Both;
+    public bool IsRightMover => MoverType.HasValue && (MoverType.Value == Boogie.MoverType.Right || MoverType.Value == Boogie.MoverType.Both);
 
-    public bool IsLeftMover => MoverType == MoverType.Left || MoverType == MoverType.Both;
+    public bool IsLeftMover => MoverType.HasValue && (MoverType.Value == Boogie.MoverType.Left || MoverType.Value == Boogie.MoverType.Both);
 
     public ActionDecl RefinedActionAtLayer(int layer)
     {
@@ -3386,7 +3307,7 @@ namespace Microsoft.Boogie
         return desugaredYieldEnsures;
       }
     }
-    
+
     public bool IsYieldingLoopHeader(Block block, int layerNum)
     {
       if (!YieldingLoops.ContainsKey(block))
@@ -3407,7 +3328,7 @@ namespace Microsoft.Boogie
       List<Variable> inputs, List<Variable> outputs, List<IdentifierExpr> globalMods)
       : base(Token.NoToken, impl.Name + "_loop_" + header.ToString(),
         new List<TypeVariable>(), inputs, outputs, false,
-        new List<Requires>(), globalMods, new List<Ensures>())
+        new List<Requires>(), new List<Requires>(), new List<Ensures>(), new List<MeasureCmd>(), globalMods)
     {
       enclosingImpl = impl;
     }

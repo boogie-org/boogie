@@ -1,29 +1,43 @@
-async atomic action {:layer 2} A_StartRound(r: Round, {:linear_in} r_lin: Set Permission)
-creates A_Join, A_Propose;
-asserts AllPermissions(r) == r_lin;
-asserts Round(r);
-{
-  var {:linear} r_lin': Set Permission;
-  var {:linear} proposePermissions: Set Permission;
-  var {:linear} joinPermissions: Set Permission;
-
-  assume
-    {:add_to_pool "Round", r-1}
-    {:add_to_pool "Node", 0}
-    {:add_to_pool "Permission", ConcludePerm(r)}
-    true;
-
-  r_lin' := r_lin;
-  call proposePermissions := Set_Get(r_lin', ProposePermissions(r)->val);
-  async call A_Propose(r, proposePermissions);
-  call joinPermissions := Set_Get(r_lin', JoinPermissions(r)->val);
-  call {:linear joinPermissions} create_asyncs(JoinPAs(r));
+function {:inline} JoinLt(r: Round, joinChannelPermissions: UnitMap (One Permission), usedPermissions: UnitMap (One Permission)): bool {
+  (forall r': Round:: Round(r') && r' < r ==> Set_IsSubset(JoinPermissions(r'), Set_Union(joinChannelPermissions->dom, usedPermissions->dom)))
 }
 
-async atomic action {:layer 2} A_Join(r: Round, n: Node, {:linear_in} p: One Permission)
-modifies joinedNodes;
+function {:inline} VoteLt(r: Round, voteChannelPermissions: UnitMap (One Permission), usedPermissions: UnitMap (One Permission)): bool {
+  (forall r': Round:: Round(r') && r' < r ==> Set_IsSubset(VotePermissions(r'), Set_Union(voteChannelPermissions->dom, usedPermissions->dom)))
+}
+
+function {:inline} JoinLe(r: Round, joinChannelPermissions: UnitMap (One Permission), usedPermissions: UnitMap (One Permission)): bool {
+  (forall r': Round:: Round(r') && r' <= r ==> Set_IsSubset(JoinPermissions(r'), Set_Union(joinChannelPermissions->dom, usedPermissions->dom)))
+}
+
+function {:inline} VoteLe(r: Round, voteChannelPermissions: UnitMap (One Permission), usedPermissions: UnitMap (One Permission)): bool {
+  (forall r': Round:: Round(r') && r' <= r ==> Set_IsSubset(VotePermissions(r'), Set_Union(voteChannelPermissions->dom, usedPermissions->dom)))
+}
+
+invariant {:layer 2} JoinPre(r: Round);
+preserves JoinLt(r, joinChannelPermissions, usedPermissions);
+preserves VoteLt(r, voteChannelPermissions, usedPermissions);
+
+invariant {:layer 2} JoinResponsePre(r: Round, {:linear} roundPermission: One Permission);
+preserves roundPermission->val == RoundPerm(r);
+preserves JoinLe(r, joinChannelPermissions, usedPermissions);
+preserves VoteLt(r, voteChannelPermissions, usedPermissions);
+preserves (exists joinPerm: Permission :: joinPerm->r == r && Node(joinPerm->n) && Set_Contains(joinChannelPermissions->dom, One(joinPerm)));
+
+invariant {:layer 2} VotePre(r: Round);
+preserves JoinLe(r, joinChannelPermissions, usedPermissions);
+preserves VoteLt(r, voteChannelPermissions, usedPermissions);
+
+invariant {:layer 2} VoteResponsePre(r: Round, {:linear} roundPermission: One Permission);
+preserves roundPermission->val == RoundPerm(r);
+preserves JoinLe(r, joinChannelPermissions, usedPermissions);
+preserves VoteLe(r, voteChannelPermissions, usedPermissions);
+preserves (exists n: Node :: Node(n) && Set_Contains(voteChannelPermissions->dom, One(VotePerm(r, n))));
+
+left action {:layer 2} A_Join(r: Round, n: Node, {:linear_in} p: One Permission)
+requires call JoinPre(r);
 {
-  assert Round(r);
+  assert Round(r) && Node(n);
   assert p->val == JoinPerm(r, n);
 
   assume
@@ -32,55 +46,46 @@ modifies joinedNodes;
     true;
 
   if (*) {
-    assume (forall r': Round :: Round(r') && joinedNodes[r'][n] ==> r' < r);
-    joinedNodes[r][n] := true;
+    assume (forall r': Round :: Round(r') && joinInfo[r'][n] ==> r' < r);
+    joinInfo[r][n] := true;
   }
+  call One_Put(joinChannelPermissions, p);
 }
 
-async atomic action {:layer 2} A_Propose(r: Round, {:linear_in} ps: Set Permission)
-creates A_Vote, A_Conclude;
-modifies voteInfo;
-asserts Round(r);
-asserts ps == ProposePermissions(r);
-asserts voteInfo[r] is None;
+left action {:layer 2} A_ProcessJoinResponse(r: Round, {:linear} roundPermission: One Permission, {:linear} votePermissions: UnitMap (One Permission))
+returns (joinResponse: JoinResponse)
+requires call JoinResponsePre(r, roundPermission);
 {
-  var {:linear} ps': Set Permission;
-  var {:linear} concludePermission: One Permission;
-  var {:pool "Round"} maxRound: int;
-  var {:pool "MaxValue"} maxValue: Value;
-  var {:pool "NodeSet"} ns: NodeSet;
+  var {:pool "A"} n: Node;
+  var joinPerm: One Permission;
+  var {:pool "C"} lastVoteRound: int;
+  var {:pool "B"} lastVoteValue: Value;
 
-  assume
-    {:add_to_pool "Round", r, r-1}
-    {:add_to_pool "Node", 0}
-    {:add_to_pool "NodeSet", ns}
-    {:add_to_pool "Permission", ConcludePerm(r)}
-    {:add_to_pool "MaxValue", maxValue}
-    true;
-
+  assert Round(r) && roundPermission->val == RoundPerm(r) && votePermissions->dom == VotePermissions(r);
+  joinPerm := One(JoinPerm(r, n));
+  assume Node(n) && Set_Contains(joinChannelPermissions->dom, joinPerm);
+  call One_Get(joinChannelPermissions, joinPerm);
+  call One_Put(usedPermissions, joinPerm);
   if (*) {
-    assume IsSubset(ns, joinedNodes[r]) && IsQuorum(ns);
-    maxRound := MaxRound(r, ns, voteInfo);
-    if (maxRound != 0)
-    {
-      maxValue := voteInfo[maxRound]->t->value;
+    assume joinInfo[r][n];
+    assume MaxRoundPredicate(r, n, voteInfo, lastVoteRound);
+    if (lastVoteRound != 0) {
+      assume !(status[lastVoteRound] is Inactive);
+      lastVoteValue := status[lastVoteRound]->value;
     }
-    voteInfo[r] := Some(VoteInfo(maxValue, NoNodes()));
-    ps' := ps;
-    call concludePermission := One_Get(ps', ConcludePerm(r));
-    async call A_Conclude(r, maxValue, concludePermission);
-    call {:linear ps'} create_asyncs(VotePAs(r, maxValue));
+    joinResponse := JoinAccept(n, lastVoteRound, lastVoteValue);
+  } else {
+    joinResponse := JoinReject(n);
   }
 }
 
-async atomic action {:layer 2} A_Vote(r: Round, n: Node, v: Value, {:linear_in} p: One Permission)
-modifies joinedNodes, voteInfo;
+left action {:layer 2} A_Vote(r: Round, n: Node, v: Value, {:linear_in} p: One Permission)
+requires call VotePre(r);
 {
-  assert Round(r);
+  assert Round(r) && Node(n);
   assert p->val == VotePerm(r, n);
-  assert voteInfo[r] is Some;
-  assert voteInfo[r]->t->value == v;
-  assert !voteInfo[r]->t->ns[n];
+  assert IsActive(status[r], v);
+  assert !voteInfo[r][n];
 
   assume
     {:add_to_pool "Round", r, r-1}
@@ -88,30 +93,27 @@ modifies joinedNodes, voteInfo;
     true;
 
   if (*) {
-    assume (forall r': Round :: Round(r') && joinedNodes[r'][n] ==> r' <= r);
-    voteInfo[r] := Some(VoteInfo(v, voteInfo[r]->t->ns[n := true]));
-    joinedNodes[r][n] := true;
+    assume (forall r': Round :: Round(r') && joinInfo[r'][n] ==> r' <= r);
+    voteInfo[r][n] := true;
+    joinInfo[r][n] := true;
   }
+  call One_Put(voteChannelPermissions, p);
 }
 
-async atomic action {:layer 2} A_Conclude(r: Round, v: Value, {:linear_in} p: One Permission)
-modifies decision;
+left action {:layer 2} A_ProcessVoteResponse(r: Round, {:linear} roundPermission: One Permission) returns (voteResponse: VoteResponse)
+requires call VoteResponsePre(r, roundPermission);
 {
-  var {:pool "NodeSet"} q: NodeSet;
+  var {:pool "A"} n: Node;
+  var votePerm: One Permission;
 
-  assert Round(r);
-  assert p->val == ConcludePerm(r);
-  assert voteInfo[r] is Some;
-  assert voteInfo[r]->t->value == v;
-
-  assume {:add_to_pool "Round", r} {:add_to_pool "NodeSet", q} true;
-
-  if (*) {
-    assume IsSubset(q, voteInfo[r]->t->ns) && IsQuorum(q);
-    decision[r] := Some(v);
+  assert Round(r) && roundPermission->val == RoundPerm(r);
+  votePerm := One(VotePerm(r, n));
+  assume Node(n) && Set_Contains(voteChannelPermissions->dom, votePerm);
+  call One_Get(voteChannelPermissions, votePerm);
+  call One_Put(usedPermissions, votePerm);
+  if (voteInfo[r][n]) {
+    voteResponse := VoteAccept(n);
+  } else {
+    voteResponse := VoteReject(n);
   }
 }
-
-// Local Variables:
-// flycheck-disabled-checkers: (boogie)
-// End:

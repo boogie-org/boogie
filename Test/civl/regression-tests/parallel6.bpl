@@ -8,14 +8,14 @@ yield invariant {:layer 1} Yield();
 yield procedure {:layer 1} incr_by_two_bad()
 refines atomic_incr_by_two;
 {
-    par incr() | incr() | Yield() | incr();
+    call incr() | incr() | Yield() | incr();
     call incr();
 }
 
 yield procedure {:layer 1} incr_by_two()
 refines atomic_incr_by_two;
 {
-    par incr() | decr() | Yield() | incr();
+    call incr() | decr() | Yield() | incr();
     call incr();
 }
 both action {:layer 1,2} atomic_incr_by_two()

@@ -652,8 +652,8 @@ namespace Microsoft.Boogie.GraphUtil
     }
 
     /// <summary>
-    /// This method gives a simpler way to compute dominators but it assmumes the graph is a DAG.
-    /// With acyclicty we can compute all dominators by traversing the graph (once) in topological order
+    /// This method gives a simpler way to compute dominators but it assumes the graph is a DAG.
+    /// With acyclicity we can compute all dominators by traversing the graph (once) in topological order
     /// (using the property: A vertex's dominator set is unaffected by vertices that come later).
     /// The method does not check the graph for the DAG property. That risk is on the caller.
     /// </summary>

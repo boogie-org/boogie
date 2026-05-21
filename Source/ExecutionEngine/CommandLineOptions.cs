@@ -126,6 +126,7 @@ namespace Microsoft.Boogie
     }
 
     public bool PrintLambdaLifting { get; set; }
+    public bool PrintMeasureDesugaring { get; set; }
     public bool FreeVarLambdaLifting { get; set; }
     public string ProverLogFilePath { get; set; }
     public bool ProverLogFileAppend { get; set; }
@@ -417,7 +418,7 @@ namespace Microsoft.Boogie
 
     public TextWriter ModelWriter { get; private set; }
 
-    public bool ExpandLambdas { get; set; } = true; // not useful from command line, only to be set to false programatically
+    public bool ExpandLambdas { get; set; } = true; // not useful from command line, only to be set to false programmatically
 
     public bool InferModifies {
       get => inferModifies;
@@ -443,14 +444,14 @@ namespace Microsoft.Boogie
       set => trustRefinement = value;
     }
 
+    public bool TrustInvariants {
+      get => trustInvariants;
+      set => trustInvariants = value;
+    }
+
     public int TrustLayersUpto { get; set; } = -1;
     
     public int TrustLayersDownto { get; set; } = int.MaxValue;
-
-    public bool TrustSequentialization {
-      get => trustSequentialization;
-      set => trustSequentialization = value;
-    }
 
     public bool RemoveEmptyBlocks { get; set; } = true;
     public bool CoalesceBlocks { get; set; } = true;
@@ -593,7 +594,7 @@ namespace Microsoft.Boogie
     private bool trustMoverTypes = false;
     private bool trustNoninterference = false;
     private bool trustRefinement = false;
-    private bool trustSequentialization = false;
+    private bool trustInvariants = false;
     private int enhancedErrorMessages = 0;
     private int stagedHoudiniThreads = 1;
     private uint timeLimitPerAssertionInPercent = 10;
@@ -1334,6 +1335,7 @@ namespace Microsoft.Boogie
 
           if (ps.CheckBooleanFlag("printDesugared", x => printDesugarings = x) ||
               ps.CheckBooleanFlag("printLambdaLifting", x => PrintLambdaLifting = x) ||
+              ps.CheckBooleanFlag("printMeasureDesugaring", x => PrintMeasureDesugaring = x) ||
               ps.CheckBooleanFlag("printInstrumented", x => printInstrumented = x) ||
               ps.CheckBooleanFlag("printPassive", x => UseResolvedProgram.Add(PrintPassiveProgram)) ||
               ps.CheckBooleanFlag("printWithUniqueIds", x => printWithUniqueAstIds = x) ||
@@ -1384,7 +1386,7 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("trustMoverTypes", x => trustMoverTypes = x) ||
               ps.CheckBooleanFlag("trustNoninterference", x => trustNoninterference = x) ||
               ps.CheckBooleanFlag("trustRefinement", x => trustRefinement = x) ||
-              ps.CheckBooleanFlag("trustSequentialization", x => trustSequentialization = x) ||
+              ps.CheckBooleanFlag("trustInvariants", x => trustInvariants = x) ||
               ps.CheckBooleanFlag("useBaseNameForFileName", x => UseBaseNameForFileName = x) ||
               ps.CheckBooleanFlag("freeVarLambdaLifting", x => FreeVarLambdaLifting = x) ||
               ps.CheckBooleanFlag("warnNotEliminatedVars", x => WarnNotEliminatedVars = x) ||
@@ -1738,19 +1740,14 @@ namespace Microsoft.Boogie
      {:hide}
        Hidden input/output parameter.
 
-     {:pending_async}
-       Local variable collecting pending asyncs in yielding procedure.
-
      {:sync}
        Synchronized async call.
 
-     {:linear ""domain""}
-       Permission type for domain.
-       Collector function for domain.
-       Linear variable (both global and local).
+     {:linear}
+       Linear variable (both global and input/output parameter).
 
-     {:linear_in ""domain""}
-     {:linear_out ""domain""}
+     {:linear_in}
+     {:linear_out}
        Linear input/output parameter.";
 
     protected override string HelpHeader =>
@@ -1799,6 +1796,8 @@ namespace Microsoft.Boogie
                 with /print option, desugars calls
   /printLambdaLifting
                 with /print option, desugars lambda lifting
+  /printMeasureDesugaring
+                with /print option, desugars measure annotations
   /freeVarLambdaLifting
                 Boogie's lambda lifting transforms the bodies of lambda
                 expressions into templates with holes. By default, holes
@@ -1893,12 +1892,12 @@ namespace Microsoft.Boogie
                 do not perform noninterference checks
   /trustRefinement
                 do not perform refinement checks
+  /trustInvariants
+                do not perform invariant checks
   /trustLayersUpto:<n>
                 do not verify layers <n> and below
   /trustLayersDownto:<n>
                 do not verify layers <n> and above
-  /trustSequentialization
-                do not perform sequentialization checks
   /civlDesugaredFile:<file>
                 print plain Boogie program to <file>
 
@@ -2047,10 +2046,10 @@ namespace Microsoft.Boogie
                 Timeout in seconds for the single last
                 assertion in the keep going mode. Defaults to 30s.
   /vcsPathJoinMult:<f>
-                If more than one path join at a block, by how much
-                multiply the number of paths in that block, to accomodate
-                for the fact that the prover will learn something on one
-                paths, before proceeding to another. Defaults to 0.8.
+                If more than one path joins at a block, by how much to
+                multiply the number of paths in that block, to accommodate
+                the fact that the prover will learn something on one
+                path, before proceeding to another. Defaults to 0.8.
   /vcsPathCostMult:<f1>
   /vcsAssumeMult:<f2>
                 The cost of a block is

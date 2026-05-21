@@ -1,6 +1,6 @@
-linear-types-fail.bpl(8,0): Error: output variable a' must be available at a return
-linear-types-fail.bpl(13,0): Error: output variable a' must be available at a return
-linear-types-fail.bpl(17,0): Error: output variable a' must be available at a return
-linear-types-fail.bpl(28,4): Error: primitive assigns to input variable: a
-linear-types-fail.bpl(35,0): Error: input variable b must be available at a return
+linear-types-fail.bpl(10,0): Error: output variable b must be available at a return
+linear-types-fail.bpl(15,0): Error: output variable a' must be available at a return
+linear-types-fail.bpl(19,0): Error: output variable a' must be available at a return
+linear-types-fail.bpl(30,4): Error: primitive assigns to input variable: a
+linear-types-fail.bpl(37,0): Error: input variable b must be available at a return
 5 type checking errors detected in linear-types-fail.bpl

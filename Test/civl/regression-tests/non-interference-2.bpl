@@ -22,7 +22,7 @@ yield procedure {:layer 0} Set(v: int);
 refines AtomicSet;
 
 yield invariant {:layer 1} PC(old_g: int);
-invariant g == old_g;
+preserves g == old_g;
 
 yield procedure {:layer 1} PE()
 {

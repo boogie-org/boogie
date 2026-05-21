@@ -26,30 +26,29 @@ namespace Microsoft.Boogie
       // Gate sufficiency checks
       Action.AddGateSufficiencyCheckers(civlTypeChecker, decls);
 
-      // Commutativity checks
       civlTypeChecker.AtomicActions.ForEach(x =>
       {
         decls.AddRange(new Declaration[] { x.Impl, x.Impl.Proc, x.InputOutputRelation });
-        if (x.ImplWithChoice != null)
-        {
-          decls.AddRange(new Declaration[]
-            { x.ImplWithChoice, x.ImplWithChoice.Proc, x.InputOutputRelationWithChoice });
-        }
       });
 
+      // Commutativity checks
       if (!options.TrustMoverTypes)
       {
         MoverCheck.AddCheckers(civlTypeChecker, decls);
       }
 
       // Desugaring of yielding procedures
-      YieldingProcChecker.AddCheckers(civlTypeChecker, decls);
-
-      if (!options.TrustSequentialization)
+      if (!options.TrustInvariants)
       {
-        Sequentialization.AddCheckers(civlTypeChecker, decls);
+         YieldingProcChecker.AddInvariantCheckers(civlTypeChecker, decls);
       }
-
+      
+      if (!options.TrustRefinement)
+      {
+         YieldingProcChecker.AddRefinementCheckers(civlTypeChecker, decls);
+         ActionRefinement.AddCheckers(civlTypeChecker, decls);
+      }
+      
       foreach (var action in civlTypeChecker.AtomicActions)
       {
         action.AddTriggerAssumes(program, options);

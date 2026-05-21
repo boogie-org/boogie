@@ -51,7 +51,7 @@ function {:inline} all_decided' (r_bound:int, init_val:[int]int, dec_dom:[int]bo
 // ###########################################################################
 // Main
 
-atomic action {:layer 2} main_atomic ({:linear_in} perms: Set Perm)
+atomic action {:layer 2} main_atomic ({:linear_in} perms: UnitMap (One Perm))
 modifies dec_dom, dec_val;
 {
   havoc dec_dom, dec_val;
@@ -59,21 +59,21 @@ modifies dec_dom, dec_val;
 }
 
 yield invariant {:layer 1} YieldAllDecided();
-invariant all_decided(init_val, dec_dom, dec_val);
+preserves all_decided(init_val, dec_dom, dec_val);
 
 yield procedure {:layer 1}
-main ({:linear_in} perms: Set Perm)
+main ({:linear_in} perms: UnitMap (One Perm))
 refines main_atomic;
-requires {:layer 1} perms->val == all_perms();
+requires {:layer 1} perms->dom == all_perms();
 ensures call YieldAllDecided();
 {
   var s:int;
-  var {:linear} perms': Set Perm;
-  var {:linear} perms'': Set Perm;
+  var perms': UnitMap (One Perm);
+  var perms'': UnitMap (One Perm);
   s := 1;
   perms' := perms;
   while (s <= N)
-  invariant {:layer 1} perms'->val == s_perms_geq(s);
+  invariant {:layer 1} perms'->dom == s_perms_geq(s);
   invariant {:layer 1} inv_val(s, init_val, col_dom, col_val);
   invariant {:layer 1} s > N ==> all_decided(init_val, dec_dom, dec_val);
   {
@@ -83,8 +83,8 @@ ensures call YieldAllDecided();
   }
 }
 
-yield left procedure {:layer 1} P (s:int, {:linear_in} perms: Set Perm)
-requires {:layer 1} perms->val == s_perms_eq(s);
+yield left procedure {:layer 1} P (s:int, {:linear_in} perms: UnitMap (One Perm))
+requires {:layer 1} perms->dom == s_perms_eq(s);
 requires {:layer 1} inv_val(s, init_val, col_dom, col_val);
 ensures  {:layer 1} inv_val(s+1, init_val, col_dom, col_val);
 ensures  {:layer 1} s == N ==> all_decided(init_val, dec_dom, dec_val);
@@ -92,14 +92,14 @@ modifies col_dom, col_val, dec_dom, dec_val;
 {
   var r:int;
   var v:int;
-  var {:linear} p: One Perm;
-  var {:linear} perms': Set Perm;
+  var p: One Perm;
+  var perms': UnitMap (One Perm);
 
   perms' := perms;
   r := 1;
   call v := read_init_val(s);
   while (r <= N)
-  invariant {:layer 1} perms'->val == s_r_perms_geq(s,r);
+  invariant {:layer 1} perms'->dom == s_r_perms_geq(s,r);
   invariant {:layer 1} inv_val'(s, r, init_val, col_dom, col_val);
   invariant {:layer 1} s == N ==> all_decided'(r, init_val, dec_dom, dec_val);
   {
@@ -135,17 +135,17 @@ refines read_init_val_atomic;
 // ###########################################################################
 // Linear permissions
 
-function {:inline} all_perms () : [Perm]bool { (lambda p:Perm :: is_pid(p->s) && is_pid(p->r)) }
-function {:inline} s_perms_eq (s:Pid) : [Perm]bool { (lambda p:Perm :: p->s == s && is_pid(p->r)) }
-function {:inline} s_perms_geq (s:Pid) : [Perm]bool { (lambda p:Perm :: is_pid(p->s) && is_pid(p->r) && p->s >= s) }
-function {:inline} s_r_perms_geq (s:Pid, r:Pid) : [Perm]bool { (lambda p:Perm :: p->s == s && is_pid(p->r) && p->r >= r) }
+function {:inline} all_perms () : [One Perm]bool { (lambda p:One Perm :: is_pid(p->val->s) && is_pid(p->val->r)) }
+function {:inline} s_perms_eq (s:Pid) : [One Perm]bool { (lambda p:One Perm :: p->val->s == s && is_pid(p->val->r)) }
+function {:inline} s_perms_geq (s:Pid) : [One Perm]bool { (lambda p:One Perm :: is_pid(p->val->s) && is_pid(p->val->r) && p->val->s >= s) }
+function {:inline} s_r_perms_geq (s:Pid, r:Pid) : [One Perm]bool { (lambda p:One Perm :: p->val->s == s && is_pid(p->val->r) && p->val->r >= r) }
 
-yield both procedure {:layer 1} split_perms_sender (s:Pid, {:linear_in} perms_in: Set Perm) returns ({:linear} perms_out_1: Set Perm, {:linear} perms_out_2: Set Perm);
-requires {:layer 1} perms_in->val == s_perms_geq(s);
-ensures {:layer 1} perms_out_1->val == s_perms_geq(s+1);
-ensures {:layer 1} perms_out_2->val == s_perms_eq(s);
+yield both procedure {:layer 1} split_perms_sender (s:Pid, {:linear_in} perms_in: UnitMap (One Perm)) returns ({:linear} perms_out_1: UnitMap (One Perm), {:linear} perms_out_2: UnitMap (One Perm));
+requires {:layer 1} perms_in->dom == s_perms_geq(s);
+ensures {:layer 1} perms_out_1->dom == s_perms_geq(s+1);
+ensures {:layer 1} perms_out_2->dom == s_perms_eq(s);
 
-yield both procedure {:layer 1} split_perms_receiver (s:Pid, r:Pid, {:linear_in} perms_in: Set Perm) returns ({:linear} perms_out_1: Set Perm, {:linear} perms_out_2: One Perm);
-requires {:layer 1} perms_in->val ==  s_r_perms_geq(s,r);
-ensures {:layer 1} perms_out_1->val == s_r_perms_geq(s,r+1);
+yield both procedure {:layer 1} split_perms_receiver (s:Pid, r:Pid, {:linear_in} perms_in: UnitMap (One Perm)) returns ({:linear} perms_out_1: UnitMap (One Perm), {:linear} perms_out_2: One Perm);
+requires {:layer 1} perms_in->dom ==  s_r_perms_geq(s,r);
+ensures {:layer 1} perms_out_1->dom == s_r_perms_geq(s,r+1);
 ensures {:layer 1} is_perm(s,r,perms_out_2->val);

@@ -22,7 +22,7 @@ yield procedure {:layer 0} Set(v: int);
 refines AtomicSet;
 
 yield invariant {:layer 1} Yield();
-invariant g == 3;
+preserves g == 3;
 
 yield procedure {:layer 1} PC()
 ensures call Yield();

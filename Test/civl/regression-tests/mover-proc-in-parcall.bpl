@@ -12,14 +12,14 @@ yield right procedure {:layer 1} A()
 modifies x;
 ensures {:layer 1} x == old(x) + 2;
 {
-    par Incr() | Incr();
+    call Incr() | Incr();
 }
 
 yield right procedure {:layer 1} B()
 modifies x;
 ensures {:layer 1} x == old(x) + 4;
 {
-    par A() | A();
+    call A() | A();
 }
 
 yield right procedure {:layer 1} R1(i: int)
@@ -30,7 +30,7 @@ ensures {:layer 1} x == old(x) + i;
     if (i == 0) {
         return;
     }
-    par Incr() | R1(i-1);
+    call Incr() | R1(i-1);
 }
 
 yield right procedure {:layer 1} R2(i: int)
@@ -41,7 +41,7 @@ ensures {:layer 1} x == old(x) + i;
     if (i == 0) {
         return;
     }
-    par R2(i-1) | Incr();
+    call R2(i-1) | Incr();
 }
 
 yield right procedure {:layer 1} M1(i: int)
@@ -52,7 +52,7 @@ ensures {:layer 1} x == old(x) + i;
     if (i == 0) {
         return;
     }
-    par Incr() | M2(i-1);
+    call Incr() | M2(i-1);
 }
 
 yield right procedure {:layer 1} M2(i: int)
@@ -63,5 +63,5 @@ ensures {:layer 1} x == old(x) + i;
     if (i == 0) {
         return;
     }
-    par M1(i-1) | Incr();
+    call M1(i-1) | Incr();
 }

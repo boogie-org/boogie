@@ -287,7 +287,7 @@ public abstract class TypeAxiomBuilder : ICloneable
   }
 
   /// <summary>
-  ///  This method is like Typed2Untyped, except in the case where the given variables
+  ///  This method is like Typed2Untyped, except in the case where the given variable
   ///  doesn't exist in the mapping.  For that case, this method returns null whereas
   ///  Typed2Untyped creates a new variable that it adds to the mapping.
   /// </summary>

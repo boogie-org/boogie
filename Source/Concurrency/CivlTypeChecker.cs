@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using Microsoft.Boogie.GraphUtil;
 
@@ -11,11 +12,11 @@ namespace Microsoft.Boogie
     public Program program;
     public LinearTypeChecker linearTypeChecker;
     public List<int> AllRefinementLayers;
+    public List<int> AllInvariantLayers;
     public ActionDecl SkipActionDecl;
     
     private Dictionary<ActionDecl, Action> actionDeclToAction;
-    private List<Sequentialization> sequentializations;
-    private Dictionary<Implementation, Dictionary<CtorType, Variable>> implToPendingAsyncCollectors;
+    private List<ActionRefinement> actionRefinements;
     private string namePrefix;
 
     public CivlTypeChecker(ConcurrencyOptions options, Program program)
@@ -32,10 +33,13 @@ namespace Microsoft.Boogie
         .Select(actionDecl => actionDecl.LayerRange.UpperLayer);
       this.AllRefinementLayers = yieldingProcRefinementLayers.Union(actionRefinementLayers)
         .OrderBy(layer => layer).Distinct().ToList();
+      var yieldInvariantLayers = program.TopLevelDeclarations.OfType<YieldInvariantDecl>().Select(decl => decl.Layer);
+      var assertionLayers = LayerCollector.Collect(program);
+      this.AllInvariantLayers = yieldingProcRefinementLayers.Union(actionRefinementLayers).Union(yieldInvariantLayers).Union(assertionLayers)
+        .OrderBy(layer => layer).Distinct().ToList();
       
       this.actionDeclToAction = new Dictionary<ActionDecl, Action>();
-      this.sequentializations = new List<Sequentialization>();
-      this.implToPendingAsyncCollectors = new Dictionary<Implementation, Dictionary<CtorType, Variable>>();
+      this.actionRefinements = new List<ActionRefinement>();
 
       IEnumerable<string> declNames = program.TopLevelDeclarations.OfType<NamedDeclaration>().Select(x => x.Name);
       IEnumerable<string> localVarNames = VariableNameCollector.Collect(program);
@@ -52,9 +56,9 @@ namespace Microsoft.Boogie
       }
 
       SkipActionDecl = new ActionDecl(Token.NoToken, AddNamePrefix("Skip"), MoverType.Both, new List<Variable>(),
-        new List<Variable>(), true, new List<ActionDeclRef>(), null, null,
-        new List<Requires>(), new List<CallCmd>(), new List<AssertCmd>(),
-        new List<IdentifierExpr>(), null, null);
+        new List<Variable>(), true, null,
+        new List<Requires>(), new List<IdentifierExpr>(), new List<CallCmd>(), new List<AssertCmd>(),
+        null);
       var skipImplementation = DeclHelper.Implementation(
         SkipActionDecl,
         new List<Variable>(),
@@ -69,7 +73,7 @@ namespace Microsoft.Boogie
         program.AddTopLevelDeclaration(skipImplementation);
       }
       program.TopLevelDeclarations.OfType<YieldProcedureDecl>()
-        .Where(decl => !decl.HasMoverType && decl.RefinedAction == null).ForEach(decl =>
+        .Where(decl => !decl.MoverType.HasValue && decl.RefinedAction == null).ForEach(decl =>
         {
           decl.RefinedAction = new ActionDeclRef(Token.NoToken, SkipActionDecl.Name)
           {
@@ -98,6 +102,26 @@ namespace Microsoft.Boogie
       return VarHelper.Formal($"{namePrefix}{name}", type, incoming);
     }
 
+    public AssignLhs ExprToAssignLhs(Expr expr)
+    {
+      var assignLhs = CmdHelper.ExprToAssignLhs(expr);
+      Debug.Assert(assignLhs != null, "Unexpected expression");
+      ResolveAndTypecheck([assignLhs]);
+      return assignLhs;
+    }
+
+    public void ResolveAndTypecheck(IEnumerable<Absy> absys)
+    {
+      var rc = new ResolutionContext(null, Options);
+      absys.ForEach(absy => absy.Resolve(rc));
+      if (rc.ErrorCount != 0)
+      {
+        return;
+      }
+      var tc = new TypecheckingContext(null, Options);
+      absys.ForEach(absy => absy.Typecheck(tc));
+    }
+
     public void TypeCheck()
     {
       linearTypeChecker.TypeCheck();
@@ -105,7 +129,7 @@ namespace Microsoft.Boogie
       {
         return;
       }
-      
+
       var actionDecls = TypeCheckActions();
       if (checkingContext.ErrorCount > 0)
       {
@@ -120,9 +144,53 @@ namespace Microsoft.Boogie
 
       InlineAtomicActions(actionDecls);
       CreateAtomicActions(actionDecls);
-      CreateSequentializations(actionDecls);
+      CreateActionRefinements(actionDecls);
       AttributeEraser.Erase(this);
-      YieldSufficiencyTypeChecker.TypeCheck(this);
+      YieldSufficiencyChecker.TypeCheck(this);
+    }
+
+    public static List<Requires> InlineYieldRequires(YieldProcedureDecl yieldProcedureDecl, int layerNum)
+    {
+      var requires = new List<Requires>();
+      foreach (var callCmd in yieldProcedureDecl.DesugaredYieldRequires)
+      {
+        var yieldInvariant = (YieldInvariantDecl)callCmd.Proc;
+        if (layerNum == yieldInvariant.Layer)
+        {
+          Dictionary<Variable, Expr> map = yieldInvariant.InParams.Zip(callCmd.Ins)
+            .ToDictionary(x => x.Item1, x => x.Item2);
+          Substitution subst = Substituter.SubstitutionFromDictionary(map);
+          foreach (Requires req in yieldInvariant.Preserves)
+          {
+            requires.Add(new Requires(req.tok, req.Free, Substituter.Apply(subst, req.Condition),
+              null,
+              req.Attributes));
+          }
+        }
+      }
+      return requires;
+    }
+
+    public static List<Ensures> InlineYieldEnsures(YieldProcedureDecl yieldProcedureDecl, int layerNum, bool isFree)
+    {
+      var ensures = new List<Ensures>();
+      foreach (var callCmd in yieldProcedureDecl.DesugaredYieldEnsures)
+      {
+        var yieldInvariant = (YieldInvariantDecl)callCmd.Proc;
+        if (layerNum == yieldInvariant.Layer)
+        {
+          Dictionary<Variable, Expr> map = yieldInvariant.InParams.Zip(callCmd.Ins)
+            .ToDictionary(x => x.Item1, x => x.Item2);
+          Substitution subst = Substituter.SubstitutionFromDictionary(map);
+          foreach (Requires req in yieldInvariant.Preserves)
+          {
+            ensures.Add(new Ensures(req.tok, req.Free || isFree, Substituter.Apply(subst, req.Condition),
+              null,
+              req.Attributes));
+          }
+        }
+      }
+      return ensures;
     }
 
     private HashSet<ActionDecl> TypeCheckActions()
@@ -145,101 +213,9 @@ namespace Microsoft.Boogie
       }
       actionDecls.Where(proc => proc.RefinedAction != null).ForEach(actionDecl =>
       {
-        SignatureMatcher.CheckSequentializationSignature(actionDecl, actionDecl.RefinedAction.ActionDecl,
-          checkingContext);
-        if (actionDecl.InvariantAction != null)
-        {
-          SignatureMatcher.CheckSequentializationSignature(actionDecl, actionDecl.InvariantAction.ActionDecl,
-            checkingContext);
-        }
+        SignatureMatcher.CheckActionRefinementSignature(actionDecl, actionDecl.RefinedAction.ActionDecl, checkingContext);
       });
-      actionDecls.Where(x => x.RefinedAction != null && x.InvariantAction == null)
-        .ForEach(x => TypeCheckInlineSequentializations(x));
       return actionDecls;
-    }
-
-    private void TypeCheckInlineSequentializations(ActionDecl actionDecl)
-    {
-      // compute eliminated actions and  check that there is no async call cycle among eliminated actions
-      var refinedActionCreates = new HashSet<ActionDecl>(actionDecl.RefinedAction.ActionDecl.CreateActionDecls);
-      var refinedActionCreateNames = refinedActionCreates.Select(x => x.Name).ToHashSet();
-      var stack = new Stack<ActionDecl>();
-      var frontier = new HashSet<ActionDecl>(); // hashset representation of stack for efficient membership check
-      var visited = new HashSet<ActionDecl>();
-      void Push(ActionDecl item)
-      {
-        stack.Push(item);
-        frontier.Add(item);
-      }
-      void Pop(ActionDecl item)
-      {
-        stack.Pop();
-        frontier.Remove(item);
-      }
-
-      Push(actionDecl);
-      while (stack.Count != 0)
-      {
-        var item = stack.Peek();
-        if (visited.Contains(item))
-        {
-          Pop(item);
-          continue;
-        }
-        CheckAsyncToSyncSafety(item, refinedActionCreateNames);
-        visited.Add(item);
-        var hitOnStack = item.CreateActionDecls.FirstOrDefault(x => frontier.Contains(x));
-        if (hitOnStack != null)
-        {
-          var callCycle = stack.TakeWhile(elem => elem != hitOnStack).Append(hitOnStack).Select(elem => elem.Name);
-          Error(actionDecl, $"async call cycle detected: {string.Join(",", callCycle)}");
-          break;
-        }
-        Pop(item);
-        item.CreateActionDecls.Except(refinedActionCreates).ForEach(Push);
-      }
-    }
-
-    private void CheckAsyncToSyncSafety(ActionDecl actionDecl, HashSet<string> refinedActionCreateNames)
-    {
-      actionDecl.Impl.Blocks.SelectMany(block => block.Cmds.OfType<CallCmd>().Where(callCmd =>
-        callCmd.Proc.OriginalDeclWithFormals is { Name: "create_asyncs" or "create_multi_asyncs" })).ForEach(callCmd =>
-      {
-        var pendingAsyncType = (CtorType)program.monomorphizer.GetTypeInstantiation(callCmd.Proc)["T"];
-        if (!refinedActionCreateNames.Contains(pendingAsyncType.Decl.Name))
-        {
-          Error(callCmd, "unable to eliminate unbounded pending asyncs without invariant specification");
-        }
-      });
-
-      var graph = Program.GraphFromImpl(actionDecl.Impl, false);
-      var blocksLeadingToModifiedGlobals = new HashSet<Block>();
-      graph.TopologicalSort().ForEach(block =>
-      {
-        var modifiedGlobals = block.TransferCmd is GotoCmd gotoCmd &&
-                              gotoCmd.LabelTargets.Any(x => blocksLeadingToModifiedGlobals.Contains(x));
-        for (int i = block.Cmds.Count - 1; 0 <= i; i--)
-        {
-          var cmd = block.Cmds[i];
-          if (modifiedGlobals && cmd is CallCmd callCmd && callCmd.IsAsync)
-          {
-            var pendingAsyncType = (CtorType)program.monomorphizer.GetTypeInstantiation(callCmd.Proc)["T"];
-            if (!refinedActionCreateNames.Contains(pendingAsyncType.Decl.Name))
-            {
-              Error(callCmd, "unable to eliminate pending async since a global is modified subsequently");
-            }
-          }
-          var assignedVariables = cmd.GetAssignedVariables().ToList();
-          if (assignedVariables.OfType<GlobalVariable>().Any())
-          {
-            modifiedGlobals = true;
-          }
-        }
-        if (modifiedGlobals)
-        {
-          blocksLeadingToModifiedGlobals.Add(block);
-        }
-      });
     }
 
     private void TypeCheckYieldingProcedures()
@@ -254,42 +230,6 @@ namespace Microsoft.Boogie
         if (yieldingProc.RefinedAction != null)
         {
           SignatureMatcher.CheckRefinementSignature(yieldingProc, checkingContext);
-        }
-      }
-      
-      // local collectors for pending asyncs
-      var pendingAsyncProcs = program.TopLevelDeclarations.OfType<ActionDecl>()
-        .Where(proc => proc.MaybePendingAsync).Select(proc => proc.Name).ToHashSet();
-      var pendingAsyncMultisetTypes = program.TopLevelDeclarations.OfType<DatatypeTypeCtorDecl>()
-        .Where(decl => pendingAsyncProcs.Contains(decl.Name)).Select(decl =>
-          TypeHelper.MapType(TypeHelper.CtorType(decl), Type.Int)).ToHashSet();
-      foreach (Implementation impl in program.Implementations.Where(impl => impl.Proc is YieldProcedureDecl))
-      {
-        var proc = (YieldProcedureDecl)impl.Proc;
-        implToPendingAsyncCollectors[impl] = new Dictionary<CtorType, Variable>();
-        foreach (Variable v in impl.LocVars.Where(v => v.HasAttribute(CivlAttributes.PENDING_ASYNC)))
-        {
-          if (!pendingAsyncMultisetTypes.Contains(v.TypedIdent.Type))
-          {
-            Error(v, "pending async collector is of incorrect type");
-          }
-          else if (v.LayerRange.LowerLayer != proc.Layer)
-          {
-            Error(v, "pending async collector must be introduced at the layer of the enclosing procedure");
-          }
-          else
-          {
-            var mapType = (MapType)v.TypedIdent.Type;
-            var ctorType = (CtorType)mapType.Arguments[0];
-            if (implToPendingAsyncCollectors[impl].ContainsKey(ctorType))
-            {
-              Error(v, "duplicate pending async collector");
-            }
-            else
-            {
-              implToPendingAsyncCollectors[impl][ctorType] = v;
-            }
-          }
         }
       }
     }
@@ -335,50 +275,35 @@ namespace Microsoft.Boogie
 
     private void CreateAtomicActions(HashSet<ActionDecl> actionDecls)
     {
-      var invariantActionDecls = actionDecls.Where(decl => decl.InvariantAction != null)
-        .Select(decl => decl.InvariantAction.ActionDecl).ToHashSet();
-
-      // Initialize ActionDecls so that all the pending async machinery is set up.
-      actionDecls.ForEach(proc => proc.Initialize(program.monomorphizer));
-
       // Create all actions that do not refine another action.
       foreach (var actionDecl in actionDecls.Where(proc => proc.RefinedAction == null))
       {
-        actionDeclToAction[actionDecl] = new Action(this, actionDecl, null, invariantActionDecls.Contains(actionDecl));
+        actionDeclToAction[actionDecl] = new Action(this, actionDecl, null);
       }
       
       // Create all atomic actions that refine other actions.
-      actionDecls.Where(proc => proc.RefinedAction != null)
-        .ForEach(decl => CreateActionsThatRefineAnotherAction(decl, invariantActionDecls));
+      actionDecls.Where(proc => proc.RefinedAction != null).ForEach(decl => CreateActionsThatRefineAnotherAction(decl));
     }
     
-    private void CreateActionsThatRefineAnotherAction(ActionDecl actionDecl, HashSet<ActionDecl> invariantActionDecls)
+    private void CreateActionsThatRefineAnotherAction(ActionDecl actionDecl)
     {
       if (actionDeclToAction.ContainsKey(actionDecl))
       {
         return;
       }
-      var refinedProc = actionDecl.RefinedAction.ActionDecl;
-      CreateActionsThatRefineAnotherAction(refinedProc, invariantActionDecls);
-      var refinedAction = actionDeclToAction[refinedProc];
+      var refinedActionDecl = actionDecl.RefinedAction.ActionDecl;
+      CreateActionsThatRefineAnotherAction(refinedActionDecl);
+      var refinedAction = actionDeclToAction[refinedActionDecl];
       actionDeclToAction[actionDecl] =
-        new Action(this, actionDecl, refinedAction, invariantActionDecls.Contains(actionDecl));
+        new Action(this, actionDecl, refinedAction);
     }
 
-    private void CreateSequentializations(HashSet<ActionDecl> actionDecls)
+    private void CreateActionRefinements(HashSet<ActionDecl> actionDecls)
     {
       actionDecls.Where(actionDecl => actionDecl.RefinedAction != null).ForEach(actionDecl =>
       {
         var action = actionDeclToAction[actionDecl];
-        if (actionDecl.InvariantAction == null)
-        {
-          sequentializations.Add(new InlineSequentialization(this, action));
-        }
-        else
-        {
-          var invariantActionDecl = actionDecl.InvariantAction.ActionDecl;
-          sequentializations.Add(new InductiveSequentialization(this, action, actionDeclToAction[invariantActionDecl]));
-        }
+        actionRefinements.Add(new ActionRefinement(this, action));
       });
     }
 
@@ -396,7 +321,7 @@ namespace Microsoft.Boogie
         signatureMatcher.MatchFormals(procOutParams, actionOutParams, SignatureMatcher.OUT);
       }
 
-      public static void CheckSequentializationSignature(Procedure original, Procedure abstraction, CheckingContext checkingContext)
+      public static void CheckActionRefinementSignature(Procedure original, Procedure abstraction, CheckingContext checkingContext)
       {
         // Input and output parameters have to match exactly
         var signatureMatcher = new SignatureMatcher(original, abstraction, checkingContext);
@@ -441,16 +366,9 @@ namespace Microsoft.Boogie
             {
               checkingContext.Error(formals1[i], $"mismatched type of {inout}-parameter {name1} in {decl2.Name}");
             }
-            else if (checkLinearity &&
-                (QKeyValue.FindStringAttribute(formals1[i].Attributes, CivlAttributes.LINEAR) !=
-                 QKeyValue.FindStringAttribute(formals2[i].Attributes, CivlAttributes.LINEAR) ||
-                 QKeyValue.FindStringAttribute(formals1[i].Attributes, CivlAttributes.LINEAR_IN) !=
-                 QKeyValue.FindStringAttribute(formals2[i].Attributes, CivlAttributes.LINEAR_IN) ||
-                 QKeyValue.FindStringAttribute(formals1[i].Attributes, CivlAttributes.LINEAR_OUT) !=
-                 QKeyValue.FindStringAttribute(formals2[i].Attributes, CivlAttributes.LINEAR_OUT)))
+            else if (checkLinearity && LinearTypeChecker.FindLinearKind(formals1[i]) != LinearTypeChecker.FindLinearKind(formals2[i]))
             {
-              checkingContext.Error(formals1[i],
-                $"mismatched linearity annotation of {inout}-parameter {name1} in {decl2.Name}");
+              checkingContext.Error(formals1[i], $"mismatched linearity annotation of {inout}-parameter {name1} in {decl2.Name}");
             }
           }
         }
@@ -466,8 +384,7 @@ namespace Microsoft.Boogie
       return GlobalVariables.Where(v => v.LayerRange.LowerLayer <= layerNum && layerNum < v.LayerRange.UpperLayer);
     }
 
-    public IEnumerable<Action> MoverActions => actionDeclToAction.Keys
-      .Where(actionDecl => actionDecl.HasMoverType).Select(actionDecl => actionDeclToAction[actionDecl]);
+    public IEnumerable<Action> MoverActions => actionDeclToAction.Keys.Select(actionDecl => actionDeclToAction[actionDecl]);
 
     public IEnumerable<Action> AtomicActions => actionDeclToAction.Values;
 
@@ -476,12 +393,7 @@ namespace Microsoft.Boogie
       return actionDeclToAction[actionDecl];
     }
     
-    public IEnumerable<Sequentialization> Sequentializations => sequentializations;
-
-    public Dictionary<CtorType, Variable> PendingAsyncCollectors(Implementation impl)
-    {
-      return implToPendingAsyncCollectors[impl];
-    }
+    public IEnumerable<ActionRefinement> ActionRefinements => actionRefinements;
 
     public void Error(Absy node, string message)
     {
@@ -492,7 +404,7 @@ namespace Microsoft.Boogie
 
     private class VariableNameCollector : ReadOnlyVisitor
     {
-      private HashSet<string> localVarNames = new HashSet<string>();
+      private HashSet<string> localVarNames = [];
 
       public static HashSet<string> Collect(Program program)
       {
@@ -505,6 +417,54 @@ namespace Microsoft.Boogie
       {
         localVarNames.Add(node.Name);
         return node;
+      }
+    }
+
+    private class LayerCollector : ReadOnlyVisitor
+    {
+      private HashSet<int> layers = [];
+
+      public static HashSet<int> Collect(Program program)
+      {
+        var collector = new LayerCollector();
+        collector.VisitProgram(program);
+        return collector.layers;
+      }
+
+      public override Procedure VisitProcedure(Procedure node)
+      {
+        if (node is not YieldProcedureDecl)
+        {
+          return node;
+        }
+        return base.VisitProcedure(node);
+      }
+
+      public override Implementation VisitImplementation(Implementation node)
+      {
+        if (node.Proc is not YieldProcedureDecl)
+        {
+          return node;
+        }
+        return base.VisitImplementation(node);
+      }
+
+      public override Cmd VisitAssertCmd(AssertCmd node)
+      {
+        layers.UnionWith(node.Layers);
+        return base.VisitAssertCmd(node);
+      }
+
+      public override Requires VisitRequires(Requires requires)
+      {
+        layers.UnionWith(requires.Layers);
+        return base.VisitRequires(requires);
+      }
+
+      public override Ensures VisitEnsures(Ensures ensures)
+      {
+        layers.UnionWith(ensures.Layers);
+        return base.VisitEnsures(ensures);
       }
     }
     

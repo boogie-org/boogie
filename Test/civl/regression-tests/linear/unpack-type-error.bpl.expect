@@ -1,0 +1,2 @@
+unpack-type-error.bpl(28,0): Error: output variable l' must be available at a return
+1 type checking errors detected in unpack-type-error.bpl

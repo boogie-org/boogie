@@ -238,41 +238,38 @@ namespace Microsoft.Boogie
 
     public static AssertCmd AssertCmd(IToken tok, Expr expr, string msg)
     {
-      return new AssertCmd(tok, expr)
-        { Description = new FailureOnlyDescription(msg) };
+      return new AssertCmd(tok, expr){ Description = new FailureOnlyDescription(msg) };
+    }
+
+    public static AssertRequiresCmd AssertGateCmd(IToken tok, CallCmd callCmd, Expr expr)
+    {
+      callCmd.Description = new ActionGateCheckDescription();
+      var requires = new Requires(tok, false, expr){ Description = new ActionGateDescription() };
+      return new AssertRequiresCmd(callCmd, requires);
     }
 
     public static SimpleAssignLhs SimpleAssignLhs(Variable v)
     {
       return new SimpleAssignLhs(Token.NoToken, Expr.Ident(v));
     }
-
-    public static FieldAssignLhs FieldAssignLhs(AssignLhs path, string fieldName)
-    {
-      return new FieldAssignLhs(Token.NoToken, path, new FieldAccess(Token.NoToken, fieldName));
-    }
-    
-    public static FieldAssignLhs FieldAssignLhs(Expr path, string fieldName)
-    {
-      return new FieldAssignLhs(Token.NoToken, ExprToAssignLhs(path), new FieldAccess(Token.NoToken, fieldName));
-    }
     
     public static AssignLhs ExprToAssignLhs(Expr e)
     {
       if (e is IdentifierExpr ie)
       {
-        return SimpleAssignLhs(ie.Decl);
+        return new SimpleAssignLhs(e.tok, Expr.Ident(ie.Decl));
       }
       var naryExpr = (NAryExpr)e;
       if (naryExpr.Fun is FieldAccess fieldAccess)
       {
-        return FieldAssignLhs(naryExpr.Args[0], fieldAccess.FieldName);
+        var datatype = ExprToAssignLhs(naryExpr.Args[0]);
+        return datatype == null ? null : new FieldAssignLhs(fieldAccess.tok, datatype, new FieldAccess(fieldAccess.FieldName));
       }
       if (naryExpr.Fun is MapSelect)
       {
-        return new MapAssignLhs(Token.NoToken, ExprToAssignLhs(naryExpr.Args[0]), naryExpr.Args.ToList().GetRange(1, naryExpr.Args.Count - 1));
+        var map = ExprToAssignLhs(naryExpr.Args[0]);
+        return map == null ? null : new MapAssignLhs(naryExpr.tok, map, naryExpr.Args.ToList().GetRange(1, naryExpr.Args.Count - 1));
       }
-      Contract.Assume(false, "Unexpected expression");
       return null;
     }
     
@@ -323,10 +320,10 @@ namespace Microsoft.Boogie
   {
     public static Procedure Procedure(string name,
       List<Variable> inParams, List<Variable> outParams,
-      List<Requires> requires, List<IdentifierExpr> modifies, List<Ensures> ensures,
+      List<Requires> requires, List<Requires> preserves, List<Ensures> ensures, List<MeasureCmd> measureCmds, List<IdentifierExpr> modifies,
       QKeyValue kv = null)
     {
-      return new Procedure(Token.NoToken, name, new List<TypeVariable>(), inParams, outParams, false, requires, modifies, ensures, kv);
+      return new Procedure(Token.NoToken, name, new List<TypeVariable>(), inParams, outParams, false, requires, preserves, ensures, measureCmds, modifies, kv);
     }
 
     public static Implementation Implementation(Procedure proc,

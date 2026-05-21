@@ -11,4 +11,10 @@ ensures {:layer 1} g > 0;
 atomic action {:layer 1,2} B()
 requires {:layer 1} g > 0;
 requires {:layer 2} g > 0;
-{}
+{ }
+
+yield invariant {:layer 1} YieldInv();
+
+atomic action {:layer 1} C()
+requires call YieldInv();
+{ }

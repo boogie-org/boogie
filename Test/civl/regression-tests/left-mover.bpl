@@ -31,3 +31,8 @@ asserts {:add_to_pool "A", i+1} true;
 {
   assume j > i;
 }
+
+pure action intro (k: int)
+{
+  assume k == 0;
+}

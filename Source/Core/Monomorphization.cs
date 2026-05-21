@@ -1691,12 +1691,15 @@ namespace Microsoft.Boogie
         var variableMapping = proc.InParams.Union(proc.OutParams).MapTo(instantiatedInParams.Union(instantiatedOutParams));
         var requires = proc.Requires.Select(requires => new Requires(requires.tok, requires.Free,
           (Expr) InstantiateAbsy(requires.Condition, procTypeParamInstantiation, variableMapping), requires.Comment)).ToList();
+        var preserves = proc.Preserves.Select(preserves => new Requires(preserves.tok, preserves.Free,
+          (Expr) InstantiateAbsy(preserves.Condition, procTypeParamInstantiation, variableMapping), preserves.Comment)).ToList();
         var modifies = proc.Modifies.Select(ie =>
           (IdentifierExpr) InstantiateAbsy(ie, procTypeParamInstantiation, variableMapping)).ToList();
         var ensures = proc.Ensures.Select(ensures => new Ensures(ensures.tok, ensures.Free,
           (Expr) InstantiateAbsy(ensures.Condition, procTypeParamInstantiation, variableMapping), ensures.Comment)).ToList();
+        var measure = proc.MeasureCmds.Select(measureCmd => new MeasureCmd(measureCmd.tok, measureCmd.Expressions.Select(expr => (Expr)InstantiateAbsy(expr, procTypeParamInstantiation, variableMapping)).ToList(), measureCmd.Attributes == null ? null : VisitQKeyValue(measureCmd.Attributes))).ToList();
         var instantiatedProc = new Procedure(proc.tok, MkInstanceName(proc.Name, actualTypeParams),
-          new List<TypeVariable>(), instantiatedInParams, instantiatedOutParams, proc.IsPure, requires, modifies, ensures,
+          new List<TypeVariable>(), instantiatedInParams, instantiatedOutParams, proc.IsPure, requires, preserves, ensures, measure, modifies,
           proc.Attributes == null ? null : VisitQKeyValue(proc.Attributes));
         instantiatedProc.OriginalDeclWithFormals = proc;
         newInstantiatedDeclarations.Add(instantiatedProc);
@@ -2053,6 +2056,15 @@ namespace Microsoft.Boogie
     public static TypeCtorDecl GetOriginalDecl(TypeCtorDecl decl)
     {
       return decl.OriginalTypeCtorDecl ?? decl;
+    }
+
+    public static TypeCtorDecl GetOriginalDecl(Type type)
+    {
+      if (type is CtorType ctorType)
+      {
+        return GetOriginalDecl(ctorType.Decl);
+      }
+      return null;
     }
     
     public List<Type> GetTypeInstantiation(TypeCtorDecl decl)

@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
 using Microsoft.BaseTypes;
-using Set = Microsoft.Boogie.GSet<object>; // not that the set used is not a set of Variable only, as it also contains TypeVariables
+using Set = Microsoft.Boogie.GSet<object>; // note that the set used is not a set of Variable only, as it also contains TypeVariables
 
 namespace Microsoft.Boogie
 {
@@ -499,7 +499,6 @@ namespace Microsoft.Boogie
         return false_;
       }
     }
-
 
     public static NAryExpr Select(Expr map, params Expr[] args)
     {
@@ -1357,28 +1356,31 @@ namespace Microsoft.Boogie
             {
               tc.Error(this, $"global variable must be accessed inside old expression: {Decl.Name}");
             }
-            var globalVarLayerRange = Decl.LayerRange;
-            if (actionDecl.LayerRange.LowerLayer <= globalVarLayerRange.LowerLayer)
-            {
-              // a global variable introduced at layer n is visible to an action only at layers greater than n
-              tc.Error(this,
-                $"global variable must be introduced below the lower layer {actionDecl.LayerRange.LowerLayer} of action {actionDecl.Name}: {Decl.Name}");
-            }
             else
             {
-              if (tc.ExpectedLayerRange == null)
+              var globalVarLayerRange = Decl.LayerRange;
+              if (actionDecl.LayerRange.LowerLayer <= globalVarLayerRange.LowerLayer)
               {
-                if (!actionDecl.LayerRange.Subset(globalVarLayerRange))
-                {
-                  tc.Error(this,
-                    $"global variable must be available across all layers ({actionDecl.LayerRange}) of action {actionDecl.Name}: {Decl.Name}");
-                }
+                // a global variable introduced at layer n is visible to an action only at layers greater than n
+                tc.Error(this,
+                  $"global variable must be introduced below the lower layer {actionDecl.LayerRange.LowerLayer} of action {actionDecl.Name}: {Decl.Name}");
               }
               else
               {
-                if (!tc.ExpectedLayerRange.Subset(globalVarLayerRange))
+                if (tc.ExpectedLayerRange == null)
                 {
-                  tc.Error(this, $"global variable must be available across all layers in {tc.ExpectedLayerRange}: {Decl.Name}");
+                  if (!actionDecl.LayerRange.Subset(globalVarLayerRange))
+                  {
+                    tc.Error(this,
+                      $"global variable must be available across all layers ({actionDecl.LayerRange}) of action {actionDecl.Name}: {Decl.Name}");
+                  }
+                }
+                else
+                {
+                  if (!tc.ExpectedLayerRange.Subset(globalVarLayerRange))
+                  {
+                    tc.Error(this, $"global variable must be available across all layers in {tc.ExpectedLayerRange}: {Decl.Name}");
+                  }
                 }
               }
             }
@@ -1391,6 +1393,11 @@ namespace Microsoft.Boogie
             if (!Decl.LayerRange.Contains(yieldInvariantDecl.Layer))
             {
               tc.Error(this, $"variable not available at layer {yieldInvariantDecl.Layer}: {Decl.Name}");
+            }
+            else if (yieldInvariantDecl.IsGlobal && Decl.LayerRange.LowerLayer == yieldInvariantDecl.Layer)
+            {
+              tc.Error(this,
+                $"global invariant at layer {yieldInvariantDecl.Layer} cannot refer to a global variable introduced at the same layer: {Decl.Name}");
             }
           }
         }
@@ -2581,13 +2588,13 @@ namespace Microsoft.Boogie
 
           break;
         case Opcode.RealDiv:
-          // TODO: add partial evaluation fro real division
+          // TODO: add partial evaluation for real division
           break;
         case Opcode.FloatDiv:
           //TODO: add float division
           break;
         case Opcode.Pow:
-          // TODO: add partial evaluation fro real exponentiation
+          // TODO: add partial evaluation for real exponentiation
           break;
         case Opcode.Lt:
           if (e1 is BigNum && e2 is BigNum)
@@ -3103,7 +3110,7 @@ namespace Microsoft.Boogie
       Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
       Contract.Assume(args.Count == Arity + 1);
 
-      // FIXME: Wny are we passing a copy?
+      // FIXME: Why are we passing a copy?
       List<Expr> actualArgs = new List<Expr>();
       for (int i = 1; i < args.Count; ++i)
       {
@@ -3234,7 +3241,7 @@ namespace Microsoft.Boogie
         MapSelect.Typecheck(Cce.NonNull(Cce.NonNull(args[0]).Type), Cce.NonNull(args[0]),
           selectArgs, out tpInstantiation, tc, typeCheckingSubject, opName);
 
-      // check the the rhs has the right type
+      // check the rhs has the right type
       if (resultType == null)
       {
         // error messages have already been created by MapSelect.Typecheck
@@ -3439,11 +3446,15 @@ namespace Microsoft.Boogie
       this.tok = tok;
       this.FieldName = fieldName;
     }
+
+    public FieldAccess(string fieldName)
+      : this(Token.NoToken, fieldName)
+    {
+    }
     
     public FieldAccess(IToken tok, string fieldName, DatatypeTypeCtorDecl datatypeTypeCtorDecl, List<DatatypeAccessor> accessors)
+      : this(tok, fieldName)
     {
-      this.tok = tok;
-      this.FieldName = fieldName;
       this.DatatypeTypeCtorDecl = datatypeTypeCtorDecl;
       this.Accessors = accessors;
     }
@@ -3879,7 +3890,7 @@ namespace Microsoft.Boogie
 
     public override void ComputeFreeVariables(Set /*Variable*/ freeVars)
     {
-      // Treat a BlockEexpr as if it has no free variables at all
+      // Treat a BlockExpr as if it has no free variables at all
     }
 
     public override void Emit(TokenTextWriter stream, int contextBindingStrength, bool fragileContext)
@@ -4284,6 +4295,10 @@ namespace Microsoft.Boogie
           E1.Type.Unify(new BvTypeProxy(this.tok, "concat1", 0)))
       {
         Type = new BvTypeProxy(this.tok, "concat", E0.Type, E1.Type);
+        if (TypeProxy.FollowProxy(E0.Type) is BvType && TypeProxy.FollowProxy(E1.Type) is BvType)
+        {
+          Type = Type.GetBvType(E0.Type.BvBits + E1.Type.BvBits);
+        }
       }
       else
       {

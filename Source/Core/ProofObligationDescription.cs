@@ -39,6 +39,28 @@ public class AssertionDescription : ProofObligationDescription
   public override string ShortDescription => "assert";
 }
 
+public class ActionGateCheckDescription : ProofObligationDescription
+{
+  public override string SuccessDescription =>
+    "all assertions hold for this call";
+
+  public override string FailureDescription =>
+    "an assertion for this call could not be proved";
+
+  public override string ShortDescription => "assert";
+}
+
+public class ActionGateDescription : ProofObligationDescription
+{
+  public override string SuccessDescription =>
+    "this assertion holds";
+
+  public override string FailureDescription =>
+    "this is the assertion that could not be proved";
+
+  public override string ShortDescription => "assert";
+}
+
 public class PreconditionDescription : ProofObligationDescription
 {
   public override string SuccessDescription =>
@@ -48,6 +70,28 @@ public class PreconditionDescription : ProofObligationDescription
     "a precondition for this call could not be proved";
 
   public override string ShortDescription => "precondition";
+}
+
+public class MeasureDecreasesDescription : ProofObligationDescription
+{
+  public override string SuccessDescription =>
+    "measure decreases";
+
+  public override string FailureDescription =>
+    "measure could not be proved to decrease";
+
+  public override string ShortDescription => "measure decreases";
+}
+
+public class MeasureNonNegativeDescription : ProofObligationDescription
+{
+  public override string SuccessDescription =>
+    "this measure is non-negative";
+
+  public override string FailureDescription =>
+    "this measure could not be proved to be non-negative";
+
+  public override string ShortDescription => "measure non-negative";
 }
 
 public class RequiresDescription : ProofObligationDescription

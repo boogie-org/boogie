@@ -1,0 +1,3 @@
+global-invariant-layer-fail.bpl(7,10): Error: global invariant at layer 1 cannot refer to a global variable introduced at the same layer: x
+global-invariant-layer-fail.bpl(10,10): Error: variable not available at layer 3: x
+2 type checking errors detected in global-invariant-layer-fail.bpl

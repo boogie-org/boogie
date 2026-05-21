@@ -11,7 +11,7 @@ have been built in this way, including the
 and the verifiers for [Dafny](https://github.com/dafny-lang/dafny),
 [Chalice](https://www.microsoft.com/en-us/research/project/chalice),
 [Spec#](https://www.microsoft.com/en-us/research/project/spec), 
-and [Move](https://github.com/Move/move).
+and [Move](https://github.com/move-language/move).
 For a sample verifier for a toy language built on top of Boogie, see
 [Forro](https://github.com/boogie-org/forro).
 
@@ -37,12 +37,12 @@ We are happy to receive contributions via [pull requests](https://github.com/boo
 
 ## Dependencies
 
-Boogie requires [.NET Core](https://dotnet.microsoft.com) and a supported SMT
+Boogie requires [.NET](https://dotnet.microsoft.com) and a supported SMT
 solver (see [below](#backend-smt-solver)).
 
 ## Installation
 
-Boogie releases are packaged as a .NET Core global tool available at
+Boogie releases are packaged as a .NET global tool available at
 [nuget.org][nuget]. To install Boogie simply run:
 
 ```
@@ -92,7 +92,7 @@ not work for quantifiers, generalized arrays, datatypes.
 
 ## Testing
 
-Boogie has two forms of tests. Driver tests and unit tests
+Boogie has two forms of tests: driver tests and unit tests.
 
 ### Driver tests
 

@@ -1,12 +1,13 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-type {:linear} X;
+
+type X;
 const nil: X;
 
 var {:layer 0,3} A: X;
 var {:layer 0,3} B: X;
 var {:layer 0,3} counter: int;
-var {:layer 0,3}{:linear} unallocated: Set X;
+var {:layer 0,3}{:linear} unallocated: UnitMap (One X);
 
 right action {:layer 1,3} AtomicLockA({:linear} tid: One X)
 modifies A;
@@ -79,9 +80,8 @@ refines AtomicAssertB;
 right action {:layer 1,3} AtomicAllocTid() returns ({:linear} tid: One X)
 modifies unallocated;
 {
-  var x: X;
-  assume x != nil && Set_Contains(unallocated, x);
-  call tid := One_Get(unallocated, x);
+  assume Map_Contains(unallocated, tid) && tid->val != nil;
+  call One_Get(unallocated, tid);
 }
 
 yield procedure {:layer 0} AllocTid() returns ({:linear} tid: One X);
@@ -147,7 +147,7 @@ yield procedure {:layer 3} main({:linear} tid: One X)
 requires {:layer 3} tid->val != nil;
 requires call YieldCounter();
 {
-    var {:linear} cid: One X;
+    var cid: One X;
 
     while (*)
     invariant {:yields} true;
@@ -157,12 +157,12 @@ requires call YieldCounter();
             call cid := AllocTid();
             async call TA(cid);
         }
-        par Yield() | YieldCounter();
+        call Yield() | YieldCounter();
         if (*) {
             call cid := AllocTid();
             async call AbsTB(cid);
         }
-        par Yield() | YieldCounter();
+        call Yield() | YieldCounter();
         call LockA(tid);
         call AbsAssertA(tid);
         call LockB(tid);
@@ -175,4 +175,4 @@ requires call YieldCounter();
 yield procedure {:layer 2} Yield();
 
 yield invariant {:layer 3} YieldCounter();
-invariant counter == 0;
+preserves counter == 0;

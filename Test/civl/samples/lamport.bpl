@@ -106,8 +106,8 @@ function {:inline} ind_inv(done: [int]bool, y: [int]int, x: [int]int): bool
 }
 
 yield invariant {:layer 1} yield_ind_inv();
-invariant ind_inv(done, y, x);
+preserves ind_inv(done, y, x);
 
 yield invariant {:layer 1} Yield(i: int);
-invariant x[i] == 1;
-invariant ind_inv(done, y, x);
+preserves x[i] == 1;
+preserves ind_inv(done, y, x);

@@ -82,12 +82,10 @@ namespace Microsoft.Boogie
   {
     public const string LAYER = "layer";
     public const string YIELDS = "yields";
-    public const string MARK = "mark";
     public const string HIDE = "hide";
-    public const string PENDING_ASYNC = "pending_async";
     public const string SYNC = "sync";
 
-    private static string[] CIVL_ATTRIBUTES = { LAYER, YIELDS, MARK, HIDE, PENDING_ASYNC, SYNC };
+    private static string[] CIVL_ATTRIBUTES = { LAYER, YIELDS, HIDE, SYNC };
 
     public const string LINEAR = "linear";
     public const string LINEAR_IN = "linear_in";
@@ -170,11 +168,6 @@ namespace Microsoft.Boogie
       RemoveAttributes(obj, LINEAR_ATTRIBUTES);
     }
 
-    public static bool IsCallMarked(CallCmd callCmd)
-    {
-      return callCmd.HasAttribute(MARK);
-    }
-
     public static QKeyValue ApplySubstitutionToPoolHints(Substitution incarnationSubst, QKeyValue attributes)
     {
       if (attributes == null)
@@ -214,10 +207,10 @@ namespace Microsoft.Boogie
   {
     public static HashSet<string> LinearPrimitives = new()
     {
-      "Loc_New", "TaggedLocSet_New",
-      "Map_MakeEmpty", "Map_Pack", "Map_Unpack", "Map_Split", "Map_Join",
-      "Map_Get", "Map_Put", "Map_GetValue", "Map_PutValue",
-      "Set_MakeEmpty", "Set_Split", "Set_Get", "Set_Put", "One_Split", "One_Get", "One_Put"
+      "Loc_New", "Tag_New", "Tags_New", "Move",
+      "Map_MakeEmpty", "Map_Get", "Map_Put", "Map_Split", "Map_Join",
+      "One_Get", "One_Put",
+      "Path_Load", "Path_Store",
     };
 
     public static bool IsPrimitive(DeclWithFormals decl)
@@ -246,20 +239,15 @@ namespace Microsoft.Boogie
       switch (Monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
       {
         case "Loc_New":
-        case "TaggedLocSet_New":
-        case "Set_MakeEmpty":
+        case "Tag_New":
+        case "Tags_New":
         case "Map_MakeEmpty":
-        case "Map_Pack":
-        case "Map_Unpack":
+        case "Move":
+        case "Path_Load":
           return null;
         default:
           return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
       }
     }
-
-    public static HashSet<string> Async = new()
-    {
-      "create_asyncs", "create_multi_asyncs", "set_choice"
-    };
   }
 }

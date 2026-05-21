@@ -3,10 +3,10 @@
 
 datatype Perm { Left(i: int), Right(i: int) }
 
-datatype Tid { Tid(i: int, {:linear} ps: Set Perm) }
+datatype Tid { Tid(i: int, ps: UnitMap (One Perm)) }
 
 function {:inline} All(i: int): Tid {
-    Tid(i, Set_Add(Set_Singleton(Left(i)), Right(i)))
+    Tid(i, Map_Update(Map_Singleton(One(Left(i)), Unit()), One(Right(i)), Unit()))
 }
 
 const N: int;
@@ -15,13 +15,13 @@ function {:inline} IsMutator(i: int) : bool
 {
     1 <= i && i <= N
 }
-const Mutators: Set Perm;
-axiom Mutators->val == (lambda p: Perm:: p is Left && IsMutator(p->i));
-axiom Set_Size(Mutators) == N;
+const Mutators: UnitMap (One Perm);
+axiom Mutators->dom == (lambda p: One Perm:: p->val is Left && IsMutator(p->val->i));
+axiom Set_Size(Mutators->dom) == N;
 
 var {:layer 0,1} barrierOn: bool;
 var {:layer 0,1} barrierCounter: int;
-var {:layer 0,1} {:linear} mutatorsInBarrier: Set Perm;
+var {:layer 0,1} {:linear} mutatorsInBarrier: UnitMap (One Perm);
 
 atomic action {:layer 1} AtomicIsBarrierOn() returns (b: bool)
 {
@@ -33,13 +33,14 @@ refines AtomicIsBarrierOn;
 atomic action {:layer 1} AtomicEnterBarrier({:linear_in} tid: Tid) returns ({:linear} tid': Tid)
 modifies barrierCounter, mutatorsInBarrier;
 {
-    var {:linear} p: One Perm;
+    var p: One Perm;
     var i: int;
 
     i := tid->i;
     assert IsMutator(i);
     tid' := tid;
-    call p := One_Get(tid'->ps, Left(i));
+    p := One(Left(i));
+    call One_Get(tid'->ps, p);
     call One_Put(mutatorsInBarrier, p);
     barrierCounter := barrierCounter - 1;
 }
@@ -49,14 +50,15 @@ refines AtomicEnterBarrier;
 atomic action {:layer 1} AtomicWaitForBarrierRelease({:linear_in} tid: Tid) returns ({:linear} tid': Tid)
 modifies barrierCounter, mutatorsInBarrier;
 {
-    var {:linear} p: One Perm;
+    var p: One Perm;
     var i: int;
 
     i := tid->i;
-    assert Set_Contains(tid->ps, Right(i));
-    assert Set_Contains(mutatorsInBarrier, Left(i));
+    assert Map_Contains(tid->ps, One(Right(i)));
+    assert Map_Contains(mutatorsInBarrier, One(Left(i)));
     assume !barrierOn;
-    call p := One_Get(mutatorsInBarrier, Left(i));
+    p := One(Left(i));
+    call One_Get(mutatorsInBarrier, p);
     tid' := tid;
     call One_Put(tid'->ps, p);
     barrierCounter := barrierCounter + 1;
@@ -85,14 +87,14 @@ preserves call BarrierInv();
 {
     var b: bool;
     var i: int;
-    var {:linear} tid': Tid;
+    var tid': Tid;
 
     call b := IsBarrierOn();
     if (b) {
         i := tid->i;
         call BarrierInv();
         call tid' := EnterBarrier(tid);
-        par BarrierInv() | MutatorInv(tid');
+        call BarrierInv() | MutatorInv(tid');
         call tid' := WaitForBarrierRelease(tid');
         call Move(tid', tid);
     }
@@ -104,23 +106,23 @@ requires {:layer 1} tid == All(0);
 preserves call BarrierInv();
 {
     call SetBarrier(true);
-    par BarrierInv() | CollectorInv(tid, false);
+    call BarrierInv() | CollectorInv(tid, false);
     call WaitBarrier();
-    call {:layer 1} Lemma_SubsetSize(mutatorsInBarrier, Mutators);
-    par BarrierInv() | CollectorInv(tid, true);
+    call {:layer 1} Lemma_SetSize_Subset(mutatorsInBarrier->dom, Mutators->dom);
+    call BarrierInv() | CollectorInv(tid, true);
     // do root scan here
     assert {:layer 1} mutatorsInBarrier == Mutators;
     call SetBarrier(false);
 }
 
 yield invariant {:layer 1} BarrierInv();
-invariant Set_IsSubset(mutatorsInBarrier, Mutators);
-invariant Set_Size(mutatorsInBarrier) + barrierCounter == N;
+preserves Set_IsSubset(mutatorsInBarrier->dom, Mutators->dom);
+preserves Set_Size(mutatorsInBarrier->dom) + barrierCounter == N;
 
 yield invariant {:layer 1} MutatorInv({:linear} tid: Tid);
-invariant Set_Contains(tid->ps, Right(tid->i));
-invariant Set_Contains(mutatorsInBarrier, Left(tid->i));
+preserves Map_Contains(tid->ps, One(Right(tid->i)));
+preserves Map_Contains(mutatorsInBarrier, One(Left(tid->i)));
 
 yield invariant {:layer 1} CollectorInv({:linear} tid: Tid, done: bool);
-invariant tid == All(0) && barrierOn;
-invariant done ==> mutatorsInBarrier == Mutators;
+preserves tid == All(0) && barrierOn;
+preserves done ==> mutatorsInBarrier == Mutators;

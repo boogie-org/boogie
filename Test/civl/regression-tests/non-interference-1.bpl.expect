@@ -4,4 +4,4 @@ Execution trace:
     non-interference-1.bpl(12,5): inline$AtomicIncr$0$anon0
     (0,0): inline$Civl_NoninterferenceChecker_yield_Yield$0$L
 
-Boogie program verifier finished with 4 verified, 1 error
+Boogie program verifier finished with 9 verified, 1 error

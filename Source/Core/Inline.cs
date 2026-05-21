@@ -261,7 +261,7 @@ namespace Microsoft.Boogie
         // FIXME
         // noop.
         // This is required because during the resolution, some resolution errors happen
-        // (such as the ones caused addion of loop invariants J_(block.Label) by the AI package
+        // (such as the ones caused addition of loop invariants J_(block.Label) by the AI package
       }
     }
 

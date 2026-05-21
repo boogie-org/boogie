@@ -1,79 +1,146 @@
-datatype Node<T> { Node(next: Option (Loc (Node T)), val: T) }
-type LocNode T = Loc (Node T);
+datatype Node<T> { Node(next: Option Loc, val: T) }
 
-function Between<T>(f: [Loc (Node T)]Node T, x: Option (Loc (Node T)), y: Option (Loc (Node T)), z: Option (Loc (Node T))): bool;
-function Avoiding<T>(f: [Loc (Node T)]Node T, x: Option (Loc (Node T)), y: Option (Loc (Node T)), z: Option (Loc (Node T))): bool;
-function {:inline} BetweenSet<T>(f:[Loc (Node T)]Node T, x: Option (Loc (Node T)), z: Option (Loc (Node T))): [Loc (Node T)]bool
+function Between<T>(f: [One Loc]Node T, x: Option Loc, y: Option Loc, z: Option Loc): bool;
+function Avoiding<T>(f: [One Loc]Node T, x: Option Loc, y: Option Loc, z: Option Loc): bool;
+function {:inline} BetweenSet<T>(f:[One Loc]Node T, x: Option Loc, z: Option Loc): [Loc]bool
 {
-  (lambda y: Loc (Node T) :: Between(f, x, Some(y), z))
+  (lambda y: Loc :: Between(f, x, Some(y), z))
 }
 
 // reflexive
-axiom {:ctor "Node"} (forall<T> f: [Loc (Node T)]Node T, x: Option (Loc (Node T)) :: Between(f, x, x, x));
+axiom {:ctor "Node"} (forall<T> f: [One Loc]Node T, x: Option Loc :: Between(f, x, x, x));
 
 // step
-axiom {:ctor "Node"} (forall<T> f: [Loc (Node T)]Node T, x: Loc (Node T) ::
-  {f[x]} 
-  Between(f, Some(x), f[x]->next, f[x]->next));
+axiom {:ctor "Node"} (forall<T> f: [One Loc]Node T, x: Loc ::
+  {f[One(x)]}
+  Between(f, Some(x), f[One(x)]->next, f[One(x)]->next));
 
 // reach
-axiom {:ctor "Node"} (forall<T> f: [Loc (Node T)]Node T, x: Loc (Node T), y: Option (Loc (Node T)) ::
-  {f[x], Between(f, Some(x), y, y)} 
-  Between(f, Some(x), y, y) ==> Some(x) == y || Between(f, Some(x), f[x]->next, y));
+axiom {:ctor "Node"} (forall<T> f: [One Loc]Node T, x: Loc, y: Option Loc ::
+  {f[One(x)], Between(f, Some(x), y, y)}
+  Between(f, Some(x), y, y) ==> Some(x) == y || Between(f, Some(x), f[One(x)]->next, y));
 
 // cycle
-axiom {:ctor "Node"} (forall<T> f: [Loc (Node T)]Node T, x: Loc (Node T), y: Option (Loc (Node T)) ::
-  {f[x], Between(f, Some(x), y, y)} 
-  f[x]->next == Some(x) && Between(f, Some(x), y, y) ==> Some(x) == y);
+axiom {:ctor "Node"} (forall<T> f: [One Loc]Node T, x: Loc, y: Option Loc ::
+  {f[One(x)], Between(f, Some(x), y, y)}
+  f[One(x)]->next == Some(x) && Between(f, Some(x), y, y) ==> Some(x) == y);
 
 // sandwich
-axiom {:ctor "Node"} (forall<T> f: [Loc (Node T)]Node T, x: Option (Loc (Node T)), y: Option (Loc (Node T)) ::
-  {Between(f, x, y, x)} 
+axiom {:ctor "Node"} (forall<T> f: [One Loc]Node T, x: Option Loc, y: Option Loc ::
+  {Between(f, x, y, x)}
   Between(f, x, y, x) ==> x == y);
 
 // order1
-axiom {:ctor "Node"} (forall<T> f: [Loc (Node T)]Node T, x: Option (Loc (Node T)), y: Option (Loc (Node T)), z: Option (Loc (Node T)) ::
-  {Between(f, x, y, y), Between(f, x, z, z)} 
+axiom {:ctor "Node"} (forall<T> f: [One Loc]Node T, x: Option Loc, y: Option Loc, z: Option Loc ::
+  {Between(f, x, y, y), Between(f, x, z, z)}
   Between(f, x, y, y) && Between(f, x, z, z) ==> Between(f, x, y, z) || Between(f, x, z, y));
 
 // order2
-axiom {:ctor "Node"} (forall<T> f: [Loc (Node T)]Node T, x: Option (Loc (Node T)), y: Option (Loc (Node T)), z: Option (Loc (Node T)) ::
-  {Between(f, x, y, z)} 
+axiom {:ctor "Node"} (forall<T> f: [One Loc]Node T, x: Option Loc, y: Option Loc, z: Option Loc ::
+  {Between(f, x, y, z)}
   Between(f, x, y, z) ==> Between(f, x, y, y) && Between(f, y, z, z));
 
 // transitive1
-axiom {:ctor "Node"} (forall<T> f: [Loc (Node T)]Node T, x: Option (Loc (Node T)), y: Option (Loc (Node T)), z: Option (Loc (Node T)) ::
-  {Between(f, x, y, y), Between(f, y, z, z)} 
+axiom {:ctor "Node"} (forall<T> f: [One Loc]Node T, x: Option Loc, y: Option Loc, z: Option Loc ::
+  {Between(f, x, y, y), Between(f, y, z, z)}
   Between(f, x, y, y) && Between(f, y, z, z) ==> Between(f, x, z, z));
 
 // transitive2
-axiom {:ctor "Node"} (forall<T> f: [Loc (Node T)]Node T, x: Option (Loc (Node T)), y: Option (Loc (Node T)), z: Option (Loc (Node T)), w: Option (Loc (Node T)) ::
-  {Between(f, x, y, z), Between(f, y, w, z)} 
+axiom {:ctor "Node"} (forall<T> f: [One Loc]Node T, x: Option Loc, y: Option Loc, z: Option Loc, w: Option Loc ::
+  {Between(f, x, y, z), Between(f, y, w, z)}
   Between(f, x, y, z) && Between(f, y, w, z) ==> Between(f, x, y, w) && Between(f, x, w, z));
 
 // transitive3
-axiom {:ctor "Node"} (forall<T> f: [Loc (Node T)]Node T, x: Option (Loc (Node T)), y: Option (Loc (Node T)), z: Option (Loc (Node T)), w: Option (Loc (Node T)) ::
-  {Between(f, x, y, z), Between(f, x, w, y)} 
+axiom {:ctor "Node"} (forall<T> f: [One Loc]Node T, x: Option Loc, y: Option Loc, z: Option Loc, w: Option Loc ::
+  {Between(f, x, y, z), Between(f, x, w, y)}
   Between(f, x, y, z) && Between(f, x, w, y) ==> Between(f, x, w, z) && Between(f, w, y, z));
 
 // This axiom is required to deal with the incompleteness of the trigger for the reflexive axiom.
 // It cannot be proved using the rest of the axioms.
-axiom {:ctor "Node"} (forall<T> f: [Loc (Node T)]Node T, u: Option (Loc (Node T)), x: Option (Loc (Node T)) ::
-  {Between(f, u, x, x)} 
+axiom {:ctor "Node"} (forall<T> f: [One Loc]Node T, u: Option Loc, x: Option Loc ::
+  {Between(f, u, x, x)}
   Between(f, u, x, x) ==> Between(f, u, u, x));
 
 // relation between Avoiding and Between
-axiom {:ctor "Node"} (forall<T> f: [Loc (Node T)]Node T, x: Option (Loc (Node T)), y: Option (Loc (Node T)), z: Option (Loc (Node T)) ::
-  {Avoiding(f, x, y, z)} 
+axiom {:ctor "Node"} (forall<T> f: [One Loc]Node T, x: Option Loc, y: Option Loc, z: Option Loc ::
+  {Avoiding(f, x, y, z)}
   Avoiding(f, x, y, z) <==> Between(f, x, y, z) || (Between(f, x, y, y) && !Between(f, x, z, z)));
-axiom {:ctor "Node"} (forall<T> f: [Loc (Node T)]Node T, x: Option (Loc (Node T)), y: Option (Loc (Node T)), z: Option (Loc (Node T)) ::
-  {Between(f, x, y, z)} 
+axiom {:ctor "Node"} (forall<T> f: [One Loc]Node T, x: Option Loc, y: Option Loc, z: Option Loc ::
+  {Between(f, x, y, z)}
   Between(f, x, y, z) <==> Avoiding(f, x, y, z) && Avoiding(f, x, z, z));
 
 // update
-axiom {:ctor "Node"} (forall<T> f: [Loc (Node T)]Node T, u: Option (Loc (Node T)), v: Option (Loc (Node T)), x: Option (Loc (Node T)), p: Loc (Node T), q: Node T ::
-  {Avoiding(f[p := q], u, v, x)} 
-  Avoiding(f[p := q], u, v, x) <==>
+axiom {:ctor "Node"} (forall<T> f: [One Loc]Node T, u: Option Loc, v: Option Loc, x: Option Loc, p: Loc, q: Node T ::
+  {Avoiding(f[One(p) := q], u, v, x)}
+  Avoiding(f[One(p) := q], u, v, x) <==>
     (Avoiding(f, u, v, Some(p)) && Avoiding(f, u, v, x)) || 
     (Avoiding(f, u, Some(p), x) && Some(p) != x && Avoiding(f, q->next, v, Some(p)) && Avoiding(f, q->next, v, x))
 );
+
+function {:inline} InDomain<V>(nodes: Map (One Loc) (Node V), start: Option Loc): bool {
+  Between(nodes->val, start, start, None()) &&
+  (forall x: Loc:: Between(nodes->val, start, Some(x), None()) ==> Set_Contains(nodes->dom, One(x)))
+}
+
+/// Stack abstraction
+function StackAbs<V>(start: Option Loc, nodes: Map (One Loc) (Node V)): Vec V;
+function {:inline} StackAbsDef<V>(start: Option Loc, nodes: Map (One Loc) (Node V)): Vec V {
+if start == None() then
+  Vec_Empty() else
+  (var n := Map_At(nodes, One(start->t)); Vec_Append(StackAbs(n->next, nodes), n->val))
+}
+
+pure procedure StackAbsLemma<V>(start: Option Loc, nodes: Map (One Loc) (Node V));
+requires Between(nodes->val, start, start, None());
+requires InDomain(nodes, start);
+ensures StackAbs(start, nodes) == StackAbsDef(start, nodes);
+
+pure procedure StackFrameLemma<V>(start: Option Loc, nodes: Map (One Loc) (Node V), nodes': Map (One Loc) (Node V));
+requires Set_IsSubset(nodes->dom, nodes'->dom);
+requires MapIte(nodes->dom, nodes->val, MapConst(Default())) ==
+         MapIte(nodes->dom, nodes'->val, MapConst(Default()));
+requires Between(nodes->val, start, start, None());
+requires InDomain(nodes, start);
+ensures StackAbs(start, nodes) == StackAbs(start, nodes');
+
+/// Set abstraction
+function SetAbs<V>(start: Option Loc, nodes: Map (One Loc) (Node V)): [V]bool;
+function {:inline} SetAbsDef<V>(start: Option Loc, nodes: Map (One Loc) (Node V)): [V]bool {
+if start == None() then
+  Set_Empty() else
+  (var n := Map_At(nodes, One(start->t)); Set_Add(SetAbs(n->next, nodes), n->val))
+}
+
+pure procedure SetAbsLemma<V>(start: Option Loc, nodes: Map (One Loc) (Node V));
+requires Between(nodes->val, start, start, None());
+requires InDomain(nodes, start);
+ensures SetAbs(start, nodes) == SetAbsDef(start, nodes);
+
+pure procedure SetFrameLemma<V>(start: Option Loc, nodes: Map (One Loc) (Node V), nodes': Map (One Loc) (Node V));
+requires Set_IsSubset(nodes->dom, nodes'->dom);
+requires MapIte(nodes->dom, nodes->val, MapConst(Default())) ==
+         MapIte(nodes->dom, nodes'->val, MapConst(Default()));
+requires Between(nodes->val, start, start, None());
+requires InDomain(nodes, start);
+ensures SetAbs(start, nodes) == SetAbs(start, nodes');
+
+/// Queue abstraction
+function QueueAbs<V>(in_queue: Vec V, start: Option Loc, nodes: Map (One Loc) (Node V)): Vec V;
+function {:inline} QueueAbsDef<V>(in_queue: Vec V, start: Option Loc, nodes: Map (One Loc) (Node V)): Vec V {
+if start == None() then
+  in_queue else
+  (var n := Map_At(nodes, One(start->t)); QueueAbs(Vec_Append(in_queue, n->val), n->next, nodes))
+}
+
+pure procedure QueueAbsLemma<V>(in_queue: Vec V, start: Option Loc, nodes: Map (One Loc) (Node V));
+requires Between(nodes->val, start, start, None());
+requires InDomain(nodes, start);
+ensures QueueAbs(in_queue, start, nodes) == QueueAbsDef(in_queue, start, nodes);
+
+pure procedure QueueFrameLemma<V>(in_queue: Vec V, start: Option Loc, nodes: Map (One Loc) (Node V), nodes': Map (One Loc) (Node V));
+requires Set_IsSubset(nodes->dom, nodes'->dom);
+requires MapIte(nodes->dom, nodes->val, MapConst(Default())) ==
+         MapIte(nodes->dom, nodes'->val, MapConst(Default()));
+requires Between(nodes->val, start, start, None());
+requires InDomain(nodes, start);
+ensures QueueAbs(in_queue, start, nodes) == QueueAbs(in_queue, start, nodes');

@@ -23,8 +23,8 @@ var {:layer 0,1} channels: [ChannelId]ChannelPair;
 // Right permission is used to receive from the right channel and send to the left channel.
 datatype ChannelHandle { Left(cid: ChannelId), Right(cid: ChannelId) }
 
-function {:inline} BothHandles(cid: ChannelId): Set ChannelHandle
-{ Set_Add(Set_Singleton(Left(cid)), Right(cid)) }
+function {:inline} BothHandles(cid: ChannelId): [One ChannelHandle]bool
+{ Set_Add(Set_Singleton(One(Left(cid))), One(Right(cid))) }
 
 function {:inline} Empty() : [int]int { MapConst(0) }
 
@@ -32,37 +32,39 @@ function {:inline} Singleton(x: int): [int]int { Empty()[x := 1] }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-yield invariant {:layer 1} YieldMain(cid: ChannelId, {:linear} handles: Set ChannelHandle);
-invariant handles == BothHandles(cid);
-invariant channels[cid] == ChannelPair(Empty(), Empty());
+yield invariant {:layer 1} YieldMain(cid: ChannelId, {:linear} handles: UnitMap (One ChannelHandle));
+preserves handles->dom == BothHandles(cid);
+preserves channels[cid] == ChannelPair(Empty(), Empty());
 
 yield invariant {:layer 1} YieldPing(x: int, {:linear} p: One ChannelHandle);
-invariant p->val is Left;
-invariant x > 0;
-invariant (var left_channel, right_channel := channels[p->val->cid]->left, channels[p->val->cid]->right;
+preserves p->val is Left;
+preserves x > 0;
+preserves (var left_channel, right_channel := channels[p->val->cid]->left, channels[p->val->cid]->right;
             (left_channel == Empty() && right_channel == Singleton(x) && x > 0) ||
             (left_channel == Singleton(x) && right_channel == Empty()));
 
 yield invariant {:layer 1} YieldPong(y: int, {:linear} p: One ChannelHandle);
-invariant p->val is Right;
-invariant y > 0;
-invariant (var left_channel, right_channel := channels[p->val->cid]->left, channels[p->val->cid]->right;
+preserves p->val is Right;
+preserves y > 0;
+preserves (var left_channel, right_channel := channels[p->val->cid]->left, channels[p->val->cid]->right;
             (left_channel == Empty() && (right_channel == Singleton(y) || right_channel == Singleton(0))) ||
             (left_channel == Singleton(y-1) && right_channel == Empty()));
 
 ////////////////////////////////////////////////////////////////////////////////
 
 yield procedure {:layer 1}
-main (cid: ChannelId, {:linear_in} handles: Set ChannelHandle)
+main (cid: ChannelId, {:linear_in} handles: UnitMap (One ChannelHandle))
 requires call YieldMain(cid, handles);
 {
-  var {:linear} handles': Set ChannelHandle;
-  var {:linear} left: One ChannelHandle;
-  var {:linear} right: One ChannelHandle;
+  var handles': UnitMap (One ChannelHandle);
+  var left: One ChannelHandle;
+  var right: One ChannelHandle;
 
   handles' := handles;
-  call left := One_Get(handles', Left(cid));
-  call right := One_Get(handles', Right(cid));
+  left := One(Left(cid));
+  call One_Get(handles', left);
+  right := One(Right(cid));
+  call One_Get(handles', right);
   call send(left->val, 1);
   async call ping(1, left);
   async call pong(1, right);

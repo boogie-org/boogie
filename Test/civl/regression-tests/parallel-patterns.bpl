@@ -5,23 +5,23 @@ yield invariant {:layer 1} Yield();
 
 yield procedure {:layer 1} foo()
 {
-    par A() | L();
+    call A() | L();
     call Yield();
-    par A() | bar();
+    call A() | bar();
     call Yield();
-    par bar() | L();
+    call bar() | L();
 }
 
 yield procedure {:layer 1} bar();
 
 yield procedure {:layer 1} baz1()
 {
-    par L() | A();
+    call L() | A();
 }
 
 yield procedure {:layer 1} baz2()
 {
-    par A() | R();
+    call A() | R();
 }
 
 atomic action {:layer 1,1} atomic_A()

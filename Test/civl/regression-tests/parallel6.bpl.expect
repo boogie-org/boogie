@@ -9,4 +9,4 @@ Execution trace:
     parallel6.bpl(30,7): inline$atomic_incr$3$anon0
     (0,0): Civl_ReturnChecker
 
-Boogie program verifier finished with 7 verified, 1 error
+Boogie program verifier finished with 9 verified, 1 error

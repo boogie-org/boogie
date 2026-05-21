@@ -1,5 +1,5 @@
-bug.bpl(15,3): Error: this assertion could not be proved
+bug.bpl(13,3): Error: this assertion could not be proved
 Execution trace:
-    bug.bpl(14,3): anon0
+    bug.bpl(12,3): anon0
 
 Boogie program verifier finished with 1 verified, 1 error

@@ -71,7 +71,7 @@ ensures {:layer 2} (forall j:int :: 1 <= j && j <= i ==>
     if (i == 0) {
         return;
     }
-    par snapshot := scan_f(i-1) | out := read_f(i);
+    call snapshot := scan_f(i-1) | out := read_f(i);
     snapshot[i] := out;
 }
 
@@ -86,7 +86,7 @@ ensures {:layer 2} (forall j:int :: 1 <= j && j <= i ==>
     if (i == 0) {
         return;
     }
-    par snapshot := scan_s(i-1) | out := read_s(i);
+    call snapshot := scan_s(i-1) | out := read_s(i);
     snapshot[i] := out;
 }
 

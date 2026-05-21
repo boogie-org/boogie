@@ -395,7 +395,7 @@ namespace Microsoft.Boogie
     ///<summary>
     /// Returns some measure of the number of conjuncts in e.  This could be the total number of conjuncts in all
     /// top-most layers of the expression, or it can simply be the length of the left-prong of this and-tree.  The
-    /// important thing is that: AndSize(e0) >= AndSize(31) ==> AndSize(And(e0,e1)) > AndSize(e0).
+    /// important thing is that: AndSize(e0) >= AndSize(e1) ==> AndSize(And(e0,e1)) > AndSize(e0).
     ///</summary>
     int AndSize(VCExpr e)
     {

@@ -23,7 +23,7 @@ function {:inline} InvLock(lock: X, b: bool) : bool
 { lock != nil <==> b }
 
 yield invariant {:layer 2} Yield({:linear} tid: One X);
-invariant tid->val != nil && InvLock(lock, b);
+preserves tid->val != nil && InvLock(lock, b);
 
 right action {:layer 3} AtomicEnter({:linear} tid: One X)
 modifies lock;

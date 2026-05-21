@@ -828,6 +828,11 @@ namespace Microsoft.Boogie
       Indexes = indexes;
     }
 
+    public MapAssignLhs(AssignLhs map, List<Expr> indexes)
+      : this(Token.NoToken, map, indexes)
+    {
+    }
+
     public override void Resolve(ResolutionContext rc)
     {
       Map.Resolve(rc);
@@ -947,6 +952,11 @@ namespace Microsoft.Boogie
     {
       Datatype = datatype;
       this.FieldAccess = fieldAccess;
+    }
+
+    public FieldAssignLhs(AssignLhs datatype, FieldAccess fieldAccess)
+      : this(Token.NoToken, datatype, fieldAccess)
+    {
     }
 
     public override void Resolve(ResolutionContext rc)
@@ -1488,7 +1498,7 @@ namespace Microsoft.Boogie
       {
         callCmd.Resolve(rc);
       }
-      if (errorCount > rc.ErrorCount)
+      if (rc.ErrorCount > errorCount)
       {
         return;
       }
@@ -1554,25 +1564,34 @@ namespace Microsoft.Boogie
         callCmd.Typecheck(tc);
       }
 
-      var markedCallCount = CallCmds.Count(CivlAttributes.IsCallMarked);
-      if (markedCallCount > 0)
+      var callerDecl = (YieldProcedureDecl)tc.Proc;
+      if (callerDecl.MoverType.HasValue)
       {
-        if (markedCallCount > 1)
+        return;
+      }
+
+      bool NeedsRefinementChecking(CallCmd callCmd)
+      {
+        if (callCmd.Proc is not YieldProcedureDecl calleeDecl)
         {
-          tc.Error(this, "at most one arm of a parallel call may be annotated with :mark");
+          return false;
         }
-        var callerDecl = (YieldProcedureDecl)tc.Proc;
-        CallCmds.ForEach(callCmd =>
+        if (callerDecl.Layer != calleeDecl.Layer)
         {
-          if (!CivlAttributes.IsCallMarked(callCmd) && callCmd.Proc is YieldProcedureDecl calleeDecl &&
-              callerDecl.Layer == calleeDecl.Layer)
-          {
-            callCmd.Outs.Where(ie => callerDecl.VisibleFormals.Contains(ie.Decl)).ForEach(ie =>
-              {
-                tc.Error(ie, $"unmarked call modifies visible output variable of the caller: {ie.Decl}");
-              });
-          }
-        });
+          return false;
+        }
+        var visibleFormalNames = callerDecl.VisibleFormals.Select(v =>v.Name);
+        var visibleOutFormalNames = callerDecl.OutParams.Select(v => v.Name).Intersect(visibleFormalNames);
+        var callOutParamNames = callCmd.Outs.Select(ie => ie.Decl.Name);
+        var isCallSkippable = calleeDecl.RefinedAction == null &&
+                              visibleOutFormalNames.Intersect(callOutParamNames).Count() == 0;
+        return !isCallSkippable;
+      }
+
+      var callCount = CallCmds.Count(NeedsRefinementChecking);
+      if (callCount > 1)
+      {
+        tc.Error(this, "multiple non-skippable arms in parallel call at caller's layer");
       }
     }
 
@@ -2074,6 +2093,109 @@ namespace Microsoft.Boogie
     public override Absy StdDispatch(StandardVisitor visitor)
     {
       return visitor.VisitAssumeCmd(this);
+    }
+  }
+
+  public class MeasureCmd : Cmd, ICarriesAttributes
+  {
+    public List<Expr> Expressions;
+    public QKeyValue Attributes { get; set; }
+
+    [ContractInvariantMethod]
+    void ObjectInvariant()
+    {
+      Contract.Invariant(Cce.NonNullElements(Expressions));
+    }
+
+    public MeasureCmd(IToken tok, List<Expr> expressions, QKeyValue attributes = null)
+      : base(tok)
+    {
+      Contract.Requires(tok != null);
+      Contract.Requires(Cce.NonNullElements(expressions));
+      Expressions = new List<Expr>(expressions);
+      Attributes = attributes;
+    }
+
+    public MeasureCmd(IToken tok, Expr expression, QKeyValue attributes = null)
+      : base(tok)
+    {
+      Contract.Requires(tok != null);
+      Contract.Requires(expression != null);
+      Expressions = new List<Expr> { expression };
+      Attributes = attributes;
+    }
+
+    public override void Resolve(ResolutionContext rc)
+    {
+      (this as ICarriesAttributes).ResolveAttributes(rc);
+      Layers = (this as ICarriesAttributes).FindLayers();
+
+      if (rc.Proc is YieldProcedureDecl yieldProcedureDecl)
+      {
+        if (Layers == null || Layers.Count == 0)
+        {
+          rc.Error(this, "measure command in a yield procedure must specify at least one layer");
+        }
+        else
+        {
+          foreach (var layer in Layers)
+          {
+            if (layer > yieldProcedureDecl.Layer)
+            {
+              rc.Error(this, $"each layer must not be more than {yieldProcedureDecl.Layer}");
+              break;
+            }
+          }
+        }
+      }
+
+      foreach (var expression in Expressions)
+      {
+        expression.Resolve(rc);
+      }
+    }
+
+    public override void Typecheck(TypecheckingContext tc)
+    {
+      (this as ICarriesAttributes).TypecheckAttributes(tc);
+
+      foreach (var expression in Expressions)
+      {
+        expression.Typecheck(tc);
+        Contract.Assert(expression.Type != null);
+
+        if (!(expression.Type.Equals(Type.Int) || expression.Type.Equals(Type.Bool)))
+        {
+          tc.Error(
+            expression,
+            "a measure expression must be of type int or bool (got: {0})",
+            expression.Type);
+        }
+      }
+    }
+
+    public override void AddAssignedIdentifiers(List<IdentifierExpr> vars)
+    {
+    }
+
+    public override void Emit(TokenTextWriter stream, int level)
+    {
+      stream.Write(this, level, "measure ");
+      EmitAttributes(stream, Attributes);
+      for (int i = 0; i < Expressions.Count; i++)
+      {
+        if (0 < i)
+        {
+          stream.Write(", ");
+        }
+        Expressions[i].Emit(stream);
+      }
+      stream.WriteLine(";");
+    }
+
+    public override Absy StdDispatch(StandardVisitor visitor)
+    {
+      return visitor.VisitMeasureCmd(this);
     }
   }
 

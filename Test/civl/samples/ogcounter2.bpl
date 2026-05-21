@@ -8,11 +8,11 @@ const unique Nil: X;
 var {:layer 2,5} x: int;
 var {:layer 2,3} lock: X;
 
-var {:layer 1,4}{:linear} unallocated: Set X;
+var {:layer 1,4}{:linear} unallocated: UnitMap (One X);
 
 right action {:layer 2,4} AtomicAllocTid() returns ({:linear} tid: One X)
 modifies unallocated;
-{ assume tid->val != Nil && Set_Contains(unallocated, tid->val); call One_Split(unallocated, tid); }
+{ assume tid->val != Nil && Map_Contains(unallocated, tid); call One_Get(unallocated, tid); }
 
 yield procedure {:layer 1} AllocTid() returns ({:linear} tid: One X);
 refines AtomicAllocTid;
@@ -67,12 +67,12 @@ modifies x;
 yield procedure {:layer 4} IncrBy2()
 refines AtomicIncrBy2;
 {
-  var {:linear} tid1: One X;
-  var {:linear} tid2: One X;
+  var tid1: One X;
+  var tid2: One X;
 
   call tid1 := AllocTid();
   call tid2 := AllocTid();
-  par Incr(tid1) | Incr(tid2);
+  call Incr(tid1) | Incr(tid2);
 }
 
 yield procedure {:layer 5} EqualTo2({:linear} tid: One X)
@@ -83,7 +83,7 @@ ensures call YieldPost();
 }
 
 yield invariant {:layer 5} YieldPre({:linear} tid: One X);
-invariant tid->val == MainTid && x == 0;
+preserves tid->val == MainTid && x == 0;
 
 yield invariant {:layer 5} YieldPost();
-invariant x == 2;
+preserves x == 2;

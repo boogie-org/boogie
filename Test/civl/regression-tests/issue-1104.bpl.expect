@@ -1,0 +1,6 @@
+issue-1104.bpl(28,9): Error: this assertion could not be proved
+Execution trace:
+    issue-1104.bpl(22,5): anon0
+    issue-1104.bpl(28,9): anon3_Else
+
+Boogie program verifier finished with 1 verified, 1 error
