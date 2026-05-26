@@ -1115,12 +1115,18 @@ namespace VC
           Expr rhs = assign.Rhss[i];
           Contract.Assert(rhs != null);
 
+          // When tracking verification coverage and the assignment has an {:id},
+          // we must create an incarnation even for trivial RHS (literals/variables)
+          // so that the resulting assume carries the :id into the VC/unsat-core.
+          var assignHasId = Options.TrackVerificationCoverage
+                            && QKeyValue.FindStringAttribute(assign.Attributes, "id") != null;
+
           // don't create incarnations for assignments of literals or single variables.
-          if (rhs is LiteralExpr)
+          if (!assignHasId && rhs is LiteralExpr)
           {
             incarnationMap[lhs] = rhs;
           }
-          else if (rhs is IdentifierExpr)
+          else if (!assignHasId && rhs is IdentifierExpr)
           {
             IdentifierExpr ie = (IdentifierExpr) rhs;
             if (incarnationMap.ContainsKey(Cce.NonNull(ie.Decl)))
