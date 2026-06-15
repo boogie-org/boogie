@@ -95,7 +95,7 @@ namespace Microsoft.Boogie.SMTLib
       string solverStr = null;
       if (ParseString(opt, "SOLVER", ref solverStr))
       {
-        switch (solverStr.ToLower())
+        switch (solverStr.ToLowerInvariant())
         {
           case "noop":
             Solver = SolverKind.NoOpWithZ3Options;

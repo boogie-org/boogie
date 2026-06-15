@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics.Contracts;
+using System.Globalization;
 
 namespace Microsoft.Boogie;
 
@@ -319,7 +320,7 @@ public class CommandLineParseState
       {
         Contract.Assume(args[i] != null);
         Contract.Assert(args[i] is string); // needed to prove args[i].IsPeerConsistent
-        double d = Convert.ToDouble(this.args[this.i]);
+        double d = Convert.ToDouble(this.args[this.i], CultureInfo.InvariantCulture);
         if (0 <= d) {
           setArg(d);
           return true;

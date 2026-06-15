@@ -25,6 +25,7 @@ An instance of the Model class represents a single model returned from the SMT s
  */
 
 using System;
+using System.Globalization;
 using System.Linq;
 using System.Collections.Generic;
 using System.Text;
@@ -732,7 +733,7 @@ namespace Microsoft.Boogie
             return new Integer(this, name);
           }
         }
-        else if (double.TryParse(name, out var _))
+        else if (double.TryParse(name, NumberStyles.Float, CultureInfo.InvariantCulture, out var _))
         {
           return new Real(this, name);
         }
