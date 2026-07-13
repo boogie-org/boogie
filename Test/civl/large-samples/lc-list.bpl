@@ -22,12 +22,19 @@ var {:layer 0, 1} locks: [Loc](Option Tid);
 yield invariant {:layer 1} ListInv();
 preserves Between(list->nodes->val, Some(list->head), None(), None());
 preserves (forall loc: Loc :: Between(list->nodes->val, Some(list->head), Some(loc), None()) ==> Map_Contains(list->nodes, One(loc)));
+preserves (var hn := Map_At(list->nodes, One(list->head))->next;
+            (forall a, b: Loc :: Between(list->nodes->val, hn, Some(a), None()) && Between(list->nodes->val, Some(a), Some(b), None()) && a != b ==>
+                Map_At(list->nodes, One(a))->val < Map_At(list->nodes, One(b))->val));
 
-yield invariant {:layer 1} LockedBy(p: Loc, c: Option Loc, {:linear} tid: One Tid);
+yield invariant {:layer 1} LockedBy(p: Loc, c: Option Loc, e: X, {:linear} tid: One Tid);
 preserves locks[p] == Some(tid->val);
 preserves Map_Contains(list->nodes, One(p));
 preserves Between(list->nodes->val, Some(list->head), Some(p), None());
 preserves Map_At(list->nodes, One(p))->next == c;
+preserves p == list->head || Map_At(list->nodes, One(p))->val < e;
+
+yield invariant {:layer 1} CorrectPosition(c: Option Loc, e: X);
+preserves c == None() || (Map_Contains(list->nodes, One(c->t)) && Map_At(list->nodes, One(c->t))->val >= e);
 
 // locate(e) walks the list holding the previous node's lock, until
 // the current node's value is >= e.  Returns the previous pointer p
@@ -35,7 +42,8 @@ preserves Map_At(list->nodes, One(p))->next == c;
 yield procedure {:layer 1} locate({:linear} tid: One Tid, e: X)
 returns (p: Loc, c: Option Loc)
 preserves call ListInv();
-ensures call LockedBy(p, c, tid);
+ensures call LockedBy(p, c, e, tid);
+ensures call CorrectPosition(c, e);
 {
   var v: X;
 
@@ -45,7 +53,7 @@ ensures call LockedBy(p, c, tid);
   while (true)
   invariant {:yields} true;
   invariant call ListInv();
-  invariant call LockedBy(p, c, tid);
+  invariant call LockedBy(p, c, e, tid);
   {
     if (c is None) { break; }
     call v := ReadValue(c->t);
@@ -167,7 +175,6 @@ refines atomic action {:layer 1} _
   var one_loc: One Loc;
 
   call one_loc := Loc_New();
-  assume !Map_Contains(list->nodes, one_loc);
   call Map_Put(list->nodes, one_loc, node);
   loc := one_loc->val;
   locks[loc] := None();
