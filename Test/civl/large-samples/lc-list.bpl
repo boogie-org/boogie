@@ -20,20 +20,13 @@ var {:layer 0, 1} locks: [Loc](Option Tid);
 /// ////////////////////////////////////////////////////////////////
 
 yield invariant {:layer 1} ListInv();
-preserves Map_Contains(list->nodes, One(list->head));
-preserves (forall a: Loc :: Map_Contains(list->nodes, One(a)) &&
-             Map_At(list->nodes, One(a))->next is Some ==>
-               Map_Contains(list->nodes, One(Map_At(list->nodes, One(a))->next->t)));
-preserves (forall a: Loc :: Map_Contains(list->nodes, One(a)) &&
-             Map_At(list->nodes, One(a))->next is Some ==>
-                Map_At(list->nodes, One(a))->val <
-                Map_At(list->nodes, One(Map_At(list->nodes, One(a))->next->t))->val);
+preserves Between(list->nodes->val, Some(list->head), None(), None());
+preserves (forall loc: Loc :: Between(list->nodes->val, Some(list->head), Some(loc), None()) ==> Map_Contains(list->nodes, One(loc)));
 
-// The node at address a is allocated and locked by thread tid.
-yield invariant {:layer 1} LockedBy(a: Loc, {:linear} tid: One Tid);
-preserves Map_Contains(list->nodes, One(a));
-preserves locks[a] == Some(tid->val);
-
+yield invariant {:layer 1} LockedBy(p: Loc, c: Option Loc, {:linear} tid: One Tid);
+preserves locks[p] == Some(tid->val);
+preserves Map_Contains(list->nodes, One(p));
+preserves Map_At(list->nodes, One(p))->next == c;
 
 // locate(e) walks the list holding the previous node's lock, until
 // the current node's value is >= e.  Returns the previous pointer p
@@ -41,24 +34,25 @@ preserves locks[a] == Some(tid->val);
 yield procedure {:layer 1} locate({:linear} tid: One Tid, e: X)
 returns (p: Loc, c: Option Loc)
 preserves call ListInv();
-ensures call LockedBy(p, tid);
+ensures call LockedBy(p, c, tid);
 {
   var v: X;
 
   call p := ReadHead();
   call Lock(tid, p);
+  call c := ReadNext(tid, p);
   while (true)
   invariant {:yields} true;
   invariant call ListInv();
-  invariant call LockedBy(p, tid);
+  invariant call LockedBy(p, c, tid);
   {
-    call c := ReadNext(tid, p);
     if (c is None) { break; }
     call v := ReadValue(c->t);
     if (v >= e) { break; }
     call Lock(tid, c->t);
     call Unlock(tid, p);
     p := c->t;
+    call c := ReadNext(tid, p);
   }
 }
 
