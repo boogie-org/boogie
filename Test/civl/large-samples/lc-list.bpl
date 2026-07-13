@@ -26,6 +26,7 @@ preserves (forall loc: Loc :: Between(list->nodes->val, Some(list->head), Some(l
 yield invariant {:layer 1} LockedBy(p: Loc, c: Option Loc, {:linear} tid: One Tid);
 preserves locks[p] == Some(tid->val);
 preserves Map_Contains(list->nodes, One(p));
+preserves Between(list->nodes->val, Some(list->head), Some(p), None());
 preserves Map_At(list->nodes, One(p))->next == c;
 
 // locate(e) walks the list holding the previous node's lock, until
