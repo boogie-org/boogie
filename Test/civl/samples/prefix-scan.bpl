@@ -38,7 +38,7 @@ ensures {:layer 1} A->dom == A'->dom;
   var stride: int;
 
   A' := A;
-  if (i == PowerOfTwo(N)) { return; }
+  if (i >= PowerOfTwo(N)) { return; }
   stride := PowerOfTwo(level);
   call B := Map_Split(A', Set_Add(Set_Singleton(One(i)), One(i + stride)));
   call B := AddOne(B, i, stride) | A' := UpSweepAtLevel(A', i + 2 * stride, level, N);
