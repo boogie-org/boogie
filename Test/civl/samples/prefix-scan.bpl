@@ -41,11 +41,11 @@ ensures {:layer 1} A->dom == A'->dom;
   if (i >= PowerOfTwo(N)) { return; }
   stride := PowerOfTwo(level);
   call B := Map_Split(A', Set_Add(Set_Singleton(One(i)), One(i + stride)));
-  call B := AddOne(B, i, stride) | A' := UpSweepAtLevel(A', i + 2 * stride, level, N);
+  call B := UpSweepOp(B, i, stride) | A' := UpSweepAtLevel(A', i + 2 * stride, level, N);
   call Map_Join(A', B);
 }
 
-yield left procedure {:layer 1} AddOne({:linear_in} B: Map (One int) int, i: int, stride: int)
+yield left procedure {:layer 1} UpSweepOp({:linear_in} B: Map (One int) int, i: int, stride: int)
 returns ({:linear} B': Map (One int) int)
 requires {:layer 1} Map_Contains(B, One(i)) && Map_Contains(B, One(i + stride));
 ensures {:layer 1} B->dom == B'->dom;
