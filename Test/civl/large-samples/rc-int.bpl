@@ -28,7 +28,7 @@ preserves call Yield();
 
     call one_loc, tags := Tags_New(xs);
     call empty_map := Map_MakeEmpty();
-    all_tags := (lambda x: One (Tag X):: x->val->loc == one_loc->val && Set_Contains(xs, x->val->val));
+    all_tags := tags->dom;
     counter := Counter(val, empty_map, all_tags);
     call AddCounter(one_loc, counter);
 }
