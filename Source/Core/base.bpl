@@ -294,6 +294,10 @@ pure procedure {:inline 1} Loc_New() returns ({:linear} {:pool "Loc_New"} l: One
 
 datatype Tag<V> { Tag(loc: Loc, val: V) }
 
+function {:inline} Tags<V>(loc: Loc, xs:[V]bool): [One (Tag V)]bool {
+    (lambda x: One (Tag V):: x->val->loc == loc && Set_Contains(xs, x->val->val))
+}
+
 pure procedure {:inline 1} Tag_New() returns ({:linear} {:pool "Loc_New"} l: One Loc, {:linear} tag: One (Tag Unit))
 {
   assume {:add_to_pool "Loc_New", l} true;
@@ -303,7 +307,7 @@ pure procedure {:inline 1} Tag_New() returns ({:linear} {:pool "Loc_New"} l: One
 pure procedure {:inline 1} Tags_New<V>(vals: [V]bool) returns ({:linear} {:pool "Loc_New"} l: One Loc, {:linear} tags: UnitMap (One (Tag V)))
 {
   assume {:add_to_pool "Loc_New", l} true;
-  tags := Map((lambda x: One (Tag V) :: x->val->loc == l->val && Set_Contains(vals, x->val->val)), MapConst(Unit()));
+  tags := Map(Tags(l->val, vals), MapConst(Unit()));
 }
 
 /// Helpers
