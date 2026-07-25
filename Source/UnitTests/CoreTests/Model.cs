@@ -1,4 +1,7 @@
-﻿using Microsoft.Boogie;
+﻿using System.Globalization;
+using System.IO;
+using System.Threading;
+using Microsoft.Boogie;
 using NUnit.Framework;
 
 namespace ModelTests
@@ -6,6 +9,32 @@ namespace ModelTests
   [TestFixture()]
   public class ModelTests
   {
+    [Test]
+    public void ParseRealModelElementsUnderNonInvariantLocale()
+    {
+      // #1133: Z3 emits reals as "0.0", but a CurrentCulture parse rejects
+      // that under comma-decimal locales like fr-FR/pt-PT.
+      var originalCulture = Thread.CurrentThread.CurrentCulture;
+      try
+      {
+        Thread.CurrentThread.CurrentCulture = new CultureInfo("fr-FR");
+
+        var m = new Model();
+        var e = m.ConstructElement("0.0");
+        Assert.IsNotNull(e, "ConstructElement should recognize \"0.0\" as a Real under fr-FR");
+        Assert.AreEqual(Model.ElementKind.Real, e.Kind);
+        Assert.AreEqual("0.0", e.ToString());
+
+        const string model = "*** MODEL\nf -> 0.0\n*** END_MODEL\n";
+        Assert.DoesNotThrow(() => Model.ParseModels(new StringReader(model)),
+          "Model parsing should succeed under fr-FR");
+      }
+      finally
+      {
+        Thread.CurrentThread.CurrentCulture = originalCulture;
+      }
+    }
+
     [Test]
     public void ParseRealModelElements()
     {
