@@ -13,13 +13,20 @@ yield invariant {:layer 1} YieldTag({:linear} tag: One (Tag X));
 preserves Map_Contains(counters, One(tag->val->loc));
 preserves (var counter := Map_At(counters, One(tag->val->loc)); Set_Contains(counter->all_tags, tag));
 
-yield procedure {:layer 1} Allocate(val: int, xs: [X]bool) returns ({:linear} tags: UnitMap (One (Tag X)))
+yield invariant {:layer 1} YieldTags(val: int, loc: Loc, {:linear} tags: UnitMap (One (Tag X)));
+preserves Map_Contains(counters, One(loc));
+preserves (var counter := Map_At(counters, One(loc)); val == counter->val && tags->dom == counter->all_tags);
+
+yield procedure {:layer 1} Allocate(val: int, xs: [X]bool) returns (loc: Loc, {:linear} tags: UnitMap (One (Tag X)))
+ensures call YieldTags(val, loc, tags);
+ensures {:layer 1} tags->dom == (lambda tag: One (Tag X):: loc == tag->val->loc && Set_Contains(xs, tag->val->val));
 {
     var one_loc: One Loc;
     var counter: Counter;
     var all_tags: [One (Tag X)]bool;
 
     call one_loc, tags := Tags_New(xs);
+    loc := one_loc->val;
     all_tags := tags->dom;
     counter := Counter(val, all_tags);
     call AddCounter(one_loc, counter);
