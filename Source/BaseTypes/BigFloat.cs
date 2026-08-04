@@ -509,9 +509,13 @@ namespace Microsoft.BaseTypes
 
     /// <summary>
     /// Tries to create special values from string representation for SMT-LIB integration.
-    /// Supports: "NaN", "+oo", "-oo" (case insensitive)
+    /// Supports: "NaN", "+oo", "-oo", "+zero", "-zero" (case insensitive)
+    ///
+    /// These are the five special values the SMT-LIB FloatingPoint theory can name,
+    /// and a solver may return any of them from (get-value ...) as
+    /// ((x (_ &lt;special&gt; &lt;eb&gt; &lt;sb&gt;))).
     /// </summary>
-    /// <param name="specialValue">Special value string ("NaN", "+oo", "-oo")</param>
+    /// <param name="specialValue">Special value string ("NaN", "+oo", "-oo", "+zero", "-zero")</param>
     /// <param name="sigSize">Significand size in bits</param>
     /// <param name="expSize">Exponent size in bits</param>
     /// <param name="result">The resulting BigFloat if successful; default(BigFloat) otherwise</param>
@@ -526,6 +530,12 @@ namespace Microsoft.BaseTypes
           return true;
         case "-oo":
           result = CreateInfinity(true, sigSize, expSize);
+          return true;
+        case "+zero":
+          result = CreateZero(false, sigSize, expSize);
+          return true;
+        case "-zero":
+          result = CreateZero(true, sigSize, expSize);
           return true;
         default:
           result = default;
