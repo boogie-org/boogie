@@ -19,6 +19,10 @@ namespace CoreTests
   /// Rather than trust the fragileLeftContext/fragileRightContext table by inspection, these tests
   /// enumerate every same-precedence operator pair against every operand type. Any future edit that
   /// drops a parenthesis it should have kept -- on floats, or across "div"/"mod"/"/" -- fails here.
+  ///
+  /// Note what this deliberately does not check: a change that adds redundant parentheses is sound,
+  /// so it passes. Output that is merely uglier than necessary is caught by the golden files
+  /// (Test/test0/PrettyPrint.bpl and Test/test0/PrintAssoc.bpl), not here.
   /// </summary>
   [TestFixture]
   public class ExprPrintRoundTrip
@@ -101,22 +105,54 @@ namespace CoreTests
     }
 
     /// <summary>
-    /// Parses "expr" as the right-hand side of an assignment over three variables of the given type,
-    /// and returns the resolved, typechecked expression. Typechecking matters: BinaryOperator.Emit
-    /// consults operand types, so an untypechecked expression exercises a different path.
+    /// /print emits the program before ResolveAndTypecheck runs, so on that path every Expr.Type is
+    /// still null and Emit cannot tell an int from a float. Reassociating there would be unsound for
+    /// exactly the float programs this guards, so with no type information the parentheses have to
+    /// stay -- printing must round-trip structurally, not just semantically.
     /// </summary>
-    private static Expr ParseExprInProcedure(string type, string expr)
+    [TestCaseSource(nameof(NestedCases))]
+    public void PrintingBeforeTypecheckingKeepsParentheses(string type, string outer, string inner, bool nestRight)
+    {
+      var body = nestRight ? $"a {outer} (b {inner} c)" : $"(a {inner} b) {outer} c";
+      var original = ParseExprInProcedure(type, body, typecheck: false);
+      Assert.IsNull(original.Type, "expression was typechecked; this test must exercise the null-type path");
+
+      var printed = original.ToString();
+      var reParsed = ParseExprInProcedure(type, printed, typecheck: false);
+
+      Assert.AreEqual(original.ContentHash, reParsed.ContentHash,
+        $"before typechecking, printing \"{body}\" as \"{printed}\" changed the expression"
+        + $" (re-parsed as \"{reParsed}\")");
+    }
+
+    /// <summary>
+    /// Parses "expr" as the right-hand side of an assignment over three variables of the given type.
+    /// Typechecking matters: BinaryOperator.Emit consults operand types, so a typechecked and an
+    /// untypechecked expression exercise different paths. Pass typecheck: false to reach the latter,
+    /// which is what /print does.
+    /// </summary>
+    private static Expr ParseExprInProcedure(string type, string expr, bool typecheck = true)
     {
       var options = CommandLineOptions.FromArguments(TextWriter.Null);
-      var program = TestUtil.ProgramLoader.LoadProgramFrom(options, $@"
+      var programText = $@"
         procedure main()
         {{
           var a, b, c, r: {type};
           r := {expr};
-        }}", "roundtrip.bpl");
+        }}";
 
-      var typeErrors = program.Typecheck(options);
-      Assert.AreEqual(0, typeErrors, $"\"{expr}\" did not typecheck at type {type}");
+      Program program;
+      if (typecheck)
+      {
+        program = TestUtil.ProgramLoader.LoadProgramFrom(options, programText, "roundtrip.bpl");
+      }
+      else
+      {
+        // ProgramLoader always typechecks, so parse and resolve by hand. Resolution is needed for
+        // the printer to see the operators at all, but it leaves every Expr.Type null.
+        Assert.AreEqual(0, Parser.Parse(programText, "roundtrip.bpl", out program, useBaseName: false));
+        Assert.AreEqual(0, program.Resolve(options));
+      }
 
       var assign = program.Implementations
         .SelectMany(i => i.Blocks)
