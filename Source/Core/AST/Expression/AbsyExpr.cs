@@ -2163,41 +2163,41 @@ namespace Microsoft.Boogie
     }
 
     /// <summary>
-    /// Decides whether the right operand of "op" ("+" or "*") needs parentheses, given that it binds
-    /// equally strongly. Since "+" and "*" are printed left-associatively, dropping the parentheses of
-    /// "x op (y op' z)" makes it re-parse as "(x op y) op' z", so they may only be dropped when those
+    /// True if "x op (rhs)" would still mean the same thing printed as "x op rhs", where "op" is "+"
+    /// or "*" and "rhs" binds equally strongly. Since "+" and "*" print left-associatively, dropping
+    /// those parentheses re-reads "x op (y op' z)" as "(x op y) op' z", so it is only safe when the
     /// two groupings agree.
     ///
-    /// On int and real they agree whenever "op'" is the inverse-free counterpart of "op": "+" regroups
-    /// with "+" and "-", and "*" regroups only with "*". "i * (j div k)" keeps its parentheses, because
-    /// "i * j div k" means "(i * j) div k", which differs as soon as the division truncates; likewise
-    /// "r * (s / t)" differs from "(r * s) / t" when t is 0.
+    /// On int and real they agree when "op'" is "op" or its inverse: "+" regroups with "+" and "-",
+    /// "*" regroups only with "*". "i * (j div k)" does not regroup, because "i * j div k" means
+    /// "(i * j) div k", which differs as soon as the division truncates; likewise "r * (s / t)"
+    /// differs from "(r * s) / t" when t is 0.
     ///
     /// Floating-point "+" and "*" are not associative at all -- rounding makes "x + (y + z)" and
-    /// "(x + y) + z" genuinely different -- so on any other type the parentheses always stay.
+    /// "(x + y) + z" genuinely different -- so nothing regroups at any other type.
     ///
-    /// A null type means Typecheck has not run yet (e.g. /print, which prints before typechecking), in
-    /// which case we conservatively keep the parentheses.
+    /// A null type means Typecheck has not run yet (e.g. /print, which prints before typechecking),
+    /// so nothing is known about the operand and it cannot be regrouped.
     /// </summary>
-    private static bool RightOperandNeedsParens(Opcode op, Expr rhs)
+    private static bool RegroupsWith(Opcode op, Expr rhs)
     {
       Contract.Requires(op == Opcode.Add || op == Opcode.Mul);
       var type = rhs.Type;
       if (type == null || !(type.IsInt || type.IsReal))
       {
-        return true;
+        return false;
       }
 
       if (rhs is not NAryExpr { Fun: BinaryOperator rightOperator })
       {
-        return true;
+        return false;
       }
 
       return rightOperator.Op switch
       {
-        Opcode.Add or Opcode.Sub => op != Opcode.Add,
-        Opcode.Mul => op != Opcode.Mul,
-        _ => true
+        Opcode.Add or Opcode.Sub => op == Opcode.Add,
+        Opcode.Mul => op == Opcode.Mul,
+        _ => false
       };
     }
 
@@ -2213,7 +2213,7 @@ namespace Microsoft.Boogie
       {
         case Opcode.Add:
           opBindingStrength = 0x40;
-          fragileRightContext = RightOperandNeedsParens(Opcode.Add, args[1]);
+          fragileRightContext = !RegroupsWith(Opcode.Add, args[1]);
           break;
         case Opcode.Sub:
           opBindingStrength = 0x40;
@@ -2221,7 +2221,7 @@ namespace Microsoft.Boogie
           break;
         case Opcode.Mul:
           opBindingStrength = 0x50;
-          fragileRightContext = RightOperandNeedsParens(Opcode.Mul, args[1]);
+          fragileRightContext = !RegroupsWith(Opcode.Mul, args[1]);
           break;
         case Opcode.Div:
           opBindingStrength = 0x50;
