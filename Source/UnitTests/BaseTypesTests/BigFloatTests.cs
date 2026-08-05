@@ -1024,6 +1024,47 @@ namespace BaseTypesTests
         #region Special Values Tests
 
         [Test]
+        public void TestTryCreateSpecialFromString()
+        {
+            // The five special values the SMT-LIB FloatingPoint theory can name. A solver
+            // may return any of them from (get-value ...), e.g. z3 answers
+            // ((x (_ +zero 8 24))) for a Float32 that is positive zero, so all five must
+            // round-trip here or SMTLibInteractiveTheoremProver.Evaluate throws
+            // VCExprEvaluationException on a legal solver response.
+            Assert.IsTrue(BigFloat.TryCreateSpecialFromString("NaN", 24, 8, out var nan));
+            Assert.IsTrue(nan.IsNaN);
+
+            Assert.IsTrue(BigFloat.TryCreateSpecialFromString("+oo", 24, 8, out var posInf));
+            Assert.IsTrue(posInf.IsInfinity);
+            Assert.IsFalse(posInf.IsNegative);
+
+            Assert.IsTrue(BigFloat.TryCreateSpecialFromString("-oo", 24, 8, out var negInf));
+            Assert.IsTrue(negInf.IsInfinity);
+            Assert.IsTrue(negInf.IsNegative);
+
+            Assert.IsTrue(BigFloat.TryCreateSpecialFromString("+zero", 24, 8, out var posZero));
+            Assert.IsTrue(posZero.IsZero);
+            Assert.IsFalse(posZero.IsNegative);
+            Assert.AreEqual(BigFloat.CreateZero(false, 24, 8), posZero);
+
+            Assert.IsTrue(BigFloat.TryCreateSpecialFromString("-zero", 24, 8, out var negZero));
+            Assert.IsTrue(negZero.IsZero);
+            Assert.IsTrue(negZero.IsNegative);
+            Assert.AreEqual(BigFloat.CreateZero(true, 24, 8), negZero);
+
+            // Case insensitive, and honouring the caller's format sizes
+            Assert.IsTrue(BigFloat.TryCreateSpecialFromString("+ZERO", 53, 11, out var doubleZero));
+            Assert.IsTrue(doubleZero.IsZero);
+            Assert.AreEqual(53, doubleZero.SignificandSize);
+            Assert.AreEqual(11, doubleZero.ExponentSize);
+
+            // Anything else is still rejected
+            Assert.IsFalse(BigFloat.TryCreateSpecialFromString("zero", 24, 8, out _));
+            Assert.IsFalse(BigFloat.TryCreateSpecialFromString("+inf", 24, 8, out _));
+            Assert.IsFalse(BigFloat.TryCreateSpecialFromString("", 24, 8, out _));
+        }
+
+        [Test]
         public void TestZeroValues()
         {
             BigFloat.FromRational(0, 1, 24, 8, out var zero);
