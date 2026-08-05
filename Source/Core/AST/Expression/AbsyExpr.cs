@@ -2163,21 +2163,17 @@ namespace Microsoft.Boogie
     }
 
     /// <summary>
-    /// True if "x op (rhs)" would still mean the same thing printed as "x op rhs", where "op" is "+"
-    /// or "*" and "rhs" binds equally strongly. Since "+" and "*" print left-associatively, dropping
-    /// those parentheses re-reads "x op (y op' z)" as "(x op y) op' z", so it is only safe when the
-    /// two groupings agree.
+    /// True if "x op (rhs)" still means the same printed as "x op rhs", for "op" in {"+", "*"} and
+    /// "rhs" of equal binding power. These print left-associatively, so dropping the parentheses
+    /// re-reads "x op (y op' z)" as "(x op y) op' z" -- safe only where the two groupings agree.
     ///
-    /// On int and real they agree when "op'" is "op" or its inverse: "+" regroups with "+" and "-",
-    /// "*" regroups only with "*". "i * (j div k)" does not regroup, because "i * j div k" means
-    /// "(i * j) div k", which differs as soon as the division truncates; likewise "r * (s / t)"
-    /// differs from "(r * s) / t" when t is 0.
+    /// On int and real that means "op'" is "op" or its inverse: "+" with "+" and "-", "*" with "*".
+    /// Not "i * (j div k)", since "i * j div k" is "(i * j) div k", which differs once the division
+    /// truncates; nor "r * (s / t)", which differs from "(r * s) / t" at t = 0. Float "+" and "*"
+    /// are not associative at all, so nothing regroups at any other type.
     ///
-    /// Floating-point "+" and "*" are not associative at all -- rounding makes "x + (y + z)" and
-    /// "(x + y) + z" genuinely different -- so nothing regroups at any other type.
-    ///
-    /// A null type means Typecheck has not run yet (e.g. /print, which prints before typechecking),
-    /// so nothing is known about the operand and it cannot be regrouped.
+    /// A null type means Typecheck has not run (/print prints beforehand), so nothing is known and
+    /// nothing regroups.
     /// </summary>
     private static bool RegroupsWith(Opcode op, Expr rhs)
     {

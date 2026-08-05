@@ -7,32 +7,24 @@ using NUnit.Framework;
 namespace CoreTests
 {
   /// <summary>
-  /// The printer omits parentheses wherever the binding powers in BinaryOperator.Emit make them
-  /// redundant. Getting that wrong is not a cosmetic bug: a printed program that re-parses to a
-  /// different expression silently changes what gets verified.
+  /// BinaryOperator.Emit drops parentheses its binding powers make redundant. An error there is not
+  /// cosmetic: a printed program that re-parses differently changes what gets verified.
   ///
-  /// The printer is allowed to reassociate where that is sound -- "a + (b + c)" may print as
-  /// "a + b + c" on int and real, and Test/test0/PrettyPrint.bpl pins that flattening down. So the
-  /// property checked here is not structural identity but preservation of meaning: re-parsing the
-  /// printed text must yield either the same AST or a provably equal regrouping.
+  /// The check is preservation of meaning, not structural identity -- "a + (b + c)" may legitimately
+  /// print as "a + b + c" on int and real, which Test/test0/PrettyPrint.bpl pins down. So rather than
+  /// read the fragileLeftContext/fragileRightContext table, enumerate every same-precedence operator
+  /// pair against every operand type and re-parse.
   ///
-  /// Rather than trust the fragileLeftContext/fragileRightContext table by inspection, these tests
-  /// enumerate every same-precedence operator pair against every operand type. Any future edit that
-  /// drops a parenthesis it should have kept -- on floats, or across "div"/"mod"/"/" -- fails here.
-  ///
-  /// Note what this deliberately does not check: a change that adds redundant parentheses is sound,
-  /// so it passes. Output that is merely uglier than necessary is caught by the golden files
-  /// (Test/test0/PrettyPrint.bpl and Test/test0/PrintAssoc.bpl), not here.
+  /// Adding redundant parentheses is sound and so passes here; the golden files catch that instead.
   /// </summary>
   [TestFixture]
   public class ExprPrintRoundTrip
   {
     /// <summary>
-    /// Operators to nest at each operand type, restricted to those that both typecheck there and
-    /// return that same type -- so that the result can be assigned back and nested again. That rules
-    /// out "div" and "mod" outside int, and "/" outside real and float (on ints it returns real).
-    /// All of these bind at 0x40 ("+", "-") or 0x50 (the rest), the two levels within which
-    /// BinaryOperator.Emit can drop parentheses.
+    /// Operators that both typecheck at each type and return it, so the result can be assigned back
+    /// and nested again. That excludes "div"/"mod" outside int, and "/" outside real and float (on
+    /// ints it returns real). All bind at 0x40 ("+", "-") or 0x50 (the rest) -- the two levels Emit
+    /// can drop parentheses within.
     /// </summary>
     private static readonly (string Type, string[] Operators)[] TypedOperators = {
       ("int", new[] { "+", "-", "*", "div", "mod" }),
@@ -48,8 +40,7 @@ namespace CoreTests
         {
           foreach (var inner in ops)
           {
-            // Only same-precedence pairs can lose parentheses, but feeding every pair through
-            // costs nothing and guards the cross-precedence cases too.
+            // Only same-precedence pairs can lose parentheses; the rest are cheap extra coverage.
             yield return new TestCaseData(type, outer, inner, true).SetName(
               $"RightNested_{type}_{Sanitize(outer)}_{Sanitize(inner)}");
             yield return new TestCaseData(type, outer, inner, false).SetName(
@@ -63,11 +54,8 @@ namespace CoreTests
       op.Replace("+", "add").Replace("-", "sub").Replace("*", "mul").Replace("/", "rdiv");
 
     /// <summary>
-    /// The only regroupings the printer may perform. On int and real, "+" is associative and absorbs
-    /// a nested "-" ("a + (b - c)" = "(a + b) - c"), and "*" is associative. Everything else -- any
-    /// float, and "div"/"mod"/"/" at any type -- must keep its parentheses, either because rounding
-    /// makes the operator non-associative or because truncation and division by zero make the two
-    /// groupings differ.
+    /// The regroupings the printer may perform, stated independently of BinaryOperator.RegroupsWith
+    /// so that a wrong rule there cannot make these tests agree with it.
     /// </summary>
     private static bool MayReassociate(string type, string outer, string inner)
     {
@@ -98,19 +86,17 @@ namespace CoreTests
         return;
       }
 
-      // The AST changed, so the printer reassociated. Only a right-nested operand can even reach
-      // that: under left-associative printing "(a op b) op' c" needs no parentheses to begin with,
-      // so it must round-trip exactly.
+      // The AST changed, so the printer reassociated. Only a right-nested operand can: printing is
+      // left-associative, so "(a op b) op' c" never had parentheses to drop.
       Assert.IsTrue(nestRight && MayReassociate(type, outer, inner),
         $"printing \"{body}\" as \"{printed}\" changed the expression"
         + $" (re-parsed as \"{reParsed}\")");
     }
 
     /// <summary>
-    /// /print emits the program before ResolveAndTypecheck runs, so on that path every Expr.Type is
-    /// still null and Emit cannot tell an int from a float. Reassociating there would be unsound for
-    /// exactly the float programs this guards, so with no type information the parentheses have to
-    /// stay -- printing must round-trip structurally, not just semantically.
+    /// /print runs before ResolveAndTypecheck, leaving every Expr.Type null, so Emit cannot tell an
+    /// int from a float. It must therefore keep the parentheses: here the round-trip has to be
+    /// structural, not just meaning-preserving.
     /// </summary>
     [TestCaseSource(nameof(NestedCases))]
     public void PrintingBeforeTypecheckingKeepsParentheses(string type, string outer, string inner, bool nestRight)
@@ -128,10 +114,7 @@ namespace CoreTests
     }
 
     /// <summary>
-    /// Parses "expr" as the right-hand side of an assignment over three variables of the given type.
-    /// Typechecking matters: BinaryOperator.Emit consults operand types, so a typechecked and an
-    /// untypechecked expression exercise different paths. Pass typecheck: false to reach the latter,
-    /// which is what /print does.
+    /// Parses "expr" as the right-hand side of an assignment over variables of the given type.
     /// </summary>
     private static Expr ParseExprInProcedure(string type, string expr, bool typecheck = true)
     {
@@ -151,7 +134,7 @@ namespace CoreTests
       else
       {
         // ProgramLoader always typechecks, so parse and resolve by hand. Resolution is needed for
-        // the printer to see the operators at all, but it leaves every Expr.Type null.
+        // the printer to see the operators, but leaves every Expr.Type null.
         Assert.AreEqual(0, Parser.Parse(programText, "roundtrip.bpl", out program, useBaseName: false));
         Assert.AreEqual(0, program.Resolve(options));
       }
