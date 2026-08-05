@@ -2184,17 +2184,14 @@ namespace Microsoft.Boogie
         return false;
       }
 
-      if (rhs is not NAryExpr { Fun: BinaryOperator rightOperator })
+      if (rhs is not NAryExpr { Fun: BinaryOperator inner })
       {
         return false;
       }
 
-      return rightOperator.Op switch
-      {
-        Opcode.Add or Opcode.Sub => op == Opcode.Add,
-        Opcode.Mul => op == Opcode.Mul,
-        _ => false
-      };
+      return op == Opcode.Add
+        ? inner.Op is Opcode.Add or Opcode.Sub
+        : inner.Op is Opcode.Mul;
     }
 
     public void Emit(IList<Expr> args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext)
