@@ -20,7 +20,7 @@ procedure main() returns () {
   r := r * (s * t);
   i := i + (j - k);
 
-  // same precedence but truncating or partial operator: parentheses must stay
+  // same precedence, but truncating or undefined at zero: parentheses must stay
   i := i * (j div k);
   i := i * (j mod k);
   r := r * (s / t);

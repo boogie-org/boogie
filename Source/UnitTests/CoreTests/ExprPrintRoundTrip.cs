@@ -28,9 +28,11 @@ namespace CoreTests
   public class ExprPrintRoundTrip
   {
     /// <summary>
-    /// Every arithmetic operator that typechecks at each type: "div" and "mod" are int-only, "/" is
-    /// real- and float-only. All of these bind at one of the two precedence levels ("+"/"-" at 0x40,
-    /// the rest at 0x50) that BinaryOperator.Emit can strip parentheses within.
+    /// Operators to nest at each operand type, restricted to those that both typecheck there and
+    /// return that same type -- so that the result can be assigned back and nested again. That rules
+    /// out "div" and "mod" outside int, and "/" outside real and float (on ints it returns real).
+    /// All of these bind at 0x40 ("+", "-") or 0x50 (the rest), the two levels within which
+    /// BinaryOperator.Emit can drop parentheses.
     /// </summary>
     private static readonly (string Type, string[] Operators)[] TypedOperators = {
       ("int", new[] { "+", "-", "*", "div", "mod" }),
@@ -96,9 +98,9 @@ namespace CoreTests
         return;
       }
 
-      // The AST changed, so the printer reassociated. That is only allowed for the left-associative
-      // regroupings above; a right-nested operand at any other type or operator must have kept its
-      // parentheses and so must have round-tripped exactly.
+      // The AST changed, so the printer reassociated. Only a right-nested operand can even reach
+      // that: under left-associative printing "(a op b) op' c" needs no parentheses to begin with,
+      // so it must round-trip exactly.
       Assert.IsTrue(nestRight && MayReassociate(type, outer, inner),
         $"printing \"{body}\" as \"{printed}\" changed the expression"
         + $" (re-parsed as \"{reParsed}\")");
