@@ -2162,6 +2162,45 @@ namespace Microsoft.Boogie
       }
     }
 
+    /// <summary>
+    /// Decides whether the right operand of "op" ("+" or "*") needs parentheses, given that it binds
+    /// equally strongly. Since "+" and "*" are printed left-associatively, dropping the parentheses of
+    /// "x op (y op' z)" makes it re-parse as "(x op y) op' z", so they may only be dropped when those
+    /// two groupings agree.
+    ///
+    /// On int and real they agree whenever "op'" is the inverse-free counterpart of "op": "+" regroups
+    /// with "+" and "-", and "*" regroups only with "*". "i * (j div k)" keeps its parentheses, because
+    /// "i * j div k" means "(i * j) div k", which differs as soon as the division truncates; likewise
+    /// "r * (s / t)" differs from "(r * s) / t" when t is 0.
+    ///
+    /// Floating-point "+" and "*" are not associative at all -- rounding makes "x + (y + z)" and
+    /// "(x + y) + z" genuinely different -- so on any other type the parentheses always stay.
+    ///
+    /// A null type means Typecheck has not run yet (e.g. /print, which prints before typechecking), in
+    /// which case we conservatively keep the parentheses.
+    /// </summary>
+    private static bool RightOperandNeedsParens(Opcode op, Expr rhs)
+    {
+      Contract.Requires(op == Opcode.Add || op == Opcode.Mul);
+      var type = rhs.Type;
+      if (type == null || !(type.IsInt || type.IsReal))
+      {
+        return true;
+      }
+
+      if (rhs is not NAryExpr { Fun: BinaryOperator rightOperator })
+      {
+        return true;
+      }
+
+      return rightOperator.Op switch
+      {
+        Opcode.Add or Opcode.Sub => op != Opcode.Add,
+        Opcode.Mul => op != Opcode.Mul,
+        _ => true
+      };
+    }
+
     public void Emit(IList<Expr> args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext)
     {
       stream.SetToken(ref this.tok);
@@ -2174,6 +2213,7 @@ namespace Microsoft.Boogie
       {
         case Opcode.Add:
           opBindingStrength = 0x40;
+          fragileRightContext = RightOperandNeedsParens(Opcode.Add, args[1]);
           break;
         case Opcode.Sub:
           opBindingStrength = 0x40;
@@ -2181,6 +2221,7 @@ namespace Microsoft.Boogie
           break;
         case Opcode.Mul:
           opBindingStrength = 0x50;
+          fragileRightContext = RightOperandNeedsParens(Opcode.Mul, args[1]);
           break;
         case Opcode.Div:
           opBindingStrength = 0x50;
