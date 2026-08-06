@@ -742,6 +742,16 @@ namespace Microsoft.BaseTypes
     }
 
     /// <summary>
+    /// Biased exponent of the value "significand * 2^scale", where the significand is "width" bits wide,
+    /// as if it were normalized so that its leading bit is the implicit one. A result at or below zero
+    /// means the value is below the smallest normal and must be stored as a subnormal instead.
+    /// </summary>
+    private static BigInteger BiasedExponentOf(BigInteger scale, long width, BigInteger bias)
+    {
+      return scale + width - 1 + bias;
+    }
+
+    /// <summary>
     /// Rounds the exact value "significand * 2^scale" into the given format, performing the single
     /// IEEE 754 round-to-nearest-even the standard requires.
     ///
@@ -761,36 +771,40 @@ namespace Microsoft.BaseTypes
 
       var bias = GetBias(exponentSize);
 
-      // Scale the leading bit would have if the value were normalized where it stands, and the
-      // smallest scale a normal number can have.
-      var leadingScale = scale + significand.GetBitLength() - 1;
-      var minNormalScale = BigInteger.One - bias;
+      // Everything below is expressed as a biased exponent, so that the one test distinguishing normal
+      // from subnormal ("is it above zero?") is the same test before and after rounding. Stating the
+      // two in different terms would leave them free to disagree at the seam.
+      //
+      // BiasedExponentOf gives the exponent a value would have if normalized where it stands; for a
+      // subnormal that is at or below zero, which is exactly the case the format cannot represent
+      // without shifting onto its fixed grid.
+      var biasedExp = BiasedExponentOf(scale, significand.GetBitLength(), bias);
 
-      // A normal result keeps significandSize bits; a subnormal one lands on the fixed grid that every
-      // subnormal shares, whose least significant bit has scale minNormalScale - (significandSize - 1).
-      // Either way this is the only shift, and therefore the only rounding.
-      var shift = leadingScale >= minNormalScale
+      // A normal result keeps significandSize bits. A subnormal one instead lands on the grid every
+      // subnormal shares, whose least significant bit has scale (1 - bias) - (significandSize - 1).
+      // Either way there is one shift, and therefore one rounding.
+      var shift = biasedExp > 0
         ? significand.GetBitLength() - significandSize
-        : minNormalScale - (significandSize - 1) - scale;
+        : BigInteger.One - bias - (significandSize - 1) - scale;
 
       // The overflow flag is deliberately ignored. It reports that rounding carried into an extra bit,
-      // which callers of the old two-step path had to correct for by hand; here the exponent is derived
-      // from the rounded value's own width below, so a carry is absorbed rather than compensated. That
-      // covers both forms it takes: a subnormal rounding up to the smallest normal, and a normal
-      // rounding up into the next binade.
+      // which callers of the old two-step path corrected for by hand; here the exponent is recomputed
+      // from the rounded value's own width, so a carry is absorbed rather than compensated. That covers
+      // both forms it takes: a subnormal rounding up to the smallest normal, and a normal rounding up
+      // into the next binade.
       var (rounded, _, _) = ApplyShiftWithRounding(significand, shift);
       if (rounded.IsZero) {
         return CreateZero(isNegative, significandSize, exponentSize);
       }
 
-      var biasedExp = scale + shift + rounded.GetBitLength() - 1 + bias;
+      biasedExp = BiasedExponentOf(scale + shift, rounded.GetBitLength(), bias);
 
       if (biasedExp >= GetMaxExponent(exponentSize)) {
         return CreateInfinity(isNegative, significandSize, exponentSize);
       }
 
-      // A normal number stores only the trailing significand; its leading bit is implied by a nonzero
-      // exponent, so mask it off. A subnormal stores every bit it has and takes exponent zero.
+      // A normal number stores only the trailing significand, its leading bit being implied by the
+      // nonzero exponent, so mask that bit off. A subnormal stores every bit it has, at exponent zero.
       return biasedExp > 0
         ? new BigFloat(isNegative, rounded & (GetLeadingBitPower(significandSize) - 1), biasedExp,
             significandSize, exponentSize)
