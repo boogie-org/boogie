@@ -102,12 +102,31 @@ namespace BaseTypesTests
                 : (biasedExponent, quotient - (BigInteger.One << (significandSize - 1)));
         }
 
+        /// <summary>
+        /// The stored exponent, significand and sign, which no public member exposes. Comparing these
+        /// rather than ToString() is what makes a 1-ULP difference visible: ToString() is injective on
+        /// finite values, but a mis-rounded result and the correct one differ in the last bit, and reading
+        /// that back out of a formatted string is more fragile than reading the field.
+        /// </summary>
         private static (BigInteger exponent, BigInteger significand, bool signBit) Internals(BigFloat value)
         {
-            Type type = typeof(BigFloat);
-            return ((BigInteger)type.GetField("exponent", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(value),
-                    (BigInteger)type.GetField("significand", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(value),
-                    (bool)type.GetField("signBit", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(value));
+            return ((BigInteger)Field("exponent").GetValue(value),
+                    (BigInteger)Field("significand").GetValue(value),
+                    (bool)Field("signBit").GetValue(value));
+        }
+
+        /// <summary>
+        /// Looks up a private BigFloat field, failing with the field's name rather than a
+        /// NullReferenceException from the caller if it has been renamed.
+        /// </summary>
+        private static FieldInfo Field(string name)
+        {
+            var field = typeof(BigFloat).GetField(name, BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.NotNull(field,
+                $"BigFloat has no private field '{name}'. This fixture reads the stored exponent, "
+                + "significand and sign directly, since no public member exposes them; update Internals "
+                + "if the fields were renamed.");
+            return field;
         }
 
         /// <summary>float is bit-for-bit BigFloat(24,8).</summary>
@@ -222,9 +241,9 @@ namespace BaseTypesTests
         }
 
         /// <summary>
-        /// The smallest hand-checkable case BigFloat currently gets wrong, kept separate so the exact
+        /// The smallest hand-checkable case of the double-rounding defect, kept separate so the exact
         /// arithmetic sits next to the expectation: 2^27/15 = 8947848 remainder 8, and 2*8 > 15, so the
-        /// correctly rounded significand is 8947849 - 2^23 = 559241.
+        /// correctly rounded significand is 8947849 - 2^23 = 559241. Rounding twice yields 559240.
         /// </summary>
         [Test]
         public void FromRationalRoundsOneFifteenthCorrectly()
@@ -232,7 +251,7 @@ namespace BaseTypesTests
             BigFloat.FromRational(1, 15, SingleSignificand, SingleExponent, out var actual);
             var (exponent, significand, _) = Internals(actual);
 
-            Assert.AreEqual((BigInteger)123, exponent);
+            Assert.AreEqual((BigInteger)123, exponent, "biased exponent of 1/15");
             Assert.AreEqual((BigInteger)559241, significand, $"off by {significand - 559241}");
         }
 
@@ -639,6 +658,120 @@ namespace BaseTypesTests
             }
 
             Assert.IsEmpty(wrong, string.Join("; ", wrong));
+        }
+
+
+        /// <summary>
+        /// Exponent sizes are unbounded, and a wide one puts the subnormal boundary at a scale that
+        /// cannot be shifted to directly: a 40-bit exponent field reaches 2^-549755813888, so any
+        /// attempt to materialize 2^shift or the shifted value overflows BigInteger itself.
+        ///
+        /// Nothing covered this before. BigFloatTests exercises 16-bit exponents at the top of their
+        /// range and 30-bit ones only by construction, and the defect needs both a wide exponent and a
+        /// result that underflows into the subnormal range.
+        /// </summary>
+        [Test]
+        public void ArithmeticWorksAtWideExponentSizes()
+        {
+            foreach (var exponentSize in new[] { 16, 20, 33, 40, 64, 100 })
+            {
+                // Two subnormals, whose product underflows far below the smallest representable value.
+                var left = new BigFloat(false, 12345, 0, SingleSignificand, exponentSize);
+                var right = new BigFloat(false, 6789, 0, SingleSignificand, exponentSize);
+
+                Assert.DoesNotThrow(() =>
+                {
+                    var product = left * right;
+                    Assert.IsTrue(product.IsZero, $"exponentSize {exponentSize}: subnormal product should underflow to zero");
+
+                    var quotient = left / right;
+                    Assert.IsFalse(quotient.IsNaN, $"exponentSize {exponentSize}: subnormal quotient should be a number");
+
+                    var sum = left + right;
+                    Assert.IsFalse(sum.IsNaN, $"exponentSize {exponentSize}: subnormal sum should be a number");
+
+                    BigFloat.FromRational(1, 3, SingleSignificand, exponentSize, out _);
+                }, $"exponentSize {exponentSize}");
+            }
+        }
+
+        /// <summary>
+        /// A wider exponent field only moves the range; it does not change how values inside that range
+        /// round. So the same operands, shifted by the difference in bias, must give the same significand
+        /// at any exponent size -- which checks the wide-format paths against hardware without needing an
+        /// oracle that can normalize across billions of binades.
+        /// </summary>
+        [Test]
+        public void WideExponentSizesRoundLikeSinglePrecision()
+        {
+            var random = new Random(777);
+            var mismatches = new List<string>();
+
+            foreach (var exponentSize in new[] { 9, 12, 16, 20, 33, 40, 64 })
+            {
+                var biasDifference = ((BigInteger.One << (exponentSize - 1)) - 1) - 127;
+
+                for (var i = 0; i < 2000 && mismatches.Count < 5; i++)
+                {
+                    var leftBits = random.Next(int.MinValue, int.MaxValue);
+                    var rightBits = random.Next(int.MinValue, int.MaxValue);
+                    var leftExponent = (leftBits >> 23) & 0xFF;
+                    var rightExponent = (rightBits >> 23) & 0xFF;
+
+                    // Keep both operands normal, so shifting the exponent is an exact relabelling.
+                    if (leftExponent == 0 || leftExponent == 0xFF || rightExponent == 0 || rightExponent == 0xFF)
+                    {
+                        continue;
+                    }
+
+                    var leftNegative = (leftBits >> 31) != 0;
+                    var rightNegative = (rightBits >> 31) != 0;
+                    var leftSignificand = leftBits & 0x7FFFFF;
+                    var rightSignificand = rightBits & 0x7FFFFF;
+
+                    var narrowLeft = new BigFloat(leftNegative, leftSignificand, leftExponent, SingleSignificand, SingleExponent);
+                    var narrowRight = new BigFloat(rightNegative, rightSignificand, rightExponent, SingleSignificand, SingleExponent);
+                    var wideLeft = new BigFloat(leftNegative, leftSignificand, leftExponent + biasDifference, SingleSignificand, exponentSize);
+                    var wideRight = new BigFloat(rightNegative, rightSignificand, rightExponent + biasDifference, SingleSignificand, exponentSize);
+
+                    foreach (var op in new[] { '+', '-', '*', '/' })
+                    {
+                        var narrow = Apply(op, narrowLeft, narrowRight);
+                        var wide = Apply(op, wideLeft, wideRight);
+
+                        // Only comparable where both are normal: at the edges the narrow format
+                        // underflows or overflows while the wide one still has room.
+                        if (!narrow.IsNormal || !wide.IsNormal)
+                        {
+                            continue;
+                        }
+
+                        var (narrowExponent, narrowFraction, narrowSign) = Internals(narrow);
+                        var (wideExponent, wideFraction, wideSign) = Internals(wide);
+
+                        if (narrowFraction != wideFraction || wideExponent - narrowExponent != biasDifference
+                            || narrowSign != wideSign)
+                        {
+                            mismatches.Add($"exponentSize {exponentSize}, {op}: (24,8) gave "
+                                + $"(exp {narrowExponent}, sig {narrowFraction}), wide gave "
+                                + $"(exp {wideExponent}, sig {wideFraction})");
+                        }
+                    }
+                }
+            }
+
+            Assert.IsEmpty(mismatches, string.Join("; ", mismatches));
+        }
+
+        private static BigFloat Apply(char op, BigFloat left, BigFloat right)
+        {
+            return op switch
+            {
+                '+' => left + right,
+                '-' => left - right,
+                '*' => left * right,
+                _ => right.IsZero ? left : left / right
+            };
         }
 
     }
