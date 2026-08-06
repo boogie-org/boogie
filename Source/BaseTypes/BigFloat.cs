@@ -265,10 +265,11 @@ namespace Microsoft.BaseTypes
       var scaledNumerator = BigIntegerMath.LeftShift(numerator, scaleBits);
       var quotient = BigInteger.DivRem(scaledNumerator, denominator, out var remainder);
 
-      // Apply rounding if inexact
+      // Record inexactness in a sticky bit rather than rounding here. The shift further down performs
+      // the only rounding, and needs the residual to tell a tie from a value just above one.
       var isExact = remainder.IsZero;
       if (!isExact) {
-        quotient = ApplyRoundToNearestEven(quotient, remainder, denominator);
+        quotient |= BigInteger.One;
       }
 
       var quotientBits = quotient.GetBitLength();
