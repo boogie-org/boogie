@@ -376,6 +376,7 @@ namespace BaseTypesTests
         private static IEnumerable<TestCaseData> CorrectOperators()
         {
             yield return new TestCaseData('*').SetName("Multiplication");
+            yield return new TestCaseData('/').SetName("Division");
         }
 
         /// <summary>
@@ -386,7 +387,6 @@ namespace BaseTypesTests
         {
             yield return new TestCaseData('+').SetName("Addition");
             yield return new TestCaseData('-').SetName("Subtraction");
-            yield return new TestCaseData('/').SetName("Division");
         }
 
         /// <summary>
@@ -395,8 +395,8 @@ namespace BaseTypesTests
         /// that is where two of the known defects live.
         /// </summary>
         [TestCaseSource(nameof(OperatorsUnderRepair))]
-        [Ignore("Rounding is applied twice, so these disagree with IEEE 754 on a substantial fraction of "
-                + "inputs: / about 14%, + and - about 9% at (24,8). See FLOAT_AUDIT.md sections 1 and 2.")]
+        [Ignore("Addition truncates when aligning operands, so bits are lost before the sum is formed: "
+                + "about 9% of inputs disagree with IEEE 754 at (24,8). See FLOAT_AUDIT.md section 2.")]
         public void OperatorMatchesHardwareOverRandomInputs(char op)
         {
             var random = new Random(31415);
@@ -442,8 +442,8 @@ namespace BaseTypesTests
         /// (24,8) than at (53,11) - so a fix verified only at single precision proves less than it looks.
         /// </summary>
         [TestCaseSource(nameof(OperatorsUnderRepair))]
-        [Ignore("Same double-rounding defects as at single precision, with different rates: / about 14%, "
-                + "+ and - about 2.5% at (53,11). See FLOAT_AUDIT.md sections 1 and 2.")]
+        [Ignore("Same truncation defect as at single precision, with a different rate: + and - about "
+                + "2.5% at (53,11). See FLOAT_AUDIT.md section 2.")]
         public void OperatorMatchesHardwareAtDoublePrecision(char op)
         {
             var random = new Random(9001);
