@@ -372,11 +372,20 @@ namespace BaseTypesTests
             }
         }
 
-        private static IEnumerable<TestCaseData> Operators()
+        /// <summary>Operators that round correctly and are held to it.</summary>
+        private static IEnumerable<TestCaseData> CorrectOperators()
+        {
+            yield return new TestCaseData('*').SetName("Multiplication");
+        }
+
+        /// <summary>
+        /// Operators that still round twice. Each moves to CorrectOperators as it is fixed, so this
+        /// list shrinking to empty is the measure of progress.
+        /// </summary>
+        private static IEnumerable<TestCaseData> OperatorsUnderRepair()
         {
             yield return new TestCaseData('+').SetName("Addition");
             yield return new TestCaseData('-').SetName("Subtraction");
-            yield return new TestCaseData('*').SetName("Multiplication");
             yield return new TestCaseData('/').SetName("Division");
         }
 
@@ -385,10 +394,9 @@ namespace BaseTypesTests
         /// fixed seed so a failure is reproducible. Subnormal operands and results are included, since
         /// that is where two of the known defects live.
         /// </summary>
-        [TestCaseSource(nameof(Operators))]
-        [Ignore("Every operator except * disagrees with IEEE 754 on a substantial fraction of inputs "
-                + "because rounding is applied twice: / about 14%, + and - about 9% at (24,8). * is at "
-                + "about 0.1%, entirely on subnormal results. See FLOAT_AUDIT.md sections 1, 2 and 7.")]
+        [TestCaseSource(nameof(OperatorsUnderRepair))]
+        [Ignore("Rounding is applied twice, so these disagree with IEEE 754 on a substantial fraction of "
+                + "inputs: / about 14%, + and - about 9% at (24,8). See FLOAT_AUDIT.md sections 1 and 2.")]
         public void OperatorMatchesHardwareOverRandomInputs(char op)
         {
             var random = new Random(31415);
@@ -433,7 +441,7 @@ namespace BaseTypesTests
         /// The same sweep at double precision. Rates differ by precision - addition is far worse at
         /// (24,8) than at (53,11) - so a fix verified only at single precision proves less than it looks.
         /// </summary>
-        [TestCaseSource(nameof(Operators))]
+        [TestCaseSource(nameof(OperatorsUnderRepair))]
         [Ignore("Same double-rounding defects as at single precision, with different rates: / about 14%, "
                 + "+ and - about 2.5% at (53,11). See FLOAT_AUDIT.md sections 1 and 2.")]
         public void OperatorMatchesHardwareAtDoublePrecision(char op)
@@ -603,5 +611,18 @@ namespace BaseTypesTests
 
             Assert.AreEqual(0L, worst, $"chained arithmetic drifted by up to {worst} ULP from hardware");
         }
+
+        [TestCaseSource(nameof(CorrectOperators))]
+        public void CorrectOperatorMatchesHardwareOverRandomInputs(char op)
+        {
+            OperatorMatchesHardwareOverRandomInputs(op);
+        }
+
+        [TestCaseSource(nameof(CorrectOperators))]
+        public void CorrectOperatorMatchesHardwareAtDoublePrecision(char op)
+        {
+            OperatorMatchesHardwareAtDoublePrecision(op);
+        }
+
     }
 }
