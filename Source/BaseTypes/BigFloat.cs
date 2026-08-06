@@ -702,20 +702,22 @@ namespace Microsoft.BaseTypes
       // Prepare operands and calculate result sign
       var ((xSig, xExp), (ySig, yExp), resultSign) = PrepareOperandsForMultDiv(x, y);
 
-      // Shift dividend left for precision and divide with rounding
-      var shiftedDividend = BigIntegerMath.LeftShift(xSig, x.SignificandSize + 1);
+      // Shift the dividend far enough that the quotient always has at least significandSize + 2 bits.
+      // A fixed shift is not enough: a subnormal dividend carries fewer significant bits than the
+      // format allows, so the quotient comes out short and the missing precision cannot be recovered.
+      var deficit = ySig.GetBitLength() - xSig.GetBitLength();
+      var guardShift = x.SignificandSize + 2 + BigInteger.Max(deficit, BigInteger.Zero);
+      var shiftedDividend = BigIntegerMath.LeftShift(xSig, guardShift);
       var quotient = BigInteger.DivRem(shiftedDividend, ySig, out var remainder);
-      quotient = ApplyRoundToNearestEven(quotient, remainder, ySig);
 
-      if (quotient == 0) {
-        return CreateZero(resultSign, x.SignificandSize, x.ExponentSize);
+      // A nonzero remainder means the quotient is inexact. Record that in a sticky bit rather than
+      // rounding here, so RoundToFormat can still tell a tie from a value just above one.
+      if (!remainder.IsZero) {
+        quotient |= BigInteger.One;
       }
 
-      // Normalize and calculate final exponent
-      var (normalizedQuotient, normalShift) = NormalizeAndRound(quotient, BigInteger.Zero, x.SignificandSize);
-      var resultExp = xExp - yExp + x.bias + normalShift - 2;
-
-      return HandleExponentBounds(normalizedQuotient, resultExp, resultSign, x.SignificandSize, x.ExponentSize);
+      var quotientScale = xExp - yExp - guardShift;
+      return RoundToFormat(quotient, quotientScale, resultSign, x.SignificandSize, x.ExponentSize);
     }
 
     /// <summary>
