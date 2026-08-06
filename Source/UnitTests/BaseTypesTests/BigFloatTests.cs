@@ -1317,11 +1317,66 @@ namespace BaseTypesTests
             }, "Less than operator should validate size compatibility");
         }
 
+        /// <summary>
+        /// Exponent sizes are unbounded, so a float's integer part is too. TryFloorCeiling exists for
+        /// callers that want a bound only when it is small enough to use, and it must decide that without
+        /// first computing the oversized value -- at float24e40 the floor exceeds what BigInteger can hold,
+        /// which reached the abstract interpreter as an unhandled OverflowException.
+        /// </summary>
+        [Test]
+        public void TestTryFloorCeilingDeclinesOversizedBounds()
+        {
+            foreach (var exponentSize in new[] { 24, 32, 40, 60 })
+            {
+                var literal = $"0x1.0e{((BigInteger.One << (exponentSize - 1)) - 1) / 4}f24e{exponentSize}";
+                Assert.IsTrue(BigFloat.TryParse(literal, out var huge), literal);
+                Assert.IsFalse(huge.IsInfinity, $"{literal} should be finite");
+
+                var before = GC.GetTotalAllocatedBytes(precise: true);
+                Assert.IsFalse(huge.TryFloorCeiling(out _, out _),
+                    $"{literal} has bounds too wide to be worth computing");
+                var allocated = GC.GetTotalAllocatedBytes(precise: true) - before;
+
+                Assert.Less(allocated, 1024 * 1024,
+                    $"declining {literal} allocated {allocated / 1024.0 / 1024.0:F1} MB, so it computed the value first");
+            }
+
+            // NaN and the infinities have no integer bounds either, and decline rather than throwing.
+            foreach (var special in new[] { "0NaN24e8", "0+oo24e8", "0-oo24e8" })
+            {
+                Assert.IsFalse(BigFloat.FromString(special).TryFloorCeiling(out _, out _), special);
+            }
+        }
+
+        /// <summary>
+        /// Whenever TryFloorCeiling accepts, it must give exactly what FloorCeiling gives; the limit may
+        /// only decide whether to answer, never change the answer.
+        /// </summary>
+        [Test]
+        public void TestTryFloorCeilingAgreesWithFloorCeiling()
+        {
+            foreach (var literal in new[]
+                     {
+                         "0x0.0e0f24e8", "-0x0.0e0f24e8", "0x1.0e0f24e8", "-0x1.8e0f24e8",
+                         "0x0.8e-126f24e8", "0x0.000002e-126f24e8", "0x1.fffffee31f24e8",
+                         "0x1.0e0f53e11", "-0x1.921fb6e1f24e8"
+                     })
+            {
+                var value = BigFloat.FromString(literal);
+                Assert.IsTrue(value.TryFloorCeiling(out var floor, out var ceiling), literal);
+
+                value.FloorCeiling(out var expectedFloor, out var expectedCeiling);
+                Assert.AreEqual(expectedFloor, floor, $"floor of {literal}");
+                Assert.AreEqual(expectedCeiling, ceiling, $"ceiling of {literal}");
+            }
+        }
+
         [Test]
         public void TestCopySignRejectsIncompatibleSizes()
         {
-            // CopySign was the one binary operation that accepted mismatched formats, so a size confusion
-            // passed through it silently while every sibling rejected it.
+            // CopySign accepted mismatched formats while the arithmetic operators and comparisons all
+            // rejected them, so a size confusion passed through it silently. Max and Min have a separate
+            // gap for NaN operands, which this does not cover.
             var float24bit = BigFloat.FromInt(10, 24, 8);
             var float53bit = BigFloat.FromInt(10, 53, 11);
 

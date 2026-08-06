@@ -958,18 +958,19 @@ namespace Microsoft.Boogie.AbstractInterpretation
         }
         else if (node.Val is BigFloat)
         {
+          // NaN and the infinities have no integer bounds, and a float with a wide exponent has bounds
+          // too large to be worth computing -- the floor of the largest float24e32 is a 256 MB integer.
+          // Both are "no useful bound", which the interval domain already represents as null.
           var bf = (BigFloat) node.Val;
-          if (bf.IsNaN || bf.IsInfinity)
+          if (bf.TryFloorCeiling(out var floor, out var ceiling))
           {
-            // NaN and infinity have no meaningful integer bounds
-            Lo = null;
-            Hi = null;
+            Lo = floor;
+            Hi = ceiling;
           }
           else
           {
-            bf.FloorCeiling(out var floor, out var ceiling);
-            Lo = floor;
-            Hi = ceiling;
+            Lo = null;
+            Hi = null;
           }
         }
         else if (node.Val is bool)
