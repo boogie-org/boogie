@@ -1212,41 +1212,21 @@ namespace Microsoft.BaseTypes
         return HandleUnderflow(isNegative, sig, biasedExp, sigSize, expSize, strict, out result);
       }
 
-      // Normal number - check precision loss and normalize
+      // Strict mode rejects any literal that would not survive the round trip, so a nonzero tail below
+      // the retained bits is an error rather than something to round away.
       var shift = new BigInteger(msbPos) - (sigSize - 1);
       if (strict && shift > 0 && shift < sig.GetBitLength() && (sig & GetMask(shift)) != 0) {
         return false;
       }
 
-      // Apply IEEE 754 rounding instead of truncation
-      BigInteger roundedSig;
-      BigInteger adjustedBiasedExp = biasedExp;
+      // Bit 0 of "sig" sits fracBits below the hex point, which decExp scales by four bits per digit.
+      var scale = (decExp * 4) - fracBits;
+      result = RoundToFormat(sig, scale, isNegative, sigSize, expSize);
 
-      if (shift > 0) {
-        var (shifted, _, overflow) = ApplyShiftWithRounding(sig, shift);
-        roundedSig = shifted;
-
-        // Check if rounding caused overflow to next power of 2
-        if (overflow) {
-          roundedSig >>= 1;
-          adjustedBiasedExp++;
-
-          // Check for exponent overflow
-          if (adjustedBiasedExp >= GetMaxExponent(expSize)) {
-            if (strict) {
-              return false;
-            }
-            result = CreateInfinity(isNegative, sigSize, expSize);
-            return true;
-          }
-        }
-
-        roundedSig &= (GetLeadingBitPower(sigSize) - 1);
-      } else {
-        roundedSig = BigIntegerMath.RightShift(sig, shift) & (GetLeadingBitPower(sigSize) - 1);
+      if (strict && result.IsInfinity) {
+        return false;
       }
 
-      result = new BigFloat(isNegative, roundedSig, adjustedBiasedExp, sigSize, expSize);
       return true;
     }
 
@@ -1259,51 +1239,29 @@ namespace Microsoft.BaseTypes
       }
       return BigInteger.TryParse("0" + hex, System.Globalization.NumberStyles.HexNumber, null, out value);
     }
-
+    /// <summary>
+    /// Handles a literal whose exponent falls at or below the subnormal range.
+    ///
+    /// The rounding itself is RoundToFormat's job; what is specific here is strict mode, which rejects
+    /// any literal that does not survive a round trip. Underflow always loses information -- to zero, or
+    /// onto the coarser subnormal grid, or by rounding up into the smallest normal -- so strict mode
+    /// accepts only a value that lands exactly on a subnormal.
+    /// </summary>
     private static bool HandleUnderflow(bool signBit, BigInteger sig, BigInteger biasedExp, int sigSize, int expSize, bool strict, out BigFloat result)
     {
-      result = default;
-      var bias = GetBias(expSize);
-      var minSubnormalExp = BigInteger.One - bias - (sigSize - 1);
-      var actualExp = biasedExp - bias;
+      // Bit 0 of "sig" has weight 2^(actualExp - msb), since the caller placed the leading bit at
+      // actualExp.
+      var actualExp = biasedExp - GetBias(expSize);
+      var scale = actualExp - (sig.GetBitLength() - 1);
 
-      // Complete underflow to zero
-      if (actualExp < minSubnormalExp) {
-        if (strict) {
-          return false;
-        }
-        result = CreateZero(signBit, sigSize, expSize);
+      result = RoundToFormat(sig, scale, signBit, sigSize, expSize);
+
+      if (!strict) {
         return true;
       }
 
-      // Calculate required shift for subnormal representation
-      var currentMsb = sig.GetBitLength() - 1;
-      var targetPosition = actualExp - minSubnormalExp;
-      var shiftAmount = new BigInteger(currentMsb) - targetPosition;
-
-      // Apply shift with IEEE 754 rounding
-      var (subnormalSig, _, _) = ApplyShiftWithRounding(sig, shiftAmount);
-
-      if (subnormalSig.IsZero) {
-        if (strict) {
-          return false;
-        }
-        result = CreateZero(signBit, sigSize, expSize);
-        return true;
-      }
-
-      // Check if rounding caused overflow to normal range
-      if (subnormalSig.GetBitLength() > sigSize - 1) {
-        if (strict) {
-          return false;
-        }
-        // Overflow to smallest normal number
-        result = new BigFloat(signBit, 0, 1, sigSize, expSize);
-        return true;
-      }
-
-      result = new BigFloat(signBit, subnormalSig, 0, sigSize, expSize);
-      return true;
+      // Rejected in strict mode: flushed to zero, or rounded up out of the subnormal range.
+      return !result.IsZero && result.exponent == 0;
     }
 
     /// <summary>
