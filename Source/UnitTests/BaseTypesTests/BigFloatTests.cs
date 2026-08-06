@@ -3138,7 +3138,7 @@ namespace BaseTypesTests
         [Test]
         public void TestSubnormalArithmeticUnderflowBoundary()
         {
-            // Test the underflow threshold fix in HandleExponentBounds
+            // Test the underflow threshold handling in RoundToFormat
             // This is used internally by arithmetic operations
 
             // Create 2^(-126) (smallest normal) and divide by 2^20 to get 2^(-146)
@@ -3432,7 +3432,7 @@ namespace BaseTypesTests
         public void TestSubnormalRoundingUpToNormal()
         {
             // Test the edge case where arithmetic on subnormals can produce normal results
-            // This tests the fix in HandleExponentBounds
+            // This exercises the subnormal-to-normal carry in RoundToFormat
 
             // The largest subnormal is (2^23 - 1) × 2^(-149)
             var maxSubnormal = new BigFloat(false, (BigInteger)(1 << 23) - 1, 0, 24, 8);

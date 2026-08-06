@@ -414,17 +414,6 @@ namespace Microsoft.BaseTypes
 
       return ((xSig, xExp), (ySig, yExp), resultSign);
     }
-
-    private static BigInteger ApplyRoundToNearestEven(BigInteger quotient, BigInteger remainder, BigInteger denominator)
-    {
-      // Round up if remainder > denominator/2, or if remainder == denominator/2 and quotient is odd
-      if (remainder * 2 > denominator || (remainder * 2 == denominator && !quotient.IsEven)) {
-        quotient++;
-      }
-
-      return quotient;
-    }
-
     private static BigInteger GetMask(BigInteger bits)
     {
       if (bits <= 0) {
@@ -761,58 +750,6 @@ namespace Microsoft.BaseTypes
             significandSize, exponentSize)
         : new BigFloat(isNegative, rounded, 0, significandSize, exponentSize);
     }
-
-    private static (BigInteger significand, BigInteger exponent) NormalizeAndRound(BigInteger value, BigInteger exponent, int targetBits)
-    {
-      var valueBits = value.GetBitLength();
-      var shift = valueBits - targetBits;
-
-      // Use IEEE 754 compliant shift and round method
-      var (shiftedValue, _, overflow) = ApplyShiftWithRounding(value, shift);
-      var adjustedExponent = exponent + shift;
-
-      // Handle potential overflow from rounding (only for right shifts)
-      if (overflow) {
-        shiftedValue >>= 1;
-        adjustedExponent++;
-      }
-
-      return (shiftedValue, adjustedExponent);
-    }
-
-    private static BigFloat HandleExponentBounds(BigInteger significand, BigInteger exponent, bool isNegative, int significandSize, int exponentSize)
-    {
-      var maxExponent = GetMaxExponent(exponentSize);
-
-      // Handle overflow to infinity
-      if (exponent >= maxExponent) {
-        return CreateInfinity(isNegative, significandSize, exponentSize);
-      }
-
-      // Handle normal numbers
-      if (exponent > 0) {
-        // Remove implicit leading bit for storage (it's encoded in the biased exponent)
-        var leadingBitMask = GetLeadingBitPower(significandSize) - 1;
-        return new BigFloat(isNegative, significand & leadingBitMask, exponent, significandSize, exponentSize);
-      }
-
-      // Handle complete underflow to zero
-      var bias = GetBias(exponentSize);
-      if (exponent < BigInteger.One - bias - (significandSize - 1)) {
-        return CreateZero(isNegative, significandSize, exponentSize);
-      }
-
-      // Handle subnormal numbers with gradual underflow
-      var (shiftedSig, _, _) = ApplyShiftWithRounding(significand, BigInteger.One - exponent);
-
-      // Check if rounding caused overflow back to smallest normal number
-      if (shiftedSig.GetBitLength() == significandSize) {
-        return new BigFloat(isNegative, 0, 1, significandSize, exponentSize);
-      }
-
-      return new BigFloat(isNegative, shiftedSig, 0, significandSize, exponentSize);
-    }
-
     /// <summary>
     /// Arithmetic operation types for special value handling
     /// </summary>
