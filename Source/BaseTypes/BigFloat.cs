@@ -634,25 +634,22 @@ namespace Microsoft.BaseTypes
         return farApartResult;
       }
 
-      // Align significands and add
+      // Align by scaling the operand with the larger exponent up, rather than shifting the smaller one
+      // down. Shifting down truncates the low bits before the sum is formed, and no later rounding can
+      // recover them; scaling up keeps the sum exact.
+      var absDiff = BigInteger.Abs(expDiff);
       var sum = expDiff == 0 ? xSigned + ySigned :
-        expDiff > 0 ? xSigned + BigIntegerMath.RightShift(ySigned, expDiff) :
-        BigIntegerMath.RightShift(xSigned, -expDiff) + ySigned;
+        expDiff > 0 ? BigIntegerMath.LeftShift(xSigned, absDiff) + ySigned :
+        xSigned + BigIntegerMath.LeftShift(ySigned, absDiff);
 
       if (sum == 0) {
-        var zeroSumResult = CreateZero(x.signBit && y.signBit, x.SignificandSize, x.ExponentSize);
-        return zeroSumResult;
+        // IEEE 754: cancellation gives -0 only when both operands are negative.
+        return CreateZero(x.signBit && y.signBit, x.SignificandSize, x.ExponentSize);
       }
 
-      // Normalize result
-      var isNegative = sum < 0;
-      var absSum = isNegative ? -sum : sum;
-
-      var baseExp = xExp > yExp ? xExp : yExp;
-      var (normSig, normExp) = NormalizeAndRound(absSum, baseExp, x.SignificandSize);
-
-      var result = HandleExponentBounds(normSig, normExp, isNegative, x.SignificandSize, x.ExponentSize);
-      return result;
+      // Both significands are now weighted by the smaller of the two exponents.
+      var sumScale = BigInteger.Min(xExp, yExp) - x.bias - (x.SignificandSize - 1);
+      return RoundToFormat(BigInteger.Abs(sum), sumScale, sum < 0, x.SignificandSize, x.ExponentSize);
     }
 
     [Pure] public static BigFloat operator -(BigFloat x, BigFloat y) => x + -y;

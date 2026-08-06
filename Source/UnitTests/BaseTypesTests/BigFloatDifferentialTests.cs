@@ -358,9 +358,6 @@ namespace BaseTypesTests
         /// and must round down to the even 2^24, while 2^24+3 must round up to 2^24+4.
         /// </summary>
         [Test]
-        [Ignore("BigFloat.operator+ truncates when aligning operands (BigIntegerMath.RightShift keeps no "
-                + "sticky bit), so bits are lost before the sum is formed and ties cannot be resolved. "
-                + "2^24 + 3 yields 2^24 + 2 where 2^24 + 4 is correct.")]
         public void TiesRoundToEven()
         {
             const float twoTo24 = 16777216f;
@@ -372,21 +369,12 @@ namespace BaseTypesTests
             }
         }
 
-        /// <summary>Operators that round correctly and are held to it.</summary>
-        private static IEnumerable<TestCaseData> CorrectOperators()
-        {
-            yield return new TestCaseData('*').SetName("Multiplication");
-            yield return new TestCaseData('/').SetName("Division");
-        }
-
-        /// <summary>
-        /// Operators that still round twice. Each moves to CorrectOperators as it is fixed, so this
-        /// list shrinking to empty is the measure of progress.
-        /// </summary>
-        private static IEnumerable<TestCaseData> OperatorsUnderRepair()
+        private static IEnumerable<TestCaseData> Operators()
         {
             yield return new TestCaseData('+').SetName("Addition");
             yield return new TestCaseData('-').SetName("Subtraction");
+            yield return new TestCaseData('*').SetName("Multiplication");
+            yield return new TestCaseData('/').SetName("Division");
         }
 
         /// <summary>
@@ -394,9 +382,7 @@ namespace BaseTypesTests
         /// fixed seed so a failure is reproducible. Subnormal operands and results are included, since
         /// that is where two of the known defects live.
         /// </summary>
-        [TestCaseSource(nameof(OperatorsUnderRepair))]
-        [Ignore("Addition truncates when aligning operands, so bits are lost before the sum is formed: "
-                + "about 9% of inputs disagree with IEEE 754 at (24,8). See FLOAT_AUDIT.md section 2.")]
+        [TestCaseSource(nameof(Operators))]
         public void OperatorMatchesHardwareOverRandomInputs(char op)
         {
             var random = new Random(31415);
@@ -441,9 +427,7 @@ namespace BaseTypesTests
         /// The same sweep at double precision. Rates differ by precision - addition is far worse at
         /// (24,8) than at (53,11) - so a fix verified only at single precision proves less than it looks.
         /// </summary>
-        [TestCaseSource(nameof(OperatorsUnderRepair))]
-        [Ignore("Same truncation defect as at single precision, with a different rate: + and - about "
-                + "2.5% at (53,11). See FLOAT_AUDIT.md section 2.")]
+        [TestCaseSource(nameof(Operators))]
         public void OperatorMatchesHardwareAtDoublePrecision(char op)
         {
             var random = new Random(9001);
@@ -610,18 +594,6 @@ namespace BaseTypesTests
             }
 
             Assert.AreEqual(0L, worst, $"chained arithmetic drifted by up to {worst} ULP from hardware");
-        }
-
-        [TestCaseSource(nameof(CorrectOperators))]
-        public void CorrectOperatorMatchesHardwareOverRandomInputs(char op)
-        {
-            OperatorMatchesHardwareOverRandomInputs(op);
-        }
-
-        [TestCaseSource(nameof(CorrectOperators))]
-        public void CorrectOperatorMatchesHardwareAtDoublePrecision(char op)
-        {
-            OperatorMatchesHardwareAtDoublePrecision(op);
         }
 
     }
