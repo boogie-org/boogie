@@ -258,28 +258,25 @@ namespace Microsoft.BaseTypes
       numerator = BigInteger.Abs(numerator);
       denominator = BigInteger.Abs(denominator);
 
-      // Scale numerator for precision
-      // Use long to avoid overflow in bit length calculation
+      // Pre-scale the numerator so the quotient carries three bits more than the format keeps: two for
+      // the guard and sticky positions RoundToFormat needs, and one of slack. The shift is clamped at
+      // zero for the case where the numerator already dwarfs the denominator, which needs no scaling --
+      // there the quotient is wide on its own, so bit 0 still falls well below the retained bits and
+      // the sticky bit below cannot disturb them.
       var scaleBitsLong = (long)significandSize + 3 + (denominator.GetBitLength() - numerator.GetBitLength());
       var scaleBits = scaleBitsLong < 0 ? BigInteger.Zero : new BigInteger(scaleBitsLong);
       var scaledNumerator = BigIntegerMath.LeftShift(numerator, scaleBits);
       var quotient = BigInteger.DivRem(scaledNumerator, denominator, out var remainder);
 
-      // The +3 margin above means the significand carries three bits more than the format keeps, so
-      // the sticky bit is safely below the retained bits.
-      var isExact = remainder.IsZero;
-      quotient = WithStickyBit(quotient, remainder);
-
       // Bit 0 of the scaled quotient has weight 2^-scaleBits, so RoundToFormat finishes the job: it
       // performs the single rounding and handles the normal, subnormal, overflow and underflow cases.
-      result = RoundToFormat(quotient, -scaleBits, isNegative, significandSize, exponentSize);
+      result = RoundToFormat(WithStickyBit(quotient, remainder), -scaleBits, isNegative,
+        significandSize, exponentSize);
 
       // Whether the conversion was exact is a question about the input, not about what rounding did, so
       // it is answered by asking whether the result still represents numerator/denominator. Deciding it
       // that way keeps this method from having to reimplement the rounding in order to observe it.
-      isExact = RepresentsExactly(result, numerator, denominator);
-
-      return isExact;
+      return RepresentsExactly(result, numerator, denominator);
     }
 
     /// <summary>
@@ -380,68 +377,45 @@ namespace Microsoft.BaseTypes
       }
       return BigIntegerMath.LeftShift(BigInteger.One, bits) - 1;
     }
-
     /// <summary>
-    /// Applies a shift with IEEE 754 round-to-nearest-even rounding.
+    /// Shifts "value" right by "shift" bits, rounding the discarded tail to nearest with ties to even.
+    /// A negative shift shifts left, which discards nothing and so needs no rounding.
     /// </summary>
-    /// <param name="value">The value to shift</param>
-    /// <param name="shift">The shift amount (positive for right shift, negative for left shift)</param>
-    /// <returns>The shifted and rounded value.</returns>
     private static BigInteger ApplyShiftWithRounding(BigInteger value, BigInteger shift)
     {
-      // Handle left shifts (no rounding needed, no overflow possible)
       if (shift <= 0) {
         return BigIntegerMath.LeftShift(value, -shift);
       }
 
-      // Handle very large shifts - but still need to check for rounding
-      if (value.GetBitLength() < shift) {
-        // All bits shifted out, but check if we need to round up
-        // For round-to-nearest-even, we round up if value > 2^(shift-1)
-        var halfValue = BigIntegerMath.LeftShift(BigInteger.One, shift - 1);
-        if (value > halfValue) {
-          return BigInteger.One; // rounds up to 1
-        }
-        return BigInteger.Zero;
+      // Exponent sizes are unbounded, so a shift can exceed the value's width by an astronomical
+      // margin -- a 40-bit exponent field puts the subnormal boundary around 2^-549755813888. Handle
+      // that case by comparing against the halfway point rather than by shifting, since neither
+      // 2^shift nor the shifted value can be materialized.
+      if (shift > value.GetBitLength()) {
+        // Everything is discarded. The result is 1 only if the value exceeded half of the discarded
+        // range, i.e. 2^(shift-1); a value exactly at the halfway point ties to the even 0.
+        return value.GetBitLength() == shift && (value & (value - 1)) != 0
+          ? BigInteger.One
+          : BigInteger.Zero;
       }
 
-      // For very large right shifts, perform in chunks
-      var remaining = shift;
-      var current = value;
+      // Split the value at the rounding position. The tail is whatever the retained part does not
+      // account for, and both shifts here are bounded by the value's own width.
+      var retained = BigIntegerMath.RightShift(value, shift);
+      var tail = value - BigIntegerMath.LeftShift(retained, shift);
 
-      // Shift by int.MaxValue chunks if needed
-      while (remaining > int.MaxValue) {
-        current >>= int.MaxValue;
-        remaining -= int.MaxValue;
-        if (current.IsZero) {
-          return BigInteger.Zero;
-        }
+      if (tail.IsZero) {
+        return retained;
       }
 
-      // Perform final shift with IEEE 754 round-to-nearest-even
-      var intShift = (int)remaining;
-      var mask = (BigInteger.One << intShift) - 1;
-      var lostBits = current & mask;
-      var result = current >> intShift;
+      // Round to nearest, ties to even. Comparing twice the tail against the discarded range avoids
+      // materializing the halfway value itself.
+      var tailRange = BigIntegerMath.LeftShift(BigInteger.One, shift);
+      var doubledTail = tail * 2;
 
-      // If no bits lost, result is exact, no overflow
-      if (lostBits.IsZero) {
-        return result;
-      }
-
-      // Round to nearest even
-      var halfBit = BigInteger.One << (intShift - 1);
-      var needsRounding = lostBits > halfBit || (lostBits == halfBit && !result.IsEven);
-
-      // Check for overflow: when rounding up causes bit length to increase
-      var overflow = false;
-      if (needsRounding) {
-        var originalBitLength = result.GetBitLength();
-        result++;
-        overflow = result.GetBitLength() > originalBitLength;
-      }
-
-      return result;
+      return doubledTail > tailRange || (doubledTail == tailRange && !retained.IsEven)
+        ? retained + 1
+        : retained;
     }
 
     // Public convenience methods for special values
