@@ -586,5 +586,60 @@ namespace BaseTypesTests
             Assert.AreEqual(0L, worst, $"chained arithmetic drifted by up to {worst} ULP from hardware");
         }
 
+
+        /// <summary>
+        /// FromRational at double precision, and specifically over values whose rounding carries the
+        /// significand from all-ones into the next binade. The (24,8) sweep above does not reach these:
+        /// a carry needs the retained bits to be exactly 111...1 and the tail to round up, which is rare
+        /// enough that random sampling at one precision misses it. BigFloatTests covers one such value
+        /// (2.220446049250313e-16, from the fix in #1043); this covers the family.
+        /// </summary>
+        [Test]
+        public void FromRationalIsCorrectlyRoundedAtDoublePrecision()
+        {
+            var wrong = new List<string>();
+
+            // Values just below each power of two, where the significand is all ones before rounding.
+            for (var power = -60; power <= 60 && wrong.Count < 10; power++)
+            {
+                BigInteger numerator, denominator;
+                if (power >= 0)
+                {
+                    numerator = BigInteger.Pow(2, power);
+                    denominator = BigInteger.One;
+                }
+                else
+                {
+                    numerator = BigInteger.One;
+                    denominator = BigInteger.Pow(2, -power);
+                }
+
+                // Approach the power from below by a hair, so the retained bits fill with ones and the
+                // discarded tail decides whether they carry.
+                foreach (var nudge in new[] { 1, 3, 7, 1023, 1048575 })
+                {
+                    var scaledNumerator = numerator * ((BigInteger.One << 54) - nudge);
+                    var scaledDenominator = denominator << 54;
+
+                    var exact = ExactRoundToNearestEven(scaledNumerator, scaledDenominator, 53, 11);
+                    if (exact == null)
+                    {
+                        continue;
+                    }
+
+                    BigFloat.FromRational(scaledNumerator, scaledDenominator, 53, 11, out var actual);
+                    var (exponent, significand, _) = Internals(actual);
+
+                    if (exponent != exact.Value.exponent || significand != exact.Value.significand)
+                    {
+                        wrong.Add($"2^{power} * (2^54-{nudge})/2^54: got (exp {exponent}, sig {significand}), "
+                                  + $"want (exp {exact.Value.exponent}, sig {exact.Value.significand})");
+                    }
+                }
+            }
+
+            Assert.IsEmpty(wrong, string.Join("; ", wrong));
+        }
+
     }
 }
