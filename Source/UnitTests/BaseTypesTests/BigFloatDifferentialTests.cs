@@ -200,6 +200,7 @@ namespace BaseTypesTests
         /// </summary>
         private static IEnumerable<TestCaseData> HandCheckedRationals()
         {
+            yield return new TestCaseData(1, 15, 123, 559241).SetName("OneFifteenth");
             yield return new TestCaseData(1, 3, 125, 2796203).SetName("OneThird");
             yield return new TestCaseData(2, 3, 126, 2796203).SetName("TwoThirds");
             yield return new TestCaseData(1, 10, 123, 5033165).SetName("OneTenth");
@@ -226,9 +227,6 @@ namespace BaseTypesTests
         /// correctly rounded significand is 8947849 - 2^23 = 559241.
         /// </summary>
         [Test]
-        [Ignore("BigFloat.FromRational rounds twice, so the residual that breaks this tie is discarded "
-                + "before the second rounding sees it: 1/15 at (24,8) yields 559240, not 559241. "
-                + "See FLOAT_AUDIT.md section 3.")]
         public void FromRationalRoundsOneFifteenthCorrectly()
         {
             BigFloat.FromRational(1, 15, SingleSignificand, SingleExponent, out var actual);
@@ -239,9 +237,6 @@ namespace BaseTypesTests
         }
 
         [Test]
-        [Ignore("BigFloat.FromRational rounds twice: ApplyRoundToNearestEven discards the remainder that "
-                + "the later ApplyShiftWithRounding needs to break ties. 1/15 at (24,8) yields significand "
-                + "559240 where 559241 is correct; the rate over a,b in [1,200] is about 4.4%.")]
         public void FromRationalIsCorrectlyRounded()
         {
             var wrong = new List<string>();
@@ -481,9 +476,6 @@ namespace BaseTypesTests
         /// happen to round correctly, so only a sweep exposes this.
         /// </summary>
         [Test]
-        [Ignore("FromBigDec delegates to FromRational and inherits its double rounding: about 2.3% of "
-                + "decimals are off by one ULP, e.g. 272516e-5 yields significand 3041542 where 3041541 "
-                + "is correct. See FLOAT_AUDIT.md section 8.")]
         public void FromBigDecIsCorrectlyRounded()
         {
             var random = new Random(8080);
@@ -547,8 +539,6 @@ namespace BaseTypesTests
         /// the per-operation errors accumulate.
         /// </summary>
         [Test]
-        [Ignore("Chained arithmetic accumulates the per-operation rounding error, reaching about 15 ULP "
-                + "over 50 operations. Follows from the defects in sections 1, 2 and 7; see section 9.")]
         public void ChainedOperationsDoNotDrift()
         {
             var random = new Random(1234);
