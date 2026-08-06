@@ -682,15 +682,10 @@ namespace Microsoft.BaseTypes
         return CreateZero(resultSign, x.SignificandSize, x.ExponentSize);
       }
 
-      // Normalize and round the product
-      var (normalizedProduct, normalShift) = NormalizeAndRound(product, BigInteger.Zero, x.SignificandSize);
-
-      // Calculate the final exponent - all values are already BigInteger
-      var bias = x.bias;
-      var resultExp = xExp + yExp - bias + normalShift - (x.SignificandSize - 1);
-
-      // Handle overflow, underflow, and create final result
-      return HandleExponentBounds(normalizedProduct, resultExp, resultSign, x.SignificandSize, x.ExponentSize);
+      // The product is exact, so RoundToFormat performs the only rounding. Each prepared significand
+      // is weighted by 2^(exp - bias - (significandSize - 1)), and multiplying adds those weights.
+      var productScale = xExp + yExp - 2 * x.bias - 2 * (x.SignificandSize - 1);
+      return RoundToFormat(product, productScale, resultSign, x.SignificandSize, x.ExponentSize);
     }
 
     [Pure]
@@ -721,6 +716,57 @@ namespace Microsoft.BaseTypes
       var resultExp = xExp - yExp + x.bias + normalShift - 2;
 
       return HandleExponentBounds(normalizedQuotient, resultExp, resultSign, x.SignificandSize, x.ExponentSize);
+    }
+
+    /// <summary>
+    /// Rounds the exact value "significand * 2^scale" into the given format, performing the single
+    /// IEEE 754 round-to-nearest-even the standard requires.
+    ///
+    /// Callers are expected to compute their result exactly first and hand the full-width value here.
+    /// Rounding on the way in and again here would discard the residual that decides ties: once a
+    /// value has been rounded to the target width, a later shift onto the subnormal grid can no longer
+    /// tell "exactly halfway" from "just above halfway", and rounds to even where it should round up.
+    /// </summary>
+    /// <param name="significand">Exact significand, which may be wider than the format holds.</param>
+    /// <param name="scale">Power-of-two weight of bit 0 of "significand" (unbiased).</param>
+    private static BigFloat RoundToFormat(BigInteger significand, BigInteger scale, bool isNegative,
+      int significandSize, int exponentSize)
+    {
+      if (significand.IsZero) {
+        return CreateZero(isNegative, significandSize, exponentSize);
+      }
+
+      var bias = GetBias(exponentSize);
+
+      // Scale the leading bit would have if the value were normalized where it stands, and the
+      // smallest scale a normal number can have.
+      var leadingScale = scale + significand.GetBitLength() - 1;
+      var minNormalScale = BigInteger.One - bias;
+
+      // A normal result keeps significandSize bits; a subnormal one lands on the fixed grid that every
+      // subnormal shares, whose least significant bit has scale minNormalScale - (significandSize - 1).
+      // Either way this is the only shift, and therefore the only rounding.
+      var shift = leadingScale >= minNormalScale
+        ? significand.GetBitLength() - significandSize
+        : minNormalScale - (significandSize - 1) - scale;
+
+      var (rounded, _, _) = ApplyShiftWithRounding(significand, shift);
+      if (rounded.IsZero) {
+        return CreateZero(isNegative, significandSize, exponentSize);
+      }
+
+      // Recompute the exponent from the rounded value: rounding can carry a subnormal up to the
+      // smallest normal, or a normal up into the next binade.
+      var biasedExp = scale + shift + rounded.GetBitLength() - 1 + bias;
+
+      if (biasedExp >= GetMaxExponent(exponentSize)) {
+        return CreateInfinity(isNegative, significandSize, exponentSize);
+      }
+
+      return biasedExp > 0
+        ? new BigFloat(isNegative, rounded & (GetLeadingBitPower(significandSize) - 1), biasedExp,
+            significandSize, exponentSize)
+        : new BigFloat(isNegative, rounded, 0, significandSize, exponentSize);
     }
 
     private static (BigInteger significand, BigInteger exponent) NormalizeAndRound(BigInteger value, BigInteger exponent, int targetBits)
