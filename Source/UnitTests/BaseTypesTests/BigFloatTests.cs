@@ -1318,6 +1318,22 @@ namespace BaseTypesTests
         }
 
         [Test]
+        public void TestCopySignRejectsIncompatibleSizes()
+        {
+            // CopySign was the one binary operation that accepted mismatched formats, so a size confusion
+            // passed through it silently while every sibling rejected it.
+            var float24bit = BigFloat.FromInt(10, 24, 8);
+            var float53bit = BigFloat.FromInt(10, 53, 11);
+
+            Assert.Throws<ArgumentException>(() => BigFloat.CopySign(float24bit, float53bit),
+                "CopySign should validate size compatibility");
+
+            // Matching formats still work, and the sign is taken from the second operand.
+            Assert.AreEqual(-float24bit, BigFloat.CopySign(float24bit, BigFloat.FromInt(-1, 24, 8)),
+                "CopySign(10, -1) should be -10");
+        }
+
+        [Test]
         public void TestCompareToValidatesCompatibleSizes()
         {
             // Test that CompareTo now validates size compatibility

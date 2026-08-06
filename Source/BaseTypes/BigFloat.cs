@@ -578,7 +578,16 @@ namespace Microsoft.BaseTypes
     [Pure] public static BigFloat Abs(BigFloat x) => x.signBit ? -x : x;
     [Pure] public static BigFloat Max(BigFloat x, BigFloat y) => x.IsNaN || y.IsNaN ? (x.IsNaN ? x : y) : (x >= y ? x : y);
     [Pure] public static BigFloat Min(BigFloat x, BigFloat y) => x.IsNaN || y.IsNaN ? (x.IsNaN ? x : y) : (x <= y ? x : y);
-    [Pure] public static BigFloat CopySign(BigFloat x, BigFloat y) => x.signBit == y.signBit ? x : -x;
+    /// <summary>
+    /// "x" with the sign of "y". Takes two operands of the same format, as every other binary operation
+    /// here does: nothing about copying a sign needs the formats to agree, but silently accepting a
+    /// mismatch would let a size confusion through the one operation that does not check.
+    /// </summary>
+    [Pure] public static BigFloat CopySign(BigFloat x, BigFloat y)
+    {
+      ValidateSizeCompatibility(x, y);
+      return x.signBit == y.signBit ? x : -x;
+    }
 
     /// <summary>
     /// Returns the sign: -1 for negative, 0 for zero/NaN, 1 for positive
