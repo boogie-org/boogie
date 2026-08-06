@@ -2162,6 +2162,38 @@ namespace Microsoft.Boogie
       }
     }
 
+    /// <summary>
+    /// True if "x op (rhs)" still means the same printed as "x op rhs", for "op" in {"+", "*"} and
+    /// "rhs" of equal binding power. These print left-associatively, so dropping the parentheses
+    /// re-reads "x op (y op' z)" as "(x op y) op' z" -- safe only where the two groupings agree.
+    ///
+    /// On int and real that means "op'" is "op" or its inverse: "+" with "+" and "-", "*" with "*".
+    /// Not "i * (j div k)", since "i * j div k" is "(i * j) div k", which differs once the division
+    /// truncates; nor "r * (s / t)", which differs from "(r * s) / t" at t = 0. Float "+" and "*"
+    /// are not associative at all, so nothing regroups at any other type.
+    ///
+    /// A null type means Typecheck has not run (/print prints beforehand), so nothing is known and
+    /// nothing regroups.
+    /// </summary>
+    private static bool RegroupsWith(Opcode op, Expr rhs)
+    {
+      Contract.Requires(op == Opcode.Add || op == Opcode.Mul);
+      var type = rhs.Type;
+      if (type == null || !(type.IsInt || type.IsReal))
+      {
+        return false;
+      }
+
+      if (rhs is not NAryExpr { Fun: BinaryOperator inner })
+      {
+        return false;
+      }
+
+      return op == Opcode.Add
+        ? inner.Op is Opcode.Add or Opcode.Sub
+        : inner.Op is Opcode.Mul;
+    }
+
     public void Emit(IList<Expr> args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext)
     {
       stream.SetToken(ref this.tok);
@@ -2174,6 +2206,7 @@ namespace Microsoft.Boogie
       {
         case Opcode.Add:
           opBindingStrength = 0x40;
+          fragileRightContext = !RegroupsWith(Opcode.Add, args[1]);
           break;
         case Opcode.Sub:
           opBindingStrength = 0x40;
@@ -2181,6 +2214,7 @@ namespace Microsoft.Boogie
           break;
         case Opcode.Mul:
           opBindingStrength = 0x50;
+          fragileRightContext = !RegroupsWith(Opcode.Mul, args[1]);
           break;
         case Opcode.Div:
           opBindingStrength = 0x50;

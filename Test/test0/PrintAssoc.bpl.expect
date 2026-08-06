@@ -1,0 +1,66 @@
+
+procedure main();
+
+
+
+implementation main()
+{
+  var i: int;
+  var j: int;
+  var k: int;
+  var r: real;
+  var s: real;
+  var t: real;
+  var x: float24e8;
+  var y: float24e8;
+  var z: float24e8;
+
+    i := i + (j + k);
+    i := i * (j * k);
+    r := r + (s + t);
+    r := r * (s * t);
+    i := i + (j - k);
+    i := i * (j div k);
+    i := i * (j mod k);
+    r := r * (s / t);
+    x := x + (y + z);
+    x := x * (y * z);
+    x := x + (y - z);
+    x := x * (y / z);
+}
+
+
+
+procedure main();
+
+
+
+implementation main()
+{
+  var i: int;
+  var j: int;
+  var k: int;
+  var r: real;
+  var s: real;
+  var t: real;
+  var x: float24e8;
+  var y: float24e8;
+  var z: float24e8;
+
+    i := i + j + k;
+    i := i * j * k;
+    r := r + s + t;
+    r := r * s * t;
+    i := i + j - k;
+    i := i * (j div k);
+    i := i * (j mod k);
+    r := r * (s / t);
+    x := x + (y + z);
+    x := x * (y * z);
+    x := x + (y - z);
+    x := x * (y / z);
+}
+
+
+
+Boogie program verifier finished with 0 verified, 0 errors
