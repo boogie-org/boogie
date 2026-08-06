@@ -265,12 +265,10 @@ namespace Microsoft.BaseTypes
       var scaledNumerator = BigIntegerMath.LeftShift(numerator, scaleBits);
       var quotient = BigInteger.DivRem(scaledNumerator, denominator, out var remainder);
 
-      // Record inexactness in a sticky bit rather than rounding here. The shift further down performs
-      // the only rounding, and needs the residual to tell a tie from a value just above one.
+      // The +3 margin above means the significand carries three bits more than the format keeps, so
+      // the sticky bit is safely below the retained bits.
       var isExact = remainder.IsZero;
-      if (!isExact) {
-        quotient |= BigInteger.One;
-      }
+      quotient = WithStickyBit(quotient, remainder);
 
       var quotientBits = quotient.GetBitLength();
       var biasedExp = GetBias(exponentSize) + quotientBits - scaleBits - 1;
@@ -637,8 +635,9 @@ namespace Microsoft.BaseTypes
         return CreateZero(x.signBit && y.signBit, x.SignificandSize, x.ExponentSize);
       }
 
-      // Both significands are now weighted by the smaller of the two exponents.
-      var sumScale = BigInteger.Min(xExp, yExp) - x.bias - (x.SignificandSize - 1);
+      // Aligning upward left both significands weighted by the smaller of the two exponents, so the
+      // exact sum carries that operand's scale.
+      var sumScale = ScaleOfPreparedOperand(BigInteger.Min(xExp, yExp), x.bias, x.SignificandSize);
       return RoundToFormat(BigInteger.Abs(sum), sumScale, sum < 0, x.SignificandSize, x.ExponentSize);
     }
 
@@ -669,9 +668,10 @@ namespace Microsoft.BaseTypes
         return CreateZero(resultSign, x.SignificandSize, x.ExponentSize);
       }
 
-      // The product is exact, so RoundToFormat performs the only rounding. Each prepared significand
-      // is weighted by 2^(exp - bias - (significandSize - 1)), and multiplying adds those weights.
-      var productScale = xExp + yExp - 2 * x.bias - 2 * (x.SignificandSize - 1);
+      // The product is exact, so RoundToFormat performs the only rounding. Multiplying two values adds
+      // their scales.
+      var productScale = ScaleOfPreparedOperand(xExp, x.bias, x.SignificandSize)
+                       + ScaleOfPreparedOperand(yExp, x.bias, x.SignificandSize);
       return RoundToFormat(product, productScale, resultSign, x.SignificandSize, x.ExponentSize);
     }
 
@@ -689,22 +689,56 @@ namespace Microsoft.BaseTypes
       // Prepare operands and calculate result sign
       var ((xSig, xExp), (ySig, yExp), resultSign) = PrepareOperandsForMultDiv(x, y);
 
-      // Shift the dividend far enough that the quotient always has at least significandSize + 2 bits.
-      // A fixed shift is not enough: a subnormal dividend carries fewer significant bits than the
-      // format allows, so the quotient comes out short and the missing precision cannot be recovered.
-      var deficit = ySig.GetBitLength() - xSig.GetBitLength();
-      var guardShift = x.SignificandSize + 2 + BigInteger.Max(deficit, BigInteger.Zero);
+      // Long division produces bits from the top down, so the dividend must be pre-shifted by however
+      // many quotient bits are wanted. Two beyond the format's width suffice: one guard bit, so the
+      // value just past the rounding position is visible, and one sticky bit position, so
+      // WithStickyBit has a bit to set that RoundToFormat will shift away.
+      //
+      // The shift cannot be a constant. xSig / ySig lands in [1/2, 2), so the quotient's width is
+      // (shift) give or take one -- but only when both significands are the same width. A subnormal
+      // dividend is narrower than the format allows, and the quotient loses exactly that many bits, so
+      // widen the shift by the shortfall.
+      var dividendShortfall = BigInteger.Max(ySig.GetBitLength() - xSig.GetBitLength(), BigInteger.Zero);
+      var guardShift = x.SignificandSize + 2 + dividendShortfall;
       var shiftedDividend = BigIntegerMath.LeftShift(xSig, guardShift);
       var quotient = BigInteger.DivRem(shiftedDividend, ySig, out var remainder);
 
-      // A nonzero remainder means the quotient is inexact. Record that in a sticky bit rather than
-      // rounding here, so RoundToFormat can still tell a tie from a value just above one.
-      if (!remainder.IsZero) {
-        quotient |= BigInteger.One;
-      }
+      quotient = WithStickyBit(quotient, remainder);
 
-      var quotientScale = xExp - yExp - guardShift;
+      // Dividing subtracts the operands' scales; pre-shifting the dividend by guardShift lowered its
+      // scale by the same amount, and the two bias terms cancel.
+      var quotientScale = ScaleOfPreparedOperand(xExp, x.bias, x.SignificandSize)
+                        - ScaleOfPreparedOperand(yExp, x.bias, x.SignificandSize)
+                        - guardShift;
       return RoundToFormat(quotient, quotientScale, resultSign, x.SignificandSize, x.ExponentSize);
+    }
+
+    /// <summary>
+    /// Power-of-two weight of bit 0 of the significand <see cref="PrepareOperand"/> returns.
+    ///
+    /// PrepareOperand restores the implicit leading bit, so the significand it hands back is an integer
+    /// rather than a fraction: the value it represents is significand * 2^ScaleOfPreparedOperand(exp).
+    /// Every operator needs this to state the scale of its own exact result, and stating it once keeps
+    /// those derivations short enough to check by eye.
+    /// </summary>
+    private static BigInteger ScaleOfPreparedOperand(BigInteger biasedExponent, BigInteger bias, int significandSize)
+    {
+      return biasedExponent - bias - (significandSize - 1);
+    }
+
+    /// <summary>
+    /// Folds an inexact residual into bit 0 of a value destined for <see cref="RoundToFormat"/>.
+    ///
+    /// Rounding correctly needs to know whether a discarded tail was exactly zero, exactly half, or
+    /// somewhere above half. A quotient loses that distinction as soon as its remainder is dropped, so
+    /// callers that divide record "there was a remainder" in the lowest bit and let RoundToFormat do the
+    /// arithmetic. This is only sound because the caller computed strictly more bits than the format
+    /// keeps -- see the guard margins at the call sites -- so bit 0 is always among the bits shifted
+    /// out, and setting it can never disturb the retained significand.
+    /// </summary>
+    private static BigInteger WithStickyBit(BigInteger value, BigInteger remainder)
+    {
+      return remainder.IsZero ? value : value | BigInteger.One;
     }
 
     /// <summary>
@@ -739,24 +773,30 @@ namespace Microsoft.BaseTypes
         ? significand.GetBitLength() - significandSize
         : minNormalScale - (significandSize - 1) - scale;
 
+      // The overflow flag is deliberately ignored. It reports that rounding carried into an extra bit,
+      // which callers of the old two-step path had to correct for by hand; here the exponent is derived
+      // from the rounded value's own width below, so a carry is absorbed rather than compensated. That
+      // covers both forms it takes: a subnormal rounding up to the smallest normal, and a normal
+      // rounding up into the next binade.
       var (rounded, _, _) = ApplyShiftWithRounding(significand, shift);
       if (rounded.IsZero) {
         return CreateZero(isNegative, significandSize, exponentSize);
       }
 
-      // Recompute the exponent from the rounded value: rounding can carry a subnormal up to the
-      // smallest normal, or a normal up into the next binade.
       var biasedExp = scale + shift + rounded.GetBitLength() - 1 + bias;
 
       if (biasedExp >= GetMaxExponent(exponentSize)) {
         return CreateInfinity(isNegative, significandSize, exponentSize);
       }
 
+      // A normal number stores only the trailing significand; its leading bit is implied by a nonzero
+      // exponent, so mask it off. A subnormal stores every bit it has and takes exponent zero.
       return biasedExp > 0
         ? new BigFloat(isNegative, rounded & (GetLeadingBitPower(significandSize) - 1), biasedExp,
             significandSize, exponentSize)
         : new BigFloat(isNegative, rounded, 0, significandSize, exponentSize);
     }
+
     /// <summary>
     /// Arithmetic operation types for special value handling
     /// </summary>
