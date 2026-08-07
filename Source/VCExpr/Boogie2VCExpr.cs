@@ -1379,13 +1379,32 @@ namespace Microsoft.Boogie.VCExprAST
     
     ///////////////////////////////////////////////////////////////////////////////
 
+    /// <summary>
+    /// A map type with no index arguments is represented by its result type: Visit(MapSelect)
+    /// and Visit(MapStore) translate a nullary select/store to the underlying value, and
+    /// SMTLibLineariser.TypeToString emits a nullary map as the sort of its result type.
+    /// The translated expression keeps the map type, however, so unwrap it here before
+    /// dispatching on the operand type.
+    /// </summary>
+    private static Type UnwrapNullaryMapType(Type t)
+    {
+      Contract.Requires(t != null);
+      Contract.Ensures(Contract.Result<Type>() != null);
+      while (t.IsMap && t.AsMap.Arguments.Count == 0)
+      {
+        t = Cce.NonNull(t.AsMap.Result);
+      }
+
+      return t;
+    }
+
     private VCExpr TranslateBinaryOperator(BinaryOperator app, List<VCExpr> args)
     {
       Contract.Requires(app != null);
       Contract.Requires(Cce.NonNullElements(args));
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       Contract.Assert(args.Count == 2);
-      Type t = Cce.NonNull(Cce.NonNull(args[0]).Type);
+      Type t = UnwrapNullaryMapType(Cce.NonNull(Cce.NonNull(args[0]).Type));
 
       switch (app.Op)
       {
@@ -1443,12 +1462,12 @@ namespace Microsoft.Boogie.VCExprAST
 
           VCExpr arg0 = Cce.NonNull(args[0]);
           VCExpr arg1 = Cce.NonNull(args[1]);
-          if (Cce.NonNull(arg0.Type).IsInt)
+          if (UnwrapNullaryMapType(Cce.NonNull(arg0.Type)).IsInt)
           {
             arg0 = Gen.Function(VCExpressionGenerator.ToRealOp, arg0);
           }
 
-          if (Cce.NonNull(arg1.Type).IsInt)
+          if (UnwrapNullaryMapType(Cce.NonNull(arg1.Type)).IsInt)
           {
             arg1 = Gen.Function(VCExpressionGenerator.ToRealOp, arg1);
           }

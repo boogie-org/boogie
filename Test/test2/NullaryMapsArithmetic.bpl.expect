@@ -1,0 +1,11 @@
+NullaryMapsArithmetic.bpl(43,3): Error: this assertion could not be proved
+Execution trace:
+    NullaryMapsArithmetic.bpl(42,7): anon0
+NullaryMapsArithmetic.bpl(50,3): Error: this assertion could not be proved
+Execution trace:
+    NullaryMapsArithmetic.bpl(49,7): anon0
+NullaryMapsArithmetic.bpl(57,3): Error: this assertion could not be proved
+Execution trace:
+    NullaryMapsArithmetic.bpl(56,7): anon0
+
+Boogie program verifier finished with 4 verified, 3 errors
