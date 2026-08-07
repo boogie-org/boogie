@@ -1296,14 +1296,31 @@ namespace Microsoft.Boogie.AbstractInterpretation
                 else if ((BigInteger) lo0 < 0 && (BigInteger) lo1 < 0)
                 {
                   Lo = null; // approximation
-                  Hi = isReal ? lo0 * lo1 : lo0 * lo1 + 1;
+                  // A product over a box is extremal at a corner. With both intervals reaching
+                  // below zero the maximum is at the two lower bounds or at the two upper bounds
+                  // (a corner mixing the two has a non-positive factor pairing, which cannot beat
+                  // lo0 * lo1 > 0). An unbounded upper end therefore leaves the product unbounded
+                  // above: taking lo0 * lo1 there claims a bound that x = y = 100 already exceeds.
+                  if (hi0 != null && hi1 != null)
+                  {
+                    var upper0 = isReal ? (BigInteger) hi0 : (BigInteger) hi0 - 1;
+                    var upper1 = isReal ? (BigInteger) hi1 : (BigInteger) hi1 - 1;
+                    var max = BigInteger.Max((BigInteger) lo0 * (BigInteger) lo1, upper0 * upper1);
+                    Hi = isReal ? max : max + 1;
+                  }
+                  else
+                  {
+                    Hi = null;
+                  }
                 }
               }
 
               break;
             case BinaryOperator.Opcode.Div:
-              // this uses an incomplete approximation that could be tightened up
-              if (lo0 != null && lo1 != null && 0 <= (BigInteger) lo0 && 0 <= (BigInteger) lo1)
+              // this uses an incomplete approximation that could be tightened up.
+              // The divisor must be kept away from zero: division by zero is uninterpreted in
+              // SMT-LIB, so "x div 0" is not bounded by anything the operands say.
+              if (lo0 != null && lo1 != null && 0 <= (BigInteger) lo0 && 1 <= (BigInteger) lo1)
               {
                 Lo = BigInteger.Zero;
                 Hi = hi0;
@@ -1311,8 +1328,9 @@ namespace Microsoft.Boogie.AbstractInterpretation
 
               break;
             case BinaryOperator.Opcode.Mod:
-              // this uses an incomplete approximation that could be tightened up
-              if (lo0 != null && lo1 != null && 0 <= (BigInteger) lo0 && 0 <= (BigInteger) lo1)
+              // this uses an incomplete approximation that could be tightened up.
+              // As for Div, a divisor of zero leaves the result uninterpreted.
+              if (lo0 != null && lo1 != null && 0 <= (BigInteger) lo0 && 1 <= (BigInteger) lo1)
               {
                 Lo = BigInteger.Zero;
                 Hi = hi1;
@@ -1325,20 +1343,25 @@ namespace Microsoft.Boogie.AbstractInterpretation
 
               break;
             case BinaryOperator.Opcode.RealDiv:
-              // this uses an incomplete approximation that could be tightened up
-              if (lo0 != null && lo1 != null && 0 <= (BigInteger) lo0 && 0 <= (BigInteger) lo1)
+              // this uses an incomplete approximation that could be tightened up.
+              // The guard rules out a zero divisor, so the upper bound no longer needs to
+              // re-test it: with 1 <= y and 0 <= x, x / y <= x.
+              if (lo0 != null && lo1 != null && 0 <= (BigInteger) lo0 && 1 <= (BigInteger) lo1)
               {
                 Lo = BigInteger.Zero;
-                Hi = 1 <= (BigInteger) lo1 ? hi0 : null;
+                Hi = hi0;
               }
 
               break;
             case BinaryOperator.Opcode.Pow:
-              // this uses an incomplete approximation that could be tightened up
+              // this uses an incomplete approximation that could be tightened up.
+              // The exponent's upper bound says nothing about the size of the power, so there is
+              // no upper bound to report: with y <= 3, 2.0 ** y still reaches 8.0. The result is
+              // at least one only when the base is, since 0 ** 1 is 0.
               if (lo0 != null && lo1 != null && 0 <= (BigInteger) lo0 && 0 <= (BigInteger) lo1)
               {
-                Lo = 1 <= (BigInteger) lo1 ? BigInteger.One : BigInteger.Zero;
-                Hi = hi1;
+                Lo = 1 <= (BigInteger) lo0 ? BigInteger.One : BigInteger.Zero;
+                Hi = null;
               }
 
               break;
