@@ -1092,8 +1092,17 @@ namespace Microsoft.Boogie.VCExprAST
     public override Type InferType(List<VCExpr> args, List<Type> typeArgs)
     {
       Contract.Ensures(Contract.Result<Type>() != null);
+      // A nullary select is translated to the map expression itself, which keeps the
+      // nullary map type. When this select supplies indices, look through those
+      // wrappers to reach the map the indices actually apply to.
+      Type argType = args[0].Type;
+      if (MapArity > 0)
+      {
+        argType = VCExpressionGenerator.UnwrapNullaryMapType(argType);
+      }
+
       MapType
-        mapType = args[0].Type.AsMap;
+        mapType = argType.AsMap;
       Contract.Assert(TypeParamArity == mapType.TypeParameters.Count);
       IDictionary<TypeVariable, Type>
         subst = new Dictionary<TypeVariable, Type>();
@@ -1599,7 +1608,9 @@ namespace Microsoft.Boogie.VCExprAST
     public override Type InferType(List<VCExpr> args, List<Type> typeArgs)
     {
       Contract.Ensures(Contract.Result<Type>() != null);
-      return Type.GetBvType(args[0].Type.BvBits + args[1].Type.BvBits);
+      return Type.GetBvType(
+        VCExpressionGenerator.UnwrapNullaryMapType(args[0].Type).BvBits +
+        VCExpressionGenerator.UnwrapNullaryMapType(args[1].Type).BvBits);
     }
 
     [Pure]
