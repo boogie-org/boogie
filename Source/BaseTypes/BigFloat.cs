@@ -258,68 +258,25 @@ namespace Microsoft.BaseTypes
       numerator = BigInteger.Abs(numerator);
       denominator = BigInteger.Abs(denominator);
 
-      // Scale numerator for precision
-      // Use long to avoid overflow in bit length calculation
+      // Pre-scale the numerator so the quotient carries three bits more than the format keeps: two for
+      // the guard and sticky positions RoundToFormat needs, and one of slack. The shift is clamped at
+      // zero for the case where the numerator already dwarfs the denominator, which needs no scaling --
+      // there the quotient is wide on its own, so bit 0 still falls well below the retained bits and
+      // the sticky bit below cannot disturb them.
       var scaleBitsLong = (long)significandSize + 3 + (denominator.GetBitLength() - numerator.GetBitLength());
       var scaleBits = scaleBitsLong < 0 ? BigInteger.Zero : new BigInteger(scaleBitsLong);
       var scaledNumerator = BigIntegerMath.LeftShift(numerator, scaleBits);
       var quotient = BigInteger.DivRem(scaledNumerator, denominator, out var remainder);
 
-      // Apply rounding if inexact
-      var isExact = remainder.IsZero;
-      if (!isExact) {
-        quotient = ApplyRoundToNearestEven(quotient, remainder, denominator);
-      }
+      // Bit 0 of the scaled quotient has weight 2^-scaleBits, so RoundToFormat finishes the job: it
+      // performs the single rounding and handles the normal, subnormal, overflow and underflow cases.
+      result = RoundToFormat(WithStickyBit(quotient, remainder), -scaleBits, isNegative,
+        significandSize, exponentSize);
 
-      var quotientBits = quotient.GetBitLength();
-      var biasedExp = GetBias(exponentSize) + quotientBits - scaleBits - 1;
-      if (biasedExp > GetMaxExponent(exponentSize) - 1) {
-        result = CreateInfinity(isNegative, significandSize, exponentSize);
-        return false;
-      }
-      var targetBits = significandSize - 1;
-      var minBiasedExp = 2 - significandSize;
-
-      if (biasedExp <= 0) {
-        if (biasedExp < minBiasedExp) {
-          isExact = false;
-
-          if (biasedExp == minBiasedExp - 1) {
-            if (quotient == BigIntegerMath.LeftShift(BigInteger.One, quotientBits - 1)) {
-              result = CreateZero(isNegative, significandSize, exponentSize);
-            } else {
-              var (boundaryShifted, _, _) = ApplyShiftWithRounding(quotient, BigInteger.One);
-              result = boundaryShifted > 0
-                ? new BigFloat(isNegative, 1, 0, significandSize, exponentSize)
-                : CreateZero(isNegative, significandSize, exponentSize);
-            }
-          } else {
-            result = CreateZero(isNegative, significandSize, exponentSize);
-          }
-        } else {
-          var shiftAmount = (quotientBits - targetBits) - biasedExp;
-          var (shifted, _, _) = ApplyShiftWithRounding(quotient, shiftAmount);
-
-          if (shifted >= BigInteger.One << targetBits) {
-            result = new BigFloat(isNegative, 0, 1, significandSize, exponentSize);
-          } else {
-            result = new BigFloat(isNegative, shifted, 0, significandSize, exponentSize);
-          }
-        }
-      } else {
-        var (normalShifted, wasExact, overflow) = ApplyShiftWithRounding(quotient, quotientBits - significandSize);
-        isExact &= wasExact;
-
-        if (overflow) {
-          normalShifted >>= 1;
-          biasedExp++;
-        }
-
-        var leadingBitMask = GetLeadingBitPower(significandSize) - 1;
-        result = new BigFloat(isNegative, normalShifted & leadingBitMask, biasedExp, significandSize, exponentSize);
-      }
-
-      return isExact;
+      // Whether the conversion was exact is a question about the input, not about what rounding did, so
+      // it is answered by asking whether the result still represents numerator/denominator. Deciding it
+      // that way keeps this method from having to reimplement the rounding in order to observe it.
+      return RepresentsExactly(result, numerator, denominator);
     }
 
     /// <summary>
@@ -413,17 +370,6 @@ namespace Microsoft.BaseTypes
 
       return ((xSig, xExp), (ySig, yExp), resultSign);
     }
-
-    private static BigInteger ApplyRoundToNearestEven(BigInteger quotient, BigInteger remainder, BigInteger denominator)
-    {
-      // Round up if remainder > denominator/2, or if remainder == denominator/2 and quotient is odd
-      if (remainder * 2 > denominator || (remainder * 2 == denominator && !quotient.IsEven)) {
-        quotient++;
-      }
-
-      return quotient;
-    }
-
     private static BigInteger GetMask(BigInteger bits)
     {
       if (bits <= 0) {
@@ -431,72 +377,45 @@ namespace Microsoft.BaseTypes
       }
       return BigIntegerMath.LeftShift(BigInteger.One, bits) - 1;
     }
-
     /// <summary>
-    /// Applies a shift with IEEE 754 round-to-nearest-even rounding.
+    /// Shifts "value" right by "shift" bits, rounding the discarded tail to nearest with ties to even.
+    /// A negative shift shifts left, which discards nothing and so needs no rounding.
     /// </summary>
-    /// <param name="value">The value to shift</param>
-    /// <param name="shift">The shift amount (positive for right shift, negative for left shift)</param>
-    /// <returns>A tuple containing:
-    /// - result: The shifted and rounded value
-    /// - isExact: Whether the operation was exact (no bits were lost)
-    /// - overflow: Whether rounding caused the result to gain an extra bit (e.g., 111...111 -> 1000...000)
-    /// </returns>
-    private static (BigInteger result, bool isExact, bool overflow) ApplyShiftWithRounding(BigInteger value, BigInteger shift)
+    private static BigInteger ApplyShiftWithRounding(BigInteger value, BigInteger shift)
     {
-      // Handle left shifts (no rounding needed, no overflow possible)
       if (shift <= 0) {
-        return (BigIntegerMath.LeftShift(value, -shift), true, false);
+        return BigIntegerMath.LeftShift(value, -shift);
       }
 
-      // Handle very large shifts - but still need to check for rounding
-      if (value.GetBitLength() < shift) {
-        // All bits shifted out, but check if we need to round up
-        // For round-to-nearest-even, we round up if value > 2^(shift-1)
-        var halfValue = BigIntegerMath.LeftShift(BigInteger.One, shift - 1);
-        if (value > halfValue) {
-          return (BigInteger.One, false, false); // Result is 1, no overflow
-        }
-        return (BigInteger.Zero, !value.IsZero, false);
+      // Exponent sizes are unbounded, so a shift can exceed the value's width by an astronomical
+      // margin -- a 40-bit exponent field puts the subnormal boundary around 2^-549755813888. Handle
+      // that case by comparing against the halfway point rather than by shifting, since neither
+      // 2^shift nor the shifted value can be materialized.
+      if (shift > value.GetBitLength()) {
+        // Everything is discarded. The result is 1 only if the value exceeded half of the discarded
+        // range, i.e. 2^(shift-1); a value exactly at the halfway point ties to the even 0.
+        return value.GetBitLength() == shift && (value & (value - 1)) != 0
+          ? BigInteger.One
+          : BigInteger.Zero;
       }
 
-      // For very large right shifts, perform in chunks
-      var remaining = shift;
-      var current = value;
+      // Split the value at the rounding position. The tail is whatever the retained part does not
+      // account for, and both shifts here are bounded by the value's own width.
+      var retained = BigIntegerMath.RightShift(value, shift);
+      var tail = value - BigIntegerMath.LeftShift(retained, shift);
 
-      // Shift by int.MaxValue chunks if needed
-      while (remaining > int.MaxValue) {
-        current >>= int.MaxValue;
-        remaining -= int.MaxValue;
-        if (current.IsZero) {
-          return (BigInteger.Zero, false, false);
-        }
+      if (tail.IsZero) {
+        return retained;
       }
 
-      // Perform final shift with IEEE 754 round-to-nearest-even
-      var intShift = (int)remaining;
-      var mask = (BigInteger.One << intShift) - 1;
-      var lostBits = current & mask;
-      var result = current >> intShift;
+      // Round to nearest, ties to even. Comparing twice the tail against the discarded range avoids
+      // materializing the halfway value itself.
+      var tailRange = BigIntegerMath.LeftShift(BigInteger.One, shift);
+      var doubledTail = tail * 2;
 
-      // If no bits lost, result is exact, no overflow
-      if (lostBits.IsZero) {
-        return (result, true, false);
-      }
-
-      // Round to nearest even
-      var halfBit = BigInteger.One << (intShift - 1);
-      var needsRounding = lostBits > halfBit || (lostBits == halfBit && !result.IsEven);
-
-      // Check for overflow: when rounding up causes bit length to increase
-      var overflow = false;
-      if (needsRounding) {
-        var originalBitLength = result.GetBitLength();
-        result++;
-        overflow = result.GetBitLength() > originalBitLength;
-      }
-
-      return (result, false, overflow);
+      return doubledTail > tailRange || (doubledTail == tailRange && !retained.IsEven)
+        ? retained + 1
+        : retained;
     }
 
     // Public convenience methods for special values
@@ -627,25 +546,23 @@ namespace Microsoft.BaseTypes
         return farApartResult;
       }
 
-      // Align significands and add
+      // Align by scaling the operand with the larger exponent up, rather than shifting the smaller one
+      // down. Shifting down truncates the low bits before the sum is formed, and no later rounding can
+      // recover them; scaling up keeps the sum exact.
+      var absDiff = BigInteger.Abs(expDiff);
       var sum = expDiff == 0 ? xSigned + ySigned :
-        expDiff > 0 ? xSigned + BigIntegerMath.RightShift(ySigned, expDiff) :
-        BigIntegerMath.RightShift(xSigned, -expDiff) + ySigned;
+        expDiff > 0 ? BigIntegerMath.LeftShift(xSigned, absDiff) + ySigned :
+        xSigned + BigIntegerMath.LeftShift(ySigned, absDiff);
 
       if (sum == 0) {
-        var zeroSumResult = CreateZero(x.signBit && y.signBit, x.SignificandSize, x.ExponentSize);
-        return zeroSumResult;
+        // IEEE 754: cancellation gives -0 only when both operands are negative.
+        return CreateZero(x.signBit && y.signBit, x.SignificandSize, x.ExponentSize);
       }
 
-      // Normalize result
-      var isNegative = sum < 0;
-      var absSum = isNegative ? -sum : sum;
-
-      var baseExp = xExp > yExp ? xExp : yExp;
-      var (normSig, normExp) = NormalizeAndRound(absSum, baseExp, x.SignificandSize);
-
-      var result = HandleExponentBounds(normSig, normExp, isNegative, x.SignificandSize, x.ExponentSize);
-      return result;
+      // Aligning upward left both significands weighted by the smaller of the two exponents, so the
+      // exact sum carries that operand's scale.
+      var sumScale = ScaleOfPreparedOperand(BigInteger.Min(xExp, yExp), x.bias, x.SignificandSize);
+      return RoundToFormat(BigInteger.Abs(sum), sumScale, sum < 0, x.SignificandSize, x.ExponentSize);
     }
 
     [Pure] public static BigFloat operator -(BigFloat x, BigFloat y) => x + -y;
@@ -675,15 +592,11 @@ namespace Microsoft.BaseTypes
         return CreateZero(resultSign, x.SignificandSize, x.ExponentSize);
       }
 
-      // Normalize and round the product
-      var (normalizedProduct, normalShift) = NormalizeAndRound(product, BigInteger.Zero, x.SignificandSize);
-
-      // Calculate the final exponent - all values are already BigInteger
-      var bias = x.bias;
-      var resultExp = xExp + yExp - bias + normalShift - (x.SignificandSize - 1);
-
-      // Handle overflow, underflow, and create final result
-      return HandleExponentBounds(normalizedProduct, resultExp, resultSign, x.SignificandSize, x.ExponentSize);
+      // The product is exact, so RoundToFormat performs the only rounding. Multiplying two values adds
+      // their scales.
+      var productScale = ScaleOfPreparedOperand(xExp, x.bias, x.SignificandSize)
+                       + ScaleOfPreparedOperand(yExp, x.bias, x.SignificandSize);
+      return RoundToFormat(product, productScale, resultSign, x.SignificandSize, x.ExponentSize);
     }
 
     [Pure]
@@ -700,71 +613,154 @@ namespace Microsoft.BaseTypes
       // Prepare operands and calculate result sign
       var ((xSig, xExp), (ySig, yExp), resultSign) = PrepareOperandsForMultDiv(x, y);
 
-      // Shift dividend left for precision and divide with rounding
-      var shiftedDividend = BigIntegerMath.LeftShift(xSig, x.SignificandSize + 1);
+      // Long division produces bits from the top down, so the dividend must be pre-shifted by however
+      // many quotient bits are wanted. Two beyond the format's width suffice: one guard bit, so the
+      // value just past the rounding position is visible, and one sticky bit position, so
+      // WithStickyBit has a bit to set that RoundToFormat will shift away.
+      //
+      // The shift cannot be a constant. xSig / ySig lands in [1/2, 2), so the quotient's width is
+      // (shift) give or take one -- but only when both significands are the same width. A subnormal
+      // dividend is narrower than the format allows, and the quotient loses exactly that many bits, so
+      // widen the shift by the shortfall.
+      var dividendShortfall = BigInteger.Max(ySig.GetBitLength() - xSig.GetBitLength(), BigInteger.Zero);
+      var guardShift = x.SignificandSize + 2 + dividendShortfall;
+      var shiftedDividend = BigIntegerMath.LeftShift(xSig, guardShift);
       var quotient = BigInteger.DivRem(shiftedDividend, ySig, out var remainder);
-      quotient = ApplyRoundToNearestEven(quotient, remainder, ySig);
 
-      if (quotient == 0) {
-        return CreateZero(resultSign, x.SignificandSize, x.ExponentSize);
-      }
+      quotient = WithStickyBit(quotient, remainder);
 
-      // Normalize and calculate final exponent
-      var (normalizedQuotient, normalShift) = NormalizeAndRound(quotient, BigInteger.Zero, x.SignificandSize);
-      var resultExp = xExp - yExp + x.bias + normalShift - 2;
-
-      return HandleExponentBounds(normalizedQuotient, resultExp, resultSign, x.SignificandSize, x.ExponentSize);
+      // Dividing subtracts the operands' scales; pre-shifting the dividend by guardShift lowered its
+      // scale by the same amount, and the two bias terms cancel.
+      var quotientScale = ScaleOfPreparedOperand(xExp, x.bias, x.SignificandSize)
+                        - ScaleOfPreparedOperand(yExp, x.bias, x.SignificandSize)
+                        - guardShift;
+      return RoundToFormat(quotient, quotientScale, resultSign, x.SignificandSize, x.ExponentSize);
     }
 
-    private static (BigInteger significand, BigInteger exponent) NormalizeAndRound(BigInteger value, BigInteger exponent, int targetBits)
+    /// <summary>
+    /// Power-of-two weight of bit 0 of the significand <see cref="PrepareOperand"/> returns.
+    ///
+    /// PrepareOperand restores the implicit leading bit, so the significand it hands back is an integer
+    /// rather than a fraction: the value it represents is significand * 2^ScaleOfPreparedOperand(exp).
+    /// Every operator needs this to state the scale of its own exact result, and stating it once keeps
+    /// those derivations short enough to check by eye.
+    /// </summary>
+    private static BigInteger ScaleOfPreparedOperand(BigInteger biasedExponent, BigInteger bias, int significandSize)
     {
-      var valueBits = value.GetBitLength();
-      var shift = valueBits - targetBits;
-
-      // Use IEEE 754 compliant shift and round method
-      var (shiftedValue, _, overflow) = ApplyShiftWithRounding(value, shift);
-      var adjustedExponent = exponent + shift;
-
-      // Handle potential overflow from rounding (only for right shifts)
-      if (overflow) {
-        shiftedValue >>= 1;
-        adjustedExponent++;
-      }
-
-      return (shiftedValue, adjustedExponent);
+      return biasedExponent - bias - (significandSize - 1);
     }
 
-    private static BigFloat HandleExponentBounds(BigInteger significand, BigInteger exponent, bool isNegative, int significandSize, int exponentSize)
+    /// <summary>
+    /// Folds an inexact residual into bit 0 of a value destined for <see cref="RoundToFormat"/>.
+    ///
+    /// Rounding correctly needs to know whether a discarded tail was exactly zero, exactly half, or
+    /// somewhere above half. A quotient loses that distinction as soon as its remainder is dropped, so
+    /// callers that divide record "there was a remainder" in the lowest bit and let RoundToFormat do the
+    /// arithmetic. This is only sound because the caller computed strictly more bits than the format
+    /// keeps -- see the guard margins at the call sites -- so bit 0 is always among the bits shifted
+    /// out, and setting it can never disturb the retained significand.
+    /// </summary>
+    private static BigInteger WithStickyBit(BigInteger value, BigInteger remainder)
     {
-      var maxExponent = GetMaxExponent(exponentSize);
+      return remainder.IsZero ? value : value | BigInteger.One;
+    }
 
-      // Handle overflow to infinity
-      if (exponent >= maxExponent) {
-        return CreateInfinity(isNegative, significandSize, exponentSize);
+    /// <summary>
+    /// True if "value" is exactly numerator/denominator, with both taken as positive.
+    ///
+    /// The comparison is done in integers: a float is significand * 2^scale, so cross-multiplying by the
+    /// denominator and by 2^-scale (whichever side needs it) turns the question into one BigInteger
+    /// equality with no rounding of its own.
+    /// </summary>
+    private static bool RepresentsExactly(BigFloat value, BigInteger numerator, BigInteger denominator)
+    {
+      if (value.IsInfinity || value.IsNaN) {
+        return false;
       }
 
-      // Handle normal numbers
-      if (exponent > 0) {
-        // Remove implicit leading bit for storage (it's encoded in the biased exponent)
-        var leadingBitMask = GetLeadingBitPower(significandSize) - 1;
-        return new BigFloat(isNegative, significand & leadingBitMask, exponent, significandSize, exponentSize);
+      if (value.IsZero) {
+        return numerator.IsZero;
       }
 
-      // Handle complete underflow to zero
-      var bias = GetBias(exponentSize);
-      if (exponent < BigInteger.One - bias - (significandSize - 1)) {
+      var significand = value.exponent == 0
+        ? value.significand
+        : value.significand | GetLeadingBitPower(value.SignificandSize);
+      var scale = ScaleOfPreparedOperand(value.GetActualExponent(), value.bias, value.SignificandSize);
+
+      // significand * 2^scale == numerator / denominator, rearranged to avoid division.
+      return scale >= 0
+        ? BigIntegerMath.LeftShift(significand, scale) * denominator == numerator
+        : significand * denominator == BigIntegerMath.LeftShift(numerator, -scale);
+    }
+
+    /// <summary>
+    /// Biased exponent of the value "significand * 2^scale", where the significand is "width" bits wide,
+    /// as if it were normalized so that its leading bit is the implicit one. A result at or below zero
+    /// means the value is below the smallest normal and must be stored as a subnormal instead.
+    /// </summary>
+    private static BigInteger BiasedExponentOf(BigInteger scale, long width, BigInteger bias)
+    {
+      return scale + width - 1 + bias;
+    }
+
+    /// <summary>
+    /// Rounds the exact value "significand * 2^scale" into the given format, performing the single
+    /// IEEE 754 round-to-nearest-even the standard requires.
+    ///
+    /// Callers are expected to compute their result exactly first and hand the full-width value here.
+    /// Rounding on the way in and again here would discard the residual that decides ties: once a
+    /// value has been rounded to the target width, a later shift onto the subnormal grid can no longer
+    /// tell "exactly halfway" from "just above halfway", and rounds to even where it should round up.
+    /// </summary>
+    /// <param name="significand">Exact significand, which may be wider than the format holds.</param>
+    /// <param name="scale">Power-of-two weight of bit 0 of "significand" (unbiased).</param>
+    private static BigFloat RoundToFormat(BigInteger significand, BigInteger scale, bool isNegative,
+      int significandSize, int exponentSize)
+    {
+      if (significand.IsZero) {
         return CreateZero(isNegative, significandSize, exponentSize);
       }
 
-      // Handle subnormal numbers with gradual underflow
-      var (shiftedSig, _, _) = ApplyShiftWithRounding(significand, BigInteger.One - exponent);
+      var bias = GetBias(exponentSize);
 
-      // Check if rounding caused overflow back to smallest normal number
-      if (shiftedSig.GetBitLength() == significandSize) {
-        return new BigFloat(isNegative, 0, 1, significandSize, exponentSize);
+      // Everything below is expressed as a biased exponent, so that the one test distinguishing normal
+      // from subnormal ("is it above zero?") is the same test before and after rounding. Stating the
+      // two in different terms would leave them free to disagree at the seam.
+      //
+      // BiasedExponentOf gives the exponent a value would have if normalized where it stands; for a
+      // subnormal that is at or below zero, which is exactly the case the format cannot represent
+      // without shifting onto its fixed grid.
+      var biasedExp = BiasedExponentOf(scale, significand.GetBitLength(), bias);
+
+      // A normal result keeps significandSize bits. A subnormal one instead lands on the grid every
+      // subnormal shares, whose least significant bit has scale (1 - bias) - (significandSize - 1).
+      // Either way there is one shift, and therefore one rounding.
+      var shift = biasedExp > 0
+        ? significand.GetBitLength() - significandSize
+        : BigInteger.One - bias - (significandSize - 1) - scale;
+
+      // The overflow flag is deliberately ignored. It reports that rounding carried into an extra bit,
+      // which callers of the old two-step path corrected for by hand; here the exponent is recomputed
+      // from the rounded value's own width, so a carry is absorbed rather than compensated. That covers
+      // both forms it takes: a subnormal rounding up to the smallest normal, and a normal rounding up
+      // into the next binade.
+      var rounded = ApplyShiftWithRounding(significand, shift);
+      if (rounded.IsZero) {
+        return CreateZero(isNegative, significandSize, exponentSize);
       }
 
-      return new BigFloat(isNegative, shiftedSig, 0, significandSize, exponentSize);
+      biasedExp = BiasedExponentOf(scale + shift, rounded.GetBitLength(), bias);
+
+      if (biasedExp >= GetMaxExponent(exponentSize)) {
+        return CreateInfinity(isNegative, significandSize, exponentSize);
+      }
+
+      // A normal number stores only the trailing significand, its leading bit being implied by the
+      // nonzero exponent, so mask that bit off. A subnormal stores every bit it has, at exponent zero.
+      return biasedExp > 0
+        ? new BigFloat(isNegative, rounded & (GetLeadingBitPower(significandSize) - 1), biasedExp,
+            significandSize, exponentSize)
+        : new BigFloat(isNegative, rounded, 0, significandSize, exponentSize);
     }
 
     /// <summary>
@@ -1153,41 +1149,21 @@ namespace Microsoft.BaseTypes
         return HandleUnderflow(isNegative, sig, biasedExp, sigSize, expSize, strict, out result);
       }
 
-      // Normal number - check precision loss and normalize
+      // Strict mode rejects any literal that would not survive the round trip, so a nonzero tail below
+      // the retained bits is an error rather than something to round away.
       var shift = new BigInteger(msbPos) - (sigSize - 1);
       if (strict && shift > 0 && shift < sig.GetBitLength() && (sig & GetMask(shift)) != 0) {
         return false;
       }
 
-      // Apply IEEE 754 rounding instead of truncation
-      BigInteger roundedSig;
-      BigInteger adjustedBiasedExp = biasedExp;
+      // Bit 0 of "sig" sits fracBits below the hex point, which decExp scales by four bits per digit.
+      var scale = (decExp * 4) - fracBits;
+      result = RoundToFormat(sig, scale, isNegative, sigSize, expSize);
 
-      if (shift > 0) {
-        var (shifted, _, overflow) = ApplyShiftWithRounding(sig, shift);
-        roundedSig = shifted;
-
-        // Check if rounding caused overflow to next power of 2
-        if (overflow) {
-          roundedSig >>= 1;
-          adjustedBiasedExp++;
-
-          // Check for exponent overflow
-          if (adjustedBiasedExp >= GetMaxExponent(expSize)) {
-            if (strict) {
-              return false;
-            }
-            result = CreateInfinity(isNegative, sigSize, expSize);
-            return true;
-          }
-        }
-
-        roundedSig &= (GetLeadingBitPower(sigSize) - 1);
-      } else {
-        roundedSig = BigIntegerMath.RightShift(sig, shift) & (GetLeadingBitPower(sigSize) - 1);
+      if (strict && result.IsInfinity) {
+        return false;
       }
 
-      result = new BigFloat(isNegative, roundedSig, adjustedBiasedExp, sigSize, expSize);
       return true;
     }
 
@@ -1200,51 +1176,29 @@ namespace Microsoft.BaseTypes
       }
       return BigInteger.TryParse("0" + hex, System.Globalization.NumberStyles.HexNumber, null, out value);
     }
-
+    /// <summary>
+    /// Handles a literal whose exponent falls at or below the subnormal range.
+    ///
+    /// The rounding itself is RoundToFormat's job; what is specific here is strict mode, which rejects
+    /// any literal that does not survive a round trip. Underflow always loses information -- to zero, or
+    /// onto the coarser subnormal grid, or by rounding up into the smallest normal -- so strict mode
+    /// accepts only a value that lands exactly on a subnormal.
+    /// </summary>
     private static bool HandleUnderflow(bool signBit, BigInteger sig, BigInteger biasedExp, int sigSize, int expSize, bool strict, out BigFloat result)
     {
-      result = default;
-      var bias = GetBias(expSize);
-      var minSubnormalExp = BigInteger.One - bias - (sigSize - 1);
-      var actualExp = biasedExp - bias;
+      // Bit 0 of "sig" has weight 2^(actualExp - msb), since the caller placed the leading bit at
+      // actualExp.
+      var actualExp = biasedExp - GetBias(expSize);
+      var scale = actualExp - (sig.GetBitLength() - 1);
 
-      // Complete underflow to zero
-      if (actualExp < minSubnormalExp) {
-        if (strict) {
-          return false;
-        }
-        result = CreateZero(signBit, sigSize, expSize);
+      result = RoundToFormat(sig, scale, signBit, sigSize, expSize);
+
+      if (!strict) {
         return true;
       }
 
-      // Calculate required shift for subnormal representation
-      var currentMsb = sig.GetBitLength() - 1;
-      var targetPosition = actualExp - minSubnormalExp;
-      var shiftAmount = new BigInteger(currentMsb) - targetPosition;
-
-      // Apply shift with IEEE 754 rounding
-      var (subnormalSig, _, _) = ApplyShiftWithRounding(sig, shiftAmount);
-
-      if (subnormalSig.IsZero) {
-        if (strict) {
-          return false;
-        }
-        result = CreateZero(signBit, sigSize, expSize);
-        return true;
-      }
-
-      // Check if rounding caused overflow to normal range
-      if (subnormalSig.GetBitLength() > sigSize - 1) {
-        if (strict) {
-          return false;
-        }
-        // Overflow to smallest normal number
-        result = new BigFloat(signBit, 0, 1, sigSize, expSize);
-        return true;
-      }
-
-      result = new BigFloat(signBit, subnormalSig, 0, sigSize, expSize);
-      return true;
+      // Rejected in strict mode: flushed to zero, or rounded up out of the subnormal range.
+      return !result.IsZero && result.exponent == 0;
     }
 
     /// <summary>
