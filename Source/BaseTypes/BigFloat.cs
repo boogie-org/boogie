@@ -344,6 +344,20 @@ namespace Microsoft.BaseTypes
     /// </summary>
     private BigInteger GetActualExponent() => exponent == 0 ? BigInteger.One : exponent;
 
+    /// <summary>
+    /// This value's magnitude as significand * 2^scale, with the implicit leading bit restored and the
+    /// sign dropped. Zero, the infinities and NaN do not decompose this way.
+    ///
+    /// Subnormals need no case of their own: one stores no implicit bit, and shares its actual exponent
+    /// with the smallest normal, so <see cref="GetActualExponent"/> covers both.
+    /// </summary>
+    private (BigInteger Significand, BigInteger Scale) AsScaledInteger()
+    {
+      Contract.Requires(!IsZero && !IsInfinity && !IsNaN);
+      return (exponent == 0 ? significand : significand | leadingBit,
+        ScaleOfPreparedOperand(GetActualExponent(), bias, SignificandSize));
+    }
+
     #endregion
 
     #region Arithmetic Helpers
@@ -370,12 +384,12 @@ namespace Microsoft.BaseTypes
 
       return ((xSig, xExp), (ySig, yExp), resultSign);
     }
+    /// <summary>
+    /// The low "bits" bits set, i.e. 2^bits - 1, and zero for a non-positive width.
+    /// </summary>
     private static BigInteger GetMask(BigInteger bits)
     {
-      if (bits <= 0) {
-        return BigInteger.Zero;
-      }
-      return BigIntegerMath.LeftShift(BigInteger.One, bits) - 1;
+      return bits <= 0 ? BigInteger.Zero : BigIntegerMath.LeftShift(BigInteger.One, bits) - 1;
     }
     /// <summary>
     /// Shifts "value" right by "shift" bits, rounding the discarded tail to nearest with ties to even.
@@ -483,7 +497,7 @@ namespace Microsoft.BaseTypes
     public static BigInteger GetBias(int exponentSize) => (BigInteger.One << (exponentSize - 1)) - 1;
     public static BigInteger GetMaxExponent(int exponentSize) => (BigInteger.One << exponentSize) - 1;
     public static BigInteger GetLeadingBitPower(int significandSize) => BigInteger.One << (significandSize - 1);  // Returns power value for the implicit leading significand bit
-    public static BigInteger GetSignificandMask(int significandSize) => (BigInteger.One << significandSize) - 1;
+    public static BigInteger GetSignificandMask(int significandSize) => GetMask(significandSize);
 
     #endregion
 
@@ -689,10 +703,7 @@ namespace Microsoft.BaseTypes
         return numerator.IsZero;
       }
 
-      var significand = value.exponent == 0
-        ? value.significand
-        : value.significand | GetLeadingBitPower(value.SignificandSize);
-      var scale = ScaleOfPreparedOperand(value.GetActualExponent(), value.bias, value.SignificandSize);
+      var (significand, scale) = value.AsScaledInteger();
 
       // significand * 2^scale == numerator / denominator, rearranged to avoid division.
       return scale >= 0
@@ -902,8 +913,7 @@ namespace Microsoft.BaseTypes
       }
 
       // Convert to rational and compute integer part
-      var significandValue = IsNormal ? (significand | leadingBit) : significand;
-      var shift = (IsNormal ? GetActualExponent() : BigInteger.One) - bias - (SignificandSize - 1);
+      var (significandValue, shift) = AsScaledInteger();
 
       BigInteger integerPart;
       bool hasRemainder;
@@ -1038,8 +1048,7 @@ namespace Microsoft.BaseTypes
       }
 
       // Convert to rational number
-      var significandValue = IsNormal ? (significand | leadingBit) : significand;
-      var shift = (IsNormal ? GetActualExponent() : BigInteger.One) - bias - (SignificandSize - 1);
+      var (significandValue, shift) = AsScaledInteger();
 
       // Calculate numerator and denominator
       var (numerator, denominator) = shift >= 0
@@ -1075,19 +1084,23 @@ namespace Microsoft.BaseTypes
     {
       Contract.Ensures(Contract.Result<string>() != null);
 
-      // Handle special values
-      if (exponent == maxExponent) {
-        return $"0{(significand == 0 ? $"{(signBit ? "-" : "+")}oo" : "NaN")}{SignificandSize}e{ExponentSize}";
+      // NaN and the infinities name their sizes without the leading "f", so they cannot reuse "format".
+      var format = $"f{SignificandSize}e{ExponentSize}";
+      var sign = signBit ? "-" : "";
+
+      if (IsNaN) {
+        return $"0NaN{SignificandSize}e{ExponentSize}";
       }
 
-      // Handle zero
+      if (IsInfinity) {
+        return $"0{(signBit ? "-" : "+")}oo{SignificandSize}e{ExponentSize}";
+      }
+
       if (IsZero) {
-        return $"{(signBit ? "-" : "")}0x0.0e0f{SignificandSize}e{ExponentSize}";
+        return $"{sign}0x0.0e0{format}";
       }
 
-      // Get significand and binary exponent
-      var significandBits = IsSubnormal ? significand : (significand | leadingBit);
-      var binaryExp = (IsSubnormal ? BigInteger.One - bias : exponent - bias) - (SignificandSize - 1);
+      var (significandBits, binaryExp) = AsScaledInteger();
 
       // Calculate hex exponent and adjust significand for bit remainder
       var hexExp = binaryExp / 4;
@@ -1103,7 +1116,7 @@ namespace Microsoft.BaseTypes
       // Convert to hex and format as H.HHH
       var hexStr = significandBits.ToString("X");
       if (hexStr.Length == 1) {
-        return $"{(signBit ? "-" : "")}0x{hexStr}.0e{hexExp}f{SignificandSize}e{ExponentSize}";
+        return $"{sign}0x{hexStr}.0e{hexExp}{format}";
       }
 
       // Format with decimal point after first digit
@@ -1113,7 +1126,7 @@ namespace Microsoft.BaseTypes
       }
       hexExp += hexStr.Length - 1;
 
-      return $"{(signBit ? "-" : "")}0x{hexStr[0]}.{fracPart}e{hexExp}f{SignificandSize}e{ExponentSize}";
+      return $"{sign}0x{hexStr[0]}.{fracPart}e{hexExp}{format}";
     }
 
     #endregion
