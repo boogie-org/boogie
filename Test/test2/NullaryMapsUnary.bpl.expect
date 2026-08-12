@@ -1,0 +1,8 @@
+NullaryMapsUnary.bpl(55,3): Error: this assertion could not be proved
+Execution trace:
+    NullaryMapsUnary.bpl(54,7): anon0
+NullaryMapsUnary.bpl(62,3): Error: this assertion could not be proved
+Execution trace:
+    NullaryMapsUnary.bpl(61,7): anon0
+
+Boogie program verifier finished with 5 verified, 2 errors

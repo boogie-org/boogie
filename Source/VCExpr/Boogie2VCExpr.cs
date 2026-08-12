@@ -1269,7 +1269,7 @@ namespace Microsoft.Boogie.VCExprAST
       if (unaryOperator.Op == UnaryOperator.Opcode.Neg)
       {
         VCExpr e = Cce.NonNull(this.args[0]);
-        if (Cce.NonNull(e.Type).IsInt)
+        if (VCExpressionGenerator.UnwrapNullaryMapType(Cce.NonNull(e.Type)).IsInt)
         {
           return Gen.Function(VCExpressionGenerator.SubIOp, Gen.Integer(BigNum.ZERO), e);
         }
