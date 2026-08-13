@@ -1288,6 +1288,11 @@ namespace Microsoft.Boogie
     private Dictionary<Function, Dictionary<List<Type>, Function>> functionInstantiations;
     private Dictionary<Procedure, Dictionary<List<Type>, Procedure>> procInstantiations;
     private Dictionary<Implementation, Dictionary<List<Type>, Implementation>> implInstantiations;
+
+    // Instantiations whose body is currently being walked. An instantiation is not entered into
+    // implInstantiations until its body is complete, so this is what tells InlineCallCmd that a
+    // call it is about to inline leads back into an instantiation that is already being built.
+    private Dictionary<Implementation, HashSet<List<Type>>> implInstantiationsInProgress;
     private Dictionary<TypeCtorDecl, Dictionary<List<Type>, TypeCtorDecl>> typeInstantiations;
     private HashSet<Declaration> newInstantiatedDeclarations;
     private List<BinderExprMonomorphizer> binderExprMonomorphizers;
@@ -1312,12 +1317,14 @@ namespace Microsoft.Boogie
       originalAxiomToSplitAxioms = program.Axioms.ToDictionary(ax => ax, _ => new HashSet<Axiom>());
       originalAxiomToOriginalSymbols = program.Axioms.ToDictionary(ax => ax, ax => new FunctionAndConstantCollector(ax));
       implInstantiations = new Dictionary<Implementation, Dictionary<List<Type>, Implementation>>();
+      implInstantiationsInProgress = new Dictionary<Implementation, HashSet<List<Type>>>();
       nameToImplementation = new Dictionary<string, Implementation>();
       program.TopLevelDeclarations.OfType<Implementation>().Where(impl => impl.TypeParameters.Count > 0).ForEach(
         impl =>
         {
           nameToImplementation.Add(impl.Name, impl);
           implInstantiations.Add(impl, new Dictionary<List<Type>, Implementation>(new ListComparer<Type>()));
+          implInstantiationsInProgress.Add(impl, new HashSet<List<Type>>(new ListComparer<Type>()));
         });
       procInstantiations = new Dictionary<Procedure, Dictionary<List<Type>, Procedure>>();
       nameToProcedure = new Dictionary<string, Procedure>();
@@ -1586,7 +1593,11 @@ namespace Microsoft.Boogie
       if (procToImpl.ContainsKey(callCmd.Proc))
       {
         var impl = procToImpl[callCmd.Proc];
-        if (IsInlined(impl))
+        // Inlining a call whose target instantiation is still being built would walk that body a
+        // second time and re-enter here on the same call, so a recursive inlined procedure would
+        // recurse without bound and overflow the stack. The instantiation already under
+        // construction is the one this call needs; it is completed by the frame that started it.
+        if (IsInlined(impl) && !implInstantiationsInProgress[impl].Contains(actualTypeParams))
         {
           InstantiateImplementation(impl, actualTypeParams);
         }
@@ -1714,6 +1725,7 @@ namespace Microsoft.Boogie
     {
       if (!implInstantiations[impl].ContainsKey(actualTypeParams))
       {
+        implInstantiationsInProgress[impl].Add(actualTypeParams);
         var implTypeParamInstantiation = impl.TypeParameters.MapTo(actualTypeParams);
         var instantiatedInParams = InstantiateFormals(impl.InParams, implTypeParamInstantiation);
         var instantiatedOutParams = InstantiateFormals(impl.OutParams, implTypeParamInstantiation);
@@ -1739,6 +1751,7 @@ namespace Microsoft.Boogie
         implInstantiations[impl][actualTypeParams] = instantiatedImpl;
         declWithFormalsToTypeInstantiation[instantiatedImpl] =
           impl.TypeParameters.Select(x => x.Name).MapTo(actualTypeParams);
+        implInstantiationsInProgress[impl].Remove(actualTypeParams);
       }
       return implInstantiations[impl][actualTypeParams];
     }
