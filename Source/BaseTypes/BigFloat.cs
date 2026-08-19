@@ -579,22 +579,7 @@ namespace Microsoft.BaseTypes
     [Pure] public static BigFloat Max(BigFloat x, BigFloat y) => x.IsNaN || y.IsNaN ? (x.IsNaN ? x : y) : (x >= y ? x : y);
     [Pure] public static BigFloat Min(BigFloat x, BigFloat y) => x.IsNaN || y.IsNaN ? (x.IsNaN ? x : y) : (x <= y ? x : y);
     /// <summary>
-    /// "x" with the sign of "y", which must have the same format.
-    ///
-    /// The arithmetic operators validate unconditionally: <see cref="operator +"/>,
-    /// <see cref="operator *"/> and <see cref="operator /"/> call
-    /// <see cref="ValidateSizeCompatibility"/> before touching the operands, and
-    /// <see cref="operator -(BigFloat, BigFloat)"/> inherits that through addition. CopySign had no such
-    /// check; copying a sign does not itself need the formats to agree, so this call buys uniformity
-    /// rather than correctness -- but an operation that quietly accepts what its neighbours reject is the
-    /// one a size confusion travels through.
-    ///
-    /// The comparisons, <see cref="Equals(object)"/>, <see cref="Max"/> and <see cref="Min"/> only reach
-    /// the check via <see cref="CompareTo(BigFloat)"/>, and they all test for NaN first, so a mismatch
-    /// involving a NaN is never checked. For the comparisons that is harmless -- IEEE 754 makes every
-    /// NaN comparison false whatever the formats -- but Max(float24e8, NaN53e11) returns the NaN itself,
-    /// so the result's format depends on the operands' values rather than their types. Fixing that
-    /// belongs with the special-value handling rather than with a sign copy.
+    /// Returns "x" with the sign of "y". Both must have the same format.
     /// </summary>
     [Pure] public static BigFloat CopySign(BigFloat x, BigFloat y)
     {
@@ -874,27 +859,15 @@ namespace Microsoft.BaseTypes
     #region Mathematical Operations
 
     /// <summary>
-    /// Widest floor/ceiling <see cref="TryFloorCeiling"/> will produce, in bits.
-    ///
-    /// Exponent sizes are unbounded, so a float's integer part is too: at float24e32 the floor of the
-    /// largest finite value is a 256 MB integer, and at float24e40 it exceeds what BigInteger can
-    /// represent at all. Both are faithful answers to the question asked -- the cost is proportional to
-    /// the result, not wasted -- which is why the limit belongs to callers that cannot use an answer that
-    /// large rather than to the computation.
-    ///
-    /// The cap has to clear the widest integer part a standard format can have, which is set by the
-    /// exponent field: 2^bias needs bias + 1 bits, so single needs 128, double 1024, quad 16384 and
-    /// octuple 262144. A million bits leaves 4x headroom over octuple and still bounds the work at a few
-    /// hundred KB. The narrowest format it declines is float*e22, wider than anything IEEE 754 names.
+    /// Bound on the width of the integers <see cref="TryFloorCeiling"/> will produce. Since exponent sizes
+    /// are unbounded, so are integer parts: the floor of a large float24e32 has 256 million bits. The bound
+    /// is well above the widest standard format's integer part, which is bias + 1 bits (262144 for octuple).
     /// </summary>
     public const int MaxFloorCeilingBits = 1 << 20;
 
     /// <summary>
-    /// As <see cref="FloorCeiling"/>, but returns false instead of producing a result wider than
-    /// <see cref="MaxFloorCeilingBits"/>, and false rather than throwing on NaN and the infinities.
-    ///
-    /// For callers that want an integer bound only if it is small enough to be worth having; a caller
-    /// that needs the exact value regardless should use FloorCeiling and accept the size.
+    /// As <see cref="FloorCeiling"/>, but returns false instead of throwing on NaN and the infinities or
+    /// producing a result wider than <see cref="MaxFloorCeilingBits"/>.
     /// </summary>
     public bool TryFloorCeiling(out BigInteger floor, out BigInteger ceiling)
     {
@@ -904,8 +877,7 @@ namespace Microsoft.BaseTypes
         return false;
       }
 
-      // The value's magnitude is below 2^(exponent - bias + 1), so that exponent bounds the width of its
-      // integer part. Checking it here keeps the oversized shift from being attempted at all.
+      // The magnitude is below 2^(exponent - bias + 1), so that bounds the width of the integer part.
       if (!IsZero && GetActualExponent() - bias + 1 > MaxFloorCeilingBits) {
         return false;
       }
@@ -917,9 +889,7 @@ namespace Microsoft.BaseTypes
     /// <summary>
     /// Computes the floor and ceiling of this BigFloat. Note the choice of rounding towards negative
     /// infinity rather than zero for floor is because SMT-LIBv2's to_int function floors this way.
-    ///
-    /// Both can be enormous, since exponent sizes are unbounded -- see <see cref="TryFloorCeiling"/> for
-    /// the variant that declines instead.
+    /// See <see cref="TryFloorCeiling"/> for a variant that declines instead of returning huge integers.
     /// </summary>
     /// <param name="floor">Floor (rounded towards negative infinity)</param>
     /// <param name="ceiling">Ceiling (rounded towards positive infinity)</param>
