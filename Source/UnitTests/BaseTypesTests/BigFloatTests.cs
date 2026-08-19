@@ -4428,13 +4428,15 @@ namespace BaseTypesTests
             // We need a denominator with GetBitLength() > int.MaxValue / 0.31 ≈ 6.9 billion bits
             // This is impractical to create directly, so let's test the calculation logic
 
-            // For now, let's verify that extremely small numbers produce "0.0"
-            // Create the smallest possible subnormal for a large exponent size
+            // The smallest subnormal at a 16-bit exponent is 2^-32818, so ToDecimalString does not collapse
+            // it to "0.0": the scale it derives from the denominator's width gives an expansion thousands
+            // of digits long, ending in significant figures rather than in zeros.
             var extremeFormat = new BigFloat(false, 1, 0, 53, 16); // 16-bit exponent allows much smaller values
 
             var decimalStr = extremeFormat.ToDecimalString();
-            // This should work without overflow
-            Assert.IsNotNull(decimalStr);
+            Assert.IsTrue(decimalStr.StartsWith("0."), "a subnormal lies between 0 and 1");
+            Assert.Greater(decimalStr.Length, 10000, "the scale should track the exponent rather than truncate");
+            Assert.AreNotEqual('0', decimalStr[^1], "the expansion should end in a significant digit");
 
             // Note: Testing the actual overflow case where scale > int.MaxValue would require
             // a denominator with billions of bits, which is impractical in a unit test
