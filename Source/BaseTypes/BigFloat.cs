@@ -578,7 +578,14 @@ namespace Microsoft.BaseTypes
     [Pure] public static BigFloat Abs(BigFloat x) => x.signBit ? -x : x;
     [Pure] public static BigFloat Max(BigFloat x, BigFloat y) => x.IsNaN || y.IsNaN ? (x.IsNaN ? x : y) : (x >= y ? x : y);
     [Pure] public static BigFloat Min(BigFloat x, BigFloat y) => x.IsNaN || y.IsNaN ? (x.IsNaN ? x : y) : (x <= y ? x : y);
-    [Pure] public static BigFloat CopySign(BigFloat x, BigFloat y) => x.signBit == y.signBit ? x : -x;
+    /// <summary>
+    /// Returns "x" with the sign of "y". Both must have the same format.
+    /// </summary>
+    [Pure] public static BigFloat CopySign(BigFloat x, BigFloat y)
+    {
+      ValidateSizeCompatibility(x, y);
+      return x.signBit == y.signBit ? x : -x;
+    }
 
     /// <summary>
     /// Returns the sign: -1 for negative, 0 for zero/NaN, 1 for positive
@@ -852,8 +859,37 @@ namespace Microsoft.BaseTypes
     #region Mathematical Operations
 
     /// <summary>
+    /// Bound on the width of the integers <see cref="TryFloorCeiling"/> will produce. Since exponent sizes
+    /// are unbounded, so are integer parts: the floor of a large float24e32 has 256 million bits. The bound
+    /// is well above the widest standard format's integer part, which is bias + 1 bits (262144 for octuple).
+    /// </summary>
+    public const int MaxFloorCeilingBits = 1 << 20;
+
+    /// <summary>
+    /// As <see cref="FloorCeiling"/>, but returns false instead of throwing on NaN and the infinities or
+    /// producing a result wider than <see cref="MaxFloorCeilingBits"/>.
+    /// </summary>
+    public bool TryFloorCeiling(out BigInteger floor, out BigInteger ceiling)
+    {
+      floor = ceiling = BigInteger.Zero;
+
+      if (IsNaN || IsInfinity) {
+        return false;
+      }
+
+      // The magnitude is below 2^(exponent - bias + 1), so that bounds the width of the integer part.
+      if (!IsZero && GetActualExponent() - bias + 1 > MaxFloorCeilingBits) {
+        return false;
+      }
+
+      FloorCeiling(out floor, out ceiling);
+      return true;
+    }
+
+    /// <summary>
     /// Computes the floor and ceiling of this BigFloat. Note the choice of rounding towards negative
     /// infinity rather than zero for floor is because SMT-LIBv2's to_int function floors this way.
+    /// See <see cref="TryFloorCeiling"/> for a variant that declines instead of returning huge integers.
     /// </summary>
     /// <param name="floor">Floor (rounded towards negative infinity)</param>
     /// <param name="ceiling">Ceiling (rounded towards positive infinity)</param>

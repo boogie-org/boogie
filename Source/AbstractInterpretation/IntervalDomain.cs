@@ -959,17 +959,16 @@ namespace Microsoft.Boogie.AbstractInterpretation
         else if (node.Val is BigFloat)
         {
           var bf = (BigFloat) node.Val;
-          if (bf.IsNaN || bf.IsInfinity)
+          if (bf.TryFloorCeiling(out var floor, out var ceiling))
           {
-            // NaN and infinity have no meaningful integer bounds
-            Lo = null;
-            Hi = null;
+            Lo = floor;
+            Hi = ceiling;
           }
           else
           {
-            bf.FloorCeiling(out var floor, out var ceiling);
-            Lo = floor;
-            Hi = ceiling;
+            // NaN, an infinity, or bounds too wide to compute
+            Lo = null;
+            Hi = null;
           }
         }
         else if (node.Val is bool)
