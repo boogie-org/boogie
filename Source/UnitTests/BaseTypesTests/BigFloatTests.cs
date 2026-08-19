@@ -155,8 +155,8 @@ namespace BaseTypesTests
             }
             catch (FormatException)
             {
-                // Strict mode may reject all extreme underflow, even representable subnormals
-                // This is noted in the documentation as "arguably overly restrictive"
+                // Strict mode rejects a literal that underflows to zero, which this one does; see
+                // TryParseExact for what it does and does not accept.
             }
         }
 
@@ -669,9 +669,9 @@ namespace BaseTypesTests
         [Test]
         public void TestAdditionBugWithExtremeDifferenceOppositeSigns()
         {
-            // This test verifies the fix for a bug where adding a large negative number
-            // to a very small positive number produces an invalid BigFloat
-            // with significand=0 and normal exponent (should be impossible)
+            // Adding a very small positive number to a large negative one used to lose the significand
+            // altogether, leaving the exponent of the large operand with a zero significand: a power of two
+            // rather than the operand itself.
 
             // Create a very large negative number (near max normal)
             var negLarge = new BigFloat(true, ((BigInteger)1 << 52) - 1, 2046, 53, 11);
@@ -689,15 +689,10 @@ namespace BaseTypesTests
             var resultSig = (BigInteger)sigField.GetValue(result);
             var resultExp = (BigInteger)expField.GetValue(result);
 
-            // Verify no invalid normal number is produced
-            if (resultExp > 0 && resultExp < BigFloat.GetMaxExponent(11))
-            {
-                // This is a normal number - should not have sig=0
-                Assert.AreNotEqual(BigInteger.Zero, resultSig,
-                    "Normal numbers must have non-zero significand (implicit leading 1 bit)");
-            }
-
-            // The result should equal negLarge (the larger operand)
+            // A normal number may perfectly well store a zero significand -- every power of two does -- so
+            // the invariant worth checking is that the operand came through intact.
+            Assert.AreEqual(((BigInteger)1 << 52) - 1, resultSig, "the large operand's significand survives");
+            Assert.AreEqual(new BigInteger(2046), resultExp, "and so does its exponent");
             Assert.AreEqual(negLarge.ToString(), result.ToString(),
                 "Result should equal the larger operand when difference is extreme");
         }
@@ -4402,14 +4397,11 @@ namespace BaseTypesTests
             Console.WriteLine($"negLarge string: {negLarge}");
             Console.WriteLine($"diff string:     {diff}");
 
-            // The issue is that diff has sig=0 with exp=2046
-            // This is INVALID - a normal number cannot have significand 0
-            if (diffSig == 0 && diffExp > 0 && diffExp < BigFloat.GetMaxExponent(diff.ExponentSize))
-            {
-                Assert.Fail($"BUG: Addition produced invalid normal number with sig=0, exp={diffExp}");
-            }
-
-            // If we get here, internal representations are identical
+            // The subtraction used to drop the significand, leaving the large operand's exponent with a
+            // zero significand. A zero significand is legitimate on its own -- every power of two has one --
+            // so what this checks is that the operand came through unchanged.
+            Assert.AreEqual(negLargeSig, diffSig, "the large operand's significand survives");
+            Assert.AreEqual(negLargeExp, diffExp, "and so does its exponent");
             Assert.AreEqual(negLarge, diff,
                 "Result should equal the larger operand");
 
@@ -4999,10 +4991,7 @@ namespace BaseTypesTests
             var result2 = minusZero + plusZero;
             var (_, _, isNeg2) = GetBigFloatInternals(result2);
 
-            // Current behavior: (-0) + (+0) = +0 (Correct)
             Assert.IsFalse(isNeg2, "(-0) + (+0) correctly returns +0");
-
-            // The bug is asymmetric - only affects (+0) + (-0), not (-0) + (+0)
         }
 
         [Test]
