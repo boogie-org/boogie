@@ -23,9 +23,8 @@ namespace Microsoft.BaseTypes
     private readonly BigInteger maxExponent;    // Maximum exponent value
     private readonly BigInteger leadingBit;      // Power value for the implicit leading significand bit
 
-    // SignificandSize represents the precision: trailing significand field width + 1 (for the implicit leading significand bit)
-    // For IEEE 754 double: SignificandSize = 53 (52-bit trailing significand field + 1 implicit leading significand bit)
-    // The trailing significand field always uses SignificandSize - 1 bits
+    // The precision: the trailing significand field's width plus the implicit leading bit, so 53 for an
+    // IEEE 754 double. The stored field always uses SignificandSize - 1 bits.
     public int SignificandSize { get; }
     public int ExponentSize { get; }            // Total bits for exponent
     public bool IsZero => significand == 0 && exponent == 0;
@@ -46,8 +45,7 @@ namespace Microsoft.BaseTypes
     #region Constructors and Factory Methods
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="BigFloat"/> struct.
-    /// Primary constructor for IEEE 754 representation
+    /// Initializes a new instance of the <see cref="BigFloat"/> struct from its IEEE 754 fields.
     /// </summary>
     /// <param name="signBit">The sign bit: true for negative, false for positive</param>
     /// <param name="significand">The trailing significand field (without implicit leading significand bit for normal numbers)</param>
@@ -92,7 +90,6 @@ namespace Microsoft.BaseTypes
       SignificandSize = significandSize;
       ExponentSize = exponentSize;
 
-      // Initialize cached values
       bias = GetBias(exponentSize);
       maxExponent = GetMaxExponent(exponentSize);
       leadingBit = GetLeadingBitPower(significandSize);
@@ -111,16 +108,10 @@ namespace Microsoft.BaseTypes
     }
 
     /// <summary>
-    /// Tries to parse a string representation of a BigFloat with strict Boogie verification requirements.
-    /// This method enforces:
-    /// - No precision loss (significand must have trailing zeros for full nibble inclusion)
-    /// - No extreme underflow (rejects values that would underflow to zero)
-    /// - Strict size validation
-    ///
-    /// DESIGN NOTE: This "strict" mode is arguably overly restrictive. It rejects:
-    /// - ALL extreme underflow, even representable subnormals (e.g., 0x0.8e-126f24e8)
-    /// - ANY precision loss, even standard IEEE 754 rounding
-    ///
+    /// As <see cref="TryParse"/>, but rejects a literal the format cannot hold: one with a nonzero tail
+    /// below the retained significand, one that overflows to infinity, and one that underflows to zero or
+    /// rounds up out of the subnormal range. A literal that rounds onto a subnormal is accepted, so this
+    /// is not quite exactness. Boogie's parser uses this mode.
     /// </summary>
     /// <param name="s">The string to parse in format: [-]0x^.^e*f*e* or 0NaN*e* or 0+/-oo*e*</param>
     /// <param name="result">The parsed BigFloat value if successful; default(BigFloat) otherwise</param>
@@ -147,16 +138,7 @@ namespace Microsoft.BaseTypes
     }
 
     /// <summary>
-    /// Parses a string representation of a BigFloat with strict Boogie verification requirements.
-    /// This method enforces:
-    /// - No precision loss (significand must have trailing zeros for full nibble inclusion)
-    /// - No extreme underflow (rejects values that would underflow to zero)
-    /// - Strict size validation with FormatException
-    ///
-    /// DESIGN NOTE: This "strict" mode is arguably overly restrictive. It rejects:
-    /// - ALL extreme underflow, even representable subnormals (e.g., 0x0.8e-126f24e8)
-    /// - ANY precision loss, even standard IEEE 754 rounding
-    ///
+    /// As <see cref="TryParseExact"/>, but throws instead of returning false.
     /// </summary>
     /// <param name="s">The string to parse in format: [-]0x^.^e*f*e* or 0NaN*e* or 0+/-oo*e*</param>
     /// <returns>The parsed BigFloat value</returns>
@@ -173,8 +155,8 @@ namespace Microsoft.BaseTypes
     /// Core parsing logic that handles both IEEE 754 compliant and Boogie strict parsing modes
     /// </summary>
     /// <param name="s">The string to parse</param>
-    /// <param name="strict">When true, enforces Boogie's verification requirements (no precision loss, no extreme underflow);
-    /// when false, follows IEEE 754 standard (allows graceful underflow and rounding)</param>
+    /// <param name="strict">When true, applies the restrictions described on <see cref="TryParseExact"/>;
+    /// when false, rounds and underflows as IEEE 754 prescribes</param>
     /// <param name="result">The parsed BigFloat value if successful; default(BigFloat) otherwise</param>
     /// <returns>True if the parse was successful; false otherwise</returns>
     private static bool TryParseFloatString(string s, bool strict, out BigFloat result)
@@ -434,12 +416,8 @@ namespace Microsoft.BaseTypes
       new (isNegative, GetSignificandMask(significandSize - 1), GetMaxExponent(exponentSize), significandSize, exponentSize);
 
     /// <summary>
-    /// Tries to create special values from string representation for SMT-LIB integration.
-    /// Supports: "NaN", "+oo", "-oo", "+zero", "-zero" (case insensitive)
-    ///
-    /// These are the five special values the SMT-LIB FloatingPoint theory can name,
-    /// and a solver may return any of them from (get-value ...) as
-    /// ((x (_ &lt;special&gt; &lt;eb&gt; &lt;sb&gt;))).
+    /// Creates one of the five special values the SMT-LIB FloatingPoint theory can name, which a solver may
+    /// return from (get-value ...) as ((x (_ &lt;special&gt; &lt;eb&gt; &lt;sb&gt;))). Case insensitive.
     /// </summary>
     /// <param name="specialValue">Special value string ("NaN", "+oo", "-oo", "+zero", "-zero")</param>
     /// <param name="sigSize">Significand size in bits</param>
@@ -523,7 +501,6 @@ namespace Microsoft.BaseTypes
     {
       ValidateSizeCompatibility(x, y);
 
-      // Handle special values
       var specialResult = HandleSpecialValues(x, y, ArithmeticOperation.Addition);
       if (specialResult.HasValue) {
         return specialResult.Value;
@@ -551,10 +528,8 @@ namespace Microsoft.BaseTypes
 
       var expDiff = xExp - yExp;
 
-      // If operands are far apart, the smaller cannot affect the larger
-      // For same sign: no cancellation possible
-      // For opposite signs: when difference > significandSize + 1, the smaller value
-      // shifts completely out of range and doesn't affect the result
+      // Beyond significandSize + 1 apart, the smaller operand shifts out of range entirely and cannot
+      // affect the larger, whatever the signs.
       if (BigInteger.Abs(expDiff) > x.SignificandSize + 1) {
         var farApartResult = expDiff > 0 ? x : y;
         return farApartResult;
@@ -586,7 +561,6 @@ namespace Microsoft.BaseTypes
     {
       ValidateSizeCompatibility(x, y);
 
-      // Handle special values
       var specialResult = HandleSpecialValues(x, y, ArithmeticOperation.Multiplication);
       if (specialResult.HasValue) {
         return specialResult.Value;
@@ -597,7 +571,6 @@ namespace Microsoft.BaseTypes
         return CreateZero(x.signBit ^ y.signBit, x.SignificandSize, x.ExponentSize);
       }
 
-      // Prepare operands and calculate result sign
       var ((xSig, xExp), (ySig, yExp), resultSign) = PrepareOperandsForMultDiv(x, y);
 
       // Multiply and check for zero
@@ -618,13 +591,11 @@ namespace Microsoft.BaseTypes
     {
       ValidateSizeCompatibility(x, y);
 
-      // Handle special cases
       var specialResult = HandleSpecialValues(x, y, ArithmeticOperation.Division);
       if (specialResult.HasValue) {
         return specialResult.Value;
       }
 
-      // Prepare operands and calculate result sign
       var ((xSig, xExp), (ySig, yExp), resultSign) = PrepareOperandsForMultDiv(x, y);
 
       // Long division produces bits from the top down, so pre-shift the dividend by as many quotient
@@ -910,18 +881,9 @@ namespace Microsoft.BaseTypes
     #region Comparison Operations
 
     /// <summary>
-    /// Compares this BigFloat with another BigFloat for ordering purposes.
-    /// This method follows the specification for C#'s Single.CompareTo method.
-    /// As a result, it handles NaNs differently than how the ==, !=, <, >, <=, and >= operators do.
-    /// For example, the expression (0.0f / 0.0f).CompareTo(0.0f / 0.0f) should return 0,
-    /// whereas the expression (0.0f / 0.0f) == (0.0f / 0.0f) should return false.
-    ///
-    /// IMPORTANT: This dual behavior is intentional and correct:
-    /// - CompareTo: Provides consistent total ordering for sorting (NaN == NaN returns 0)
-    /// - == operator: Follows IEEE 754 mathematical semantics (NaN == NaN returns false)
-    ///
-    /// This allows collections containing NaN values to be sorted while maintaining
-    /// IEEE 754 compliance for mathematical operations.
+    /// Orders two values as C#'s Single.CompareTo does, which means a total order in which a NaN compares
+    /// equal to itself so that collections containing one can be sorted. The comparison operators keep
+    /// IEEE 754 semantics instead, where every NaN comparison is false; the difference is deliberate.
     /// </summary>
     /// <param name="that">The BigFloat to compare with</param>
     /// <returns>
@@ -931,7 +893,6 @@ namespace Microsoft.BaseTypes
     /// </returns>
     public int CompareTo(BigFloat that)
     {
-      // Validate size compatibility first
       ValidateSizeCompatibility(this, that);
 
       // NaN handling - special ordering for collections

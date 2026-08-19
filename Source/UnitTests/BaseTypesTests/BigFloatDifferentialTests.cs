@@ -944,12 +944,8 @@ namespace BaseTypesTests
         /// Literals below the subnormal grid round to nearest rather than flushing to zero. The smallest
         /// subnormal at (24,8) is 2^-149, which 0x8.0e-38f24e8 names exactly, so each literal below is the
         /// stated fraction of it: above half rounds up to it, half itself is a tie that goes to the even
-        /// zero, and below half rounds down.
-        ///
-        /// The band strictly between half and one is the whole of what this PR changes about parsing. The
-        /// old parser decided "below the grid" from the exponent before rounding, so it rejected all of
-        /// these in strict mode and flushed them to zero otherwise. Nothing the old parser accepted has
-        /// changed value, and nothing it accepted is now rejected.
+        /// zero, and below half rounds down. Deciding "below the grid" from the exponent before rounding
+        /// would flush the whole band to zero instead.
         /// </summary>
         [Test]
         public void LiteralsBelowTheSubnormalGridRoundToNearest()
