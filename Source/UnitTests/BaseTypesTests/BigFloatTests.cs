@@ -732,19 +732,17 @@ namespace BaseTypesTests
         [Test]
         public void TestExactHalfwayRounding()
         {
-            // Create values that produce exact halfway cases for rounding
-            // For 24-bit significand, we need 25 bits with the LSB = 1
-
-            // Create 1.5 * 2^24 + 0.5 = exact halfway case
+            // (3 * 2^23 + 1) / 2 is 1.5 * 2^23 + 0.5. The gap between representable values in that binade
+            // is 1, so the value sits exactly halfway and must round to the even neighbour, 1.5 * 2^23.
             var num = (BigInteger)(3 * (1 << 23) + 1);  // Binary: 1 1000...001
             var denom = BigInteger.One << 1;
 
-            BigFloat.FromRational(num, denom, 24, 8, out var result);
+            var exact = BigFloat.FromRational(num, denom, 24, 8, out var result);
+            var (sig, exp, _) = GetBigFloatInternals(result);
 
-            // This should round to nearest even
-            // The value needs rounding, so FromRational returns false
-            // but we should verify the rounding was correct
-            Assert.IsNotNull(result);
+            Assert.IsFalse(exact, "the value is not representable, so the conversion is inexact");
+            Assert.AreEqual(new BigInteger(150), exp, "biased exponent of 1.5 * 2^23");
+            Assert.AreEqual(new BigInteger(4194304), sig, "should tie down to 1.5 * 2^23, whose stored significand is 2^22");
         }
         #endregion
 
@@ -2530,22 +2528,8 @@ namespace BaseTypesTests
             BigFloat.FromRational(11, 8, 2, 8, out var elevenEighths);
             var (sig118, exp118, sign118) = GetBigFloatInternals(elevenEighths);
 
-            // Let's also test 13/8 = 1.625 = 1.101 binary
-            BigFloat.FromRational(13, 8, 2, 8, out var thirteenEighths);
-            var (sig138, exp138, sign138) = GetBigFloatInternals(thirteenEighths);
-
-            // And the actual tie case: 12/8 = 1.5 = 1.1 binary (fits exactly)
-            BigFloat.FromRational(12, 8, 2, 8, out var twelveEighths);
-            var (sig128, exp128, sign128) = GetBigFloatInternals(twelveEighths);
-
-            // For a true tie with 2-bit significand, I need a value that's exactly between
-            // two representable values. Let me think...
-            // With 2 bits, we can represent: 1.0, 1.1 (1.5), and then 10.0 (2.0), 10.1 (2.5), etc.
-
-            // Actually, let me create a simpler test that definitely creates a tie
-            // Use 3-bit significand (2 bits stored) to have more control
-            // We can represent: 1.00, 1.01, 1.10, 1.11
-            // A tie would be exactly between any two of these
+            // A 3-bit significand stores 2 bits, so it represents 1.00, 1.01, 1.10 and 1.11, which puts a
+            // tie exactly between any two neighbours.
 
             // 9/8 = 1.125 = 1.001 binary
             // With 3-bit significand, this is exactly between 1.00 and 1.01
@@ -2561,47 +2545,21 @@ namespace BaseTypesTests
             var (sig118_3, exp118_3, sign118_3) = GetBigFloatInternals(elevenEighths3);
             Assert.AreEqual(new BigInteger(2), sig118_3, "11/8 with 3-bit significand should round to even (2)");
 
-            // Now the main test with 24-bit significand
-            // I need to be very careful about what constitutes a tie
-            // For significand size S, we have S-1 stored bits
-            // So with 24-bit significand, we store 23 bits
+            // Now with a 24-bit significand, which stores 23 bits. (2^24 + 1) / 2^23 is 2 + 2^-23, and the
+            // gap above 2.0 is 2^-22, so the value lies exactly halfway between 2.0 and its successor. The
+            // even neighbour is 2.0, whose stored significand is 0.
+            numerator = (BigInteger.One << 24) + 1;
+            denominator = BigInteger.One << 23;
 
-            // Let me manually trace through (2^24 + 1) / 2^23
-            numerator = (BigInteger.One << 24) + 1;  // 16777217
-            denominator = BigInteger.One << 23;      // 8388608
-
-            // scaleBitsLong = 24 + 3 + (24 - 25) = 24 + 3 - 1 = 26
-            // scaledNumerator = 16777217 << 26 = 1125899973951488
-            // quotient = 1125899973951488 / 8388608 = 134217729
-            // remainder = 1125899973951488 - 134217729 * 8388608 = 8388608
-
-            // So remainder = 8388608 = denominator / 2 * 2 = denominator!
-            // Wait, that's not right. Let me recalculate...
-
-            // Actually, let me just test if my expectation is correct
             BigFloat.FromRational(numerator, denominator, 24, 8, out var midpoint);
             var two24 = BigFloat.FromInt(2, 24, 8);
-
-            // Create next value after 2.0
-            // In IEEE format with 24-bit significand, 2.0 has stored bits = 0
-            // Next value has stored bits = 1
             var nextAfterTwo = new BigFloat(false, 1, 128, 24, 8);
+            var (midSig, midExp, _) = GetBigFloatInternals(midpoint);
 
-            // Check which one midpoint equals
-            var equalsTwo = midpoint.Equals(two24);
-            var equalsNext = midpoint.Equals(nextAfterTwo);
-
-            var (midSig, midExp, midSign) = GetBigFloatInternals(midpoint);
-
-            // Good, that shows BigFloat rounds to even (sig=0) correctly
-            // Let me test another tie case where even is the higher value
-
-            // Create a tie between values where the higher one has even last bit
-            // 3.0 has sig=4194304 (binary ...10000000000000000000000, last bit 0 = even)
-            // Next value has sig=4194305 (binary ...10000000000000000000001, last bit 1 = odd)
-            // Midpoint between them should round UP to 3.0
-
-            // Actually, that's not right. Let me think more carefully.
+            Assert.AreEqual(new BigInteger(128), midExp, "biased exponent of 2.0");
+            Assert.AreEqual(BigInteger.Zero, midSig, "2 + 2^-23 should tie down to 2.0");
+            Assert.IsTrue(midpoint.Equals(two24), "the tie should land on 2.0");
+            Assert.IsFalse(midpoint.Equals(nextAfterTwo), "the tie should not land on 2.0's successor");
             // In IEEE format with implicit leading 1:
             // 3.0 = 1.1 × 2^1, stored sig = 0x400000 = 4194304
             // Next = 1.10000000000000000000001 × 2^1, stored sig = 4194305
@@ -2626,26 +2584,6 @@ namespace BaseTypesTests
 
             Assert.AreEqual(new BigInteger(2), tieSig1, "21/16 should round to even (sig=2)");
             Assert.AreEqual(new BigInteger(4), tieSig2, "23/16 should round to even (sig=4)");
-
-            // The original test already proved correctness
-            Assert.Pass($"BigFloat correctly implements round-to-nearest-even. Midpoint sig={midSig} (even)");
-
-            // According to IEEE 754 round-to-nearest-even:
-            // If the value is exactly between two representable values,
-            // choose the one with even least significant bit
-            // 2.0 has sig=0 (even), next has sig=1 (odd)
-            // So it should round to 2.0
-
-            if (!equalsTwo && equalsNext) {
-                // This would indicate BigFloat is NOT doing round-to-even correctly
-                Assert.Fail($"BigFloat appears to round ties away from even. Midpoint sig={midSig} (should be 0)");
-            } else if (equalsTwo) {
-                // This is correct behavior
-                Assert.Pass("BigFloat correctly implements round-to-nearest-even");
-            } else {
-                // Neither? That's unexpected
-                Assert.Fail($"Midpoint doesn't equal either expected value. Sig={midSig}, Exp={midExp}");
-            }
         }
 
         [Test]
@@ -3509,7 +3447,7 @@ namespace BaseTypesTests
         [Test]
         public void TestSubnormalRoundingOverflowToNormal()
         {
-            // This test catches bug 1: When rounding a subnormal causes it to need significandSize bits,
+            // When rounding a subnormal causes it to need significandSize bits,
             // it should become the smallest normal number, not get truncated
 
             // For a 24-bit significand (23 stored + 1 implicit), test various sizes
@@ -4044,7 +3982,7 @@ namespace BaseTypesTests
         [Test]
         public void TestHexParsingRoundingNonStrictMode()
         {
-            // This test catches bug 2: Non-strict hex parsing should apply IEEE 754 rounding,
+            // Non-strict hex parsing should apply IEEE 754 rounding,
             // not truncation
 
             // Create hex values that need rounding
@@ -4750,28 +4688,25 @@ namespace BaseTypesTests
         [Test]
         public void TestHexUnderflowRounding()
         {
-            // This test catches bug 3: Hex parsing of subnormal values should round,
+            // Hex parsing of subnormal values should round,
             // not truncate
 
-            // Create a hex value that will underflow to subnormal range
-            // and needs rounding. For sigSize=24, expSize=8:
-            // - Smallest subnormal: 2^-149 = 0x0.8e-37
-            // - To test rounding, use a value between 0 and smallest subnormal
-            // - 0x0.ce-37 = 12/16 * 16^-37 = 0.75 * smallest subnormal
-            // - This should round UP to the smallest subnormal (0x0.8e-37)
-            // But hex parsing gives 0x1.0e-37 instead due to a bug
-            string underflowHex = "0x0.ce-37f24e8";  // 0.75 * smallest subnormal
+            // Create a hex value that underflows into the subnormal range and needs rounding. For
+            // sigSize=24, expSize=8 the smallest subnormal is 2^-149, which 0x0.8e-37 names exactly.
+            // 0x0.ce-37 is 12/16 * 16^-37, and since 16^-37 is 2^-148 that comes to 1.5 * 2^-149: exactly
+            // halfway between the first two subnormals, so it ties to the even one, 2 * 2^-149 = 0x1.0e-37.
+            string underflowHex = "0x0.ce-37f24e8";  // 1.5 * smallest subnormal
 
             bool parsed = BigFloat.TryParse(underflowHex, out var result);
             Assert.IsTrue(parsed, "Should parse underflow value");
 
             // This should round to a subnormal, not truncate to zero
             Assert.IsTrue(result.IsSubnormal, "Should be subnormal, not zero");
-
-            // The hex parsing has a bug where it rounds 0x0.ce-37 to 0x1.0e-37
-            // instead of 0x0.8e-37 (smallest subnormal)
-            // For now, just verify it didn't truncate to zero
             Assert.IsFalse(result.IsZero, "Should not truncate to zero");
+
+            var (underflowSig, underflowExp, _) = GetBigFloatInternals(result);
+            Assert.AreEqual(BigInteger.Zero, underflowExp, "a subnormal is stored at exponent 0");
+            Assert.AreEqual(new BigInteger(2), underflowSig, "1.5 * 2^-149 ties to the even 2 * 2^-149");
         }
 
         [Test]
@@ -5402,7 +5337,6 @@ namespace BaseTypesTests
         [Test]
         public void TestExtremelyLargeNegativeExponentHandling()
         {
-            // Fix for test at line 2909 - verify what the value actually is
             var extreme = BigFloat.FromRational(BigInteger.One, BigInteger.Pow(2, 1000000), 24, 30, out var result);
 
             // With 30-bit exponent, this value is exactly representable as 2^(-1000000)

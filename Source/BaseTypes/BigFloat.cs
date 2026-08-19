@@ -1153,8 +1153,8 @@ namespace Microsoft.BaseTypes
     }
     /// <summary>
     /// Handles a literal whose exponent falls at or below the subnormal range. RoundToFormat does the
-    /// rounding; what is specific here is strict mode, which accepts only a literal that lands exactly on
-    /// a subnormal.
+    /// rounding; what is specific here is strict mode, which accepts only a literal that lands on a nonzero
+    /// subnormal, whether or not it got there exactly.
     /// </summary>
     private static bool HandleUnderflow(bool signBit, BigInteger sig, BigInteger biasedExp, int sigSize, int expSize, bool strict, out BigFloat result)
     {

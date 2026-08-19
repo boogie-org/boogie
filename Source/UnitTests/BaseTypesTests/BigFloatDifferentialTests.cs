@@ -94,8 +94,8 @@ namespace BaseTypesTests
         }
 
         /// <summary>
-        /// The stored exponent, significand and sign, which no public member exposes. Comparing these is
-        /// what makes a 1-ULP difference visible without parsing it back out of ToString().
+        /// The stored exponent, significand and sign. Only ToSMTLibString exposes these publicly, and only
+        /// as text, so reading the fields is what makes a 1-ULP difference visible as a value.
         /// </summary>
         private static (BigInteger exponent, BigInteger significand, bool signBit) Internals(BigFloat value)
         {
@@ -680,8 +680,8 @@ namespace BaseTypesTests
                 // The product falls below the grid entirely, however wide the exponent.
                 Assert.IsTrue((left * right).IsZero, $"{label}: subnormal product should underflow to zero");
 
-                // The quotient of two subnormals is a plain ratio, so it lands in [1,2) at the format's own
-                // bias, with a significand that does not depend on the exponent size either.
+                // These two significands divide to a ratio in [1,2), so the quotient lands at the format's
+                // own bias, with a significand that does not depend on the exponent size either.
                 Assert.AreEqual((BigFloat.GetBias(exponentSize), (BigInteger)6865091, false),
                     Internals(left / right), $"{label}: quotient");
 
@@ -775,8 +775,8 @@ namespace BaseTypesTests
 
         /// <summary>
         /// Printing and parsing must be inverse: <see cref="BigFloat.ToString"/> emits an exact literal, so
-        /// parsing it back has nothing to round and must reproduce the value in both modes. This is the only
-        /// check on the parser that reaches the wide formats, since it needs no oracle.
+        /// parsing it back has nothing to round and must reproduce the value in both modes. Needing no
+        /// oracle, this reaches the wide formats.
         /// </summary>
         [Test]
         public void PrintingAndParsingAreInverse()
