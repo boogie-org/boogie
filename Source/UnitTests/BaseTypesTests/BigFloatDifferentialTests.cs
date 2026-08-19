@@ -8,21 +8,15 @@ using Microsoft.BaseTypes;
 namespace BaseTypesTests
 {
     /// <summary>
-    /// Compares BigFloat against an oracle that shares no code with it.
+    /// Compares BigFloat against two oracles that share no code with it, since every conversion and
+    /// operator routes through the same rounding helpers and so cannot catch an error in them:
     ///
-    /// This matters because BigFloat cannot check itself: FromRational, FromBigDec, FromString and all
-    /// four arithmetic operators route through the same rounding helpers, so a systematic error in those
-    /// helpers makes every one of them agree while all are wrong. Tests written against FromRational
-    /// expectations therefore cannot detect it, which is why BigFloatTests passes at full strength while
-    /// division disagrees with IEEE 754 on roughly one input in five.
-    ///
-    /// Two oracles are used, and cross-checked against each other before either is trusted:
-    ///
-    ///   1. ExactRoundToNearestEven - the correctly rounded value of a rational, computed entirely in
-    ///      BigInteger with exactly one rounding step. Independent of BigFloat and valid at any precision.
+    ///   1. ExactRoundToNearestEven - a rational rounded in BigInteger with exactly one rounding step.
     ///   2. Hardware - float is bit-for-bit BigFloat(24,8) and double is bit-for-bit BigFloat(53,11).
-    ///      Arithmetic must be done *in the target precision*: computing a float result via double
-    ///      ((float)((double)a / b)) rounds twice and reproduces the very defect under test.
+    ///      Arithmetic must be done in the target precision, since computing a float result via double
+    ///      rounds twice and reproduces the defect under test.
+    ///
+    /// The two are cross-checked against each other in <see cref="OraclesAgreeWithEachOther"/>.
     /// </summary>
     [TestFixture]
     public class BigFloatDifferentialTests
@@ -31,9 +25,8 @@ namespace BaseTypesTests
         private const int SingleExponent = 8;
 
         /// <summary>
-        /// Correctly rounded round-to-nearest-even value of numerator/denominator in the given format,
-        /// as (biasedExponent, trailingSignificand). Pure BigInteger, one rounding step, no floating
-        /// point anywhere. Returns null when the value overflows to infinity.
+        /// Correctly rounded round-to-nearest-even value of numerator/denominator in the given format, as
+        /// (biasedExponent, trailingSignificand), or null if it overflows to infinity.
         /// </summary>
         private static (BigInteger exponent, BigInteger significand)? ExactRoundToNearestEven(
             BigInteger numerator, BigInteger denominator, int significandSize, int exponentSize)
@@ -103,10 +96,8 @@ namespace BaseTypesTests
         }
 
         /// <summary>
-        /// The stored exponent, significand and sign, which no public member exposes. Comparing these
-        /// rather than ToString() is what makes a 1-ULP difference visible: ToString() is injective on
-        /// finite values, but a mis-rounded result and the correct one differ in the last bit, and reading
-        /// that back out of a formatted string is more fragile than reading the field.
+        /// The stored exponent, significand and sign, which no public member exposes. Comparing these is
+        /// what makes a 1-ULP difference visible without parsing it back out of ToString().
         /// </summary>
         private static (BigInteger exponent, BigInteger significand, bool signBit) Internals(BigFloat value)
         {
@@ -146,8 +137,8 @@ namespace BaseTypesTests
         }
 
         /// <summary>
-        /// Renders a value so that expected and actual are comparable and readable in failure output,
-        /// collapsing the special values that have no (exponent, significand) meaning.
+        /// Renders a value for comparison and for failure output, collapsing the special values that have
+        /// no (exponent, significand) meaning.
         /// </summary>
         private static string Describe(BigFloat value)
         {
@@ -178,8 +169,7 @@ namespace BaseTypesTests
         }
 
         /// <summary>
-        /// Neither oracle is trusted until they agree with each other. If this fails, every other
-        /// result in this fixture is meaningless, so it is the first thing to check.
+        /// If the two oracles disagree, no other result in this fixture means anything.
         /// </summary>
         [Test]
         public void OraclesAgreeWithEachOther()
@@ -212,10 +202,9 @@ namespace BaseTypesTests
         }
 
         /// <summary>
-        /// Rationals whose correctly rounded value is hand-checkable, so a reader can confirm the
-        /// expectations without running or trusting either oracle. For 1/15 at (24,8):
-        /// 2^27/15 = 8947848 remainder 8; 2*8 > 15, so round up to 8947849; less the implicit
-        /// 2^23 that leaves a trailing significand of 559241.
+        /// Rationals whose correctly rounded value can be checked by hand, without trusting either oracle.
+        /// For 1/15 at (24,8): 2^27/15 = 8947848 remainder 8; 2*8 > 15, so round up to 8947849; less the
+        /// implicit 2^23 that leaves a trailing significand of 559241.
         /// </summary>
         private static IEnumerable<TestCaseData> HandCheckedRationals()
         {
@@ -241,9 +230,7 @@ namespace BaseTypesTests
         }
 
         /// <summary>
-        /// The smallest hand-checkable case of the double-rounding defect, kept separate so the exact
-        /// arithmetic sits next to the expectation: 2^27/15 = 8947848 remainder 8, and 2*8 > 15, so the
-        /// correctly rounded significand is 8947849 - 2^23 = 559241. Rounding twice yields 559240.
+        /// The smallest case of the double-rounding defect: rounding once gives 559241, twice gives 559240.
         /// </summary>
         [Test]
         public void FromRationalRoundsOneFifteenthCorrectly()
@@ -285,9 +272,8 @@ namespace BaseTypesTests
         }
 
         /// <summary>
-        /// Exactly representable results, where no rounding is required and every operator should already
-        /// agree. Kept separate from the rounding tests so that a failure here means something much worse
-        /// than a last-bit disagreement.
+        /// Exactly representable results, where no rounding is required, so a failure here is worse than a
+        /// last-bit disagreement.
         /// </summary>
         [Test]
         public void ExactResultsNeedNoRounding()
@@ -314,9 +300,8 @@ namespace BaseTypesTests
         }
 
         /// <summary>
-        /// Special values, signed zeros and the range boundaries. These are structural rather than
-        /// rounding properties, and BigFloat gets all of them right - the point of pinning them is to
-        /// keep it that way while the rounding paths are rewritten.
+        /// Special values, signed zeros and the range boundaries, pinned so that rewriting the rounding
+        /// paths cannot disturb them.
         /// </summary>
         [Test]
         public void BoundariesAndSignedZerosMatchHardware()
@@ -341,8 +326,7 @@ namespace BaseTypesTests
                 ("-0 - +0", -0f, 0f, '-'),
                 ("subnormal - subnormal", smallestSubnormal, smallestSubnormal, '-'),
                 ("-subnormal + subnormal", -smallestSubnormal, smallestSubnormal, '+'),
-                // Cancellation of equal magnitudes: IEEE 754 gives -0 only when both operands are
-                // negative, so these pin the sign that a naive "either operand negative" test gets wrong.
+                // Cancellation of equal magnitudes gives -0 only when both operands are negative
                 ("1 - 1", 1f, 1f, '-'),
                 ("-1 + 1", -1f, 1f, '+'),
                 ("-1 - -1", -1f, -1f, '-'),
@@ -367,9 +351,8 @@ namespace BaseTypesTests
         }
 
         /// <summary>
-        /// Ties, where rounding to nearest-even is the only correct answer and off-by-one-ULP shows up
-        /// immediately. At 2^24 the gap between representable values is 2, so 2^24+1 is exactly halfway
-        /// and must round down to the even 2^24, while 2^24+3 must round up to 2^24+4.
+        /// At 2^24 the gap between representable values is 2, so 2^24+1 is exactly halfway and must round
+        /// down to the even 2^24, while 2^24+3 must round up to 2^24+4.
         /// </summary>
         [Test]
         public void TiesRoundToEven()
@@ -392,9 +375,8 @@ namespace BaseTypesTests
         }
 
         /// <summary>
-        /// The broad sweep: random bit patterns through every operator, compared against hardware. Uses a
-        /// fixed seed so a failure is reproducible. Subnormal operands and results are included, since
-        /// that is where two of the known defects live.
+        /// Random bit patterns through every operator, including subnormals, against hardware. The seed is
+        /// fixed so a failure is reproducible.
         /// </summary>
         [TestCaseSource(nameof(Operators))]
         public void OperatorMatchesHardwareOverRandomInputs(char op)
@@ -438,8 +420,8 @@ namespace BaseTypesTests
         }
 
         /// <summary>
-        /// The same sweep at double precision. Rates differ by precision - addition is far worse at
-        /// (24,8) than at (53,11) - so a fix verified only at single precision proves less than it looks.
+        /// The same sweep at double precision, where the error rates differ enough that single precision
+        /// alone would not settle the question.
         /// </summary>
         [TestCaseSource(nameof(Operators))]
         public void OperatorMatchesHardwareAtDoublePrecision(char op)
@@ -490,9 +472,8 @@ namespace BaseTypesTests
         }
 
         /// <summary>
-        /// Decimal literals are the most natural way to write a float value, and FromBigDec inherits
-        /// FromRational's rounding. Note that a handful of familiar decimals (0.1, 0.3, 3.14159) all
-        /// happen to round correctly, so only a sweep exposes this.
+        /// FromBigDec inherits FromRational's rounding. A sweep is needed because the familiar decimals
+        /// (0.1, 0.3, 3.14159) all happen to round correctly.
         /// </summary>
         [Test]
         public void FromBigDecIsCorrectlyRounded()
@@ -553,9 +534,8 @@ namespace BaseTypesTests
         }
 
         /// <summary>
-        /// Single-operation error understates the effect on a consumer that chains arithmetic, which is
-        /// how the operators would be used if anything called them. Alternating multiply and divide lets
-        /// the per-operation errors accumulate.
+        /// Alternating multiply and divide, so that per-operation errors accumulate the way they would in
+        /// a consumer that chains arithmetic.
         /// </summary>
         [Test]
         public void ChainedOperationsDoNotDrift()
@@ -605,13 +585,9 @@ namespace BaseTypesTests
             Assert.AreEqual(0L, worst, $"chained arithmetic drifted by up to {worst} ULP from hardware");
         }
 
-
         /// <summary>
-        /// FromRational at double precision, and specifically over values whose rounding carries the
-        /// significand from all-ones into the next binade. The (24,8) sweep above does not reach these:
-        /// a carry needs the retained bits to be exactly 111...1 and the tail to round up, which is rare
-        /// enough that random sampling at one precision misses it. BigFloatTests covers one such value
-        /// (2.220446049250313e-16, from the fix in #1043); this covers the family.
+        /// FromRational over values whose rounding carries the significand from all-ones into the next
+        /// binade. Random sampling rarely hits these, so they are constructed rather than sampled.
         /// </summary>
         [Test]
         public void FromRationalIsCorrectlyRoundedAtDoublePrecision()
@@ -633,8 +609,8 @@ namespace BaseTypesTests
                     denominator = BigInteger.Pow(2, -power);
                 }
 
-                // Approach the power from below by a hair, so the retained bits fill with ones and the
-                // discarded tail decides whether they carry.
+                // Approach the power from below, so the retained bits fill with ones and the discarded
+                // tail decides whether they carry.
                 foreach (var nudge in new[] { 1, 3, 7, 1023, 1048575 })
                 {
                     var scaledNumerator = numerator * ((BigInteger.One << 54) - nudge);
@@ -660,15 +636,10 @@ namespace BaseTypesTests
             Assert.IsEmpty(wrong, string.Join("; ", wrong));
         }
 
-
         /// <summary>
-        /// Exponent sizes are unbounded, and a wide one puts the subnormal boundary at a scale that
-        /// cannot be shifted to directly: a 40-bit exponent field reaches 2^-549755813888, so any
-        /// attempt to materialize 2^shift or the shifted value overflows BigInteger itself.
-        ///
-        /// Nothing covered this before. BigFloatTests exercises 16-bit exponents at the top of their
-        /// range and 30-bit ones only by construction, and the defect needs both a wide exponent and a
-        /// result that underflows into the subnormal range.
+        /// A wide exponent puts the subnormal boundary at a scale that cannot be shifted to directly: at a
+        /// 40-bit exponent the smallest normal is 2^-549755813886, so materializing 2^shift or the shifted
+        /// value overflows BigInteger. Needs both a wide exponent and a result that underflows.
         /// </summary>
         [Test]
         public void ArithmeticWorksAtWideExponentSizes()
@@ -696,10 +667,8 @@ namespace BaseTypesTests
         }
 
         /// <summary>
-        /// A wider exponent field only moves the range; it does not change how values inside that range
-        /// round. So the same operands, shifted by the difference in bias, must give the same significand
-        /// at any exponent size -- which checks the wide-format paths against hardware without needing an
-        /// oracle that can normalize across billions of binades.
+        /// A wider exponent field moves the range without changing how values inside it round, so the same
+        /// operands shifted by the difference in bias must give the same significand at any exponent size.
         /// </summary>
         [Test]
         public void WideExponentSizesRoundLikeSinglePrecision()
