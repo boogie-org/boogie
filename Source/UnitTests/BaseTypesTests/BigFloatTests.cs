@@ -2204,15 +2204,16 @@ namespace BaseTypesTests
         [Test]
         public void TestToSMTLibStringNormalNumbers()
         {
-            var one = BigFloat.FromInt(1, 24, 8);
-            var smtStr = one.ToSMTLibString();
-
-            // Should produce: fp (_ bv0 1) (_ bv127 8) (_ bv0 23)
-            // Sign bit: 0, Exponent: 127 (bias for 1.0), Significand: 0 (implicit 1.0)
-            Assert.IsTrue(smtStr.StartsWith("fp (_ bv"));
-            Assert.IsTrue(smtStr.Contains(" 1) (_ bv")); // 1-bit sign
-            Assert.IsTrue(smtStr.Contains(" 8) (_ bv")); // 8-bit exponent
-            Assert.IsTrue(smtStr.Contains(" 23)"));      // 23-bit significand
+            // This is the form SMTLibLineariser writes into the query, so the fields have to be right and
+            // not merely present: sign, then the biased exponent, then the stored significand.
+            Assert.AreEqual("fp (_ bv0 1) (_ bv127 8) (_ bv0 23)",
+                BigFloat.FromInt(1, 24, 8).ToSMTLibString(), "1.0");
+            Assert.AreEqual("fp (_ bv1 1) (_ bv127 8) (_ bv0 23)",
+                BigFloat.FromInt(-1, 24, 8).ToSMTLibString(), "-1.0 differs only in the sign bit");
+            Assert.AreEqual("fp (_ bv1 1) (_ bv0 8) (_ bv0 23)",
+                BigFloat.CreateZero(true, 24, 8).ToSMTLibString(), "negative zero");
+            Assert.AreEqual("fp (_ bv1 1) (_ bv0 8) (_ bv1 23)",
+                new BigFloat(true, 1, 0, 24, 8).ToSMTLibString(), "the negative smallest subnormal");
         }
 
         [Test]
