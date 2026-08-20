@@ -1331,6 +1331,55 @@ namespace BaseTypesTests
         }
 
         [Test]
+        public void TestTryFloorCeilingSitsExactlyOnItsLimit()
+        {
+            // The limit is a width in bits, and a normal value's integer part is one bit wider than its
+            // unbiased exponent, so the last accepted value is the one whose unbiased exponent is
+            // MaxFloorCeilingBits - 1. A 22-bit exponent field is the narrowest that reaches that far: its
+            // bias is 2^21 - 1, so the two exponents either side of the limit are both finite normals.
+            // The limit is on the width, not on the format, so it falls at the same unbiased exponent
+            // whatever the exponent field.
+            foreach (var exponentSize in new[] { 22, 23, 30 })
+            {
+                var bias = BigFloat.GetBias(exponentSize);
+                var lastAccepted =
+                    new BigFloat(false, 0, BigFloat.MaxFloorCeilingBits - 1 + bias, 24, exponentSize);
+                var firstDeclined =
+                    new BigFloat(false, 0, BigFloat.MaxFloorCeilingBits + bias, 24, exponentSize);
+
+                Assert.IsTrue(lastAccepted.TryFloorCeiling(out var floor, out var ceiling),
+                    $"e{exponentSize}: an integer part of exactly MaxFloorCeilingBits bits is still produced");
+                Assert.AreEqual(BigInteger.One << (BigFloat.MaxFloorCeilingBits - 1), floor,
+                    $"e{exponentSize}: the value is a power of two, so its floor is exact");
+                Assert.AreEqual(floor, ceiling, $"e{exponentSize}: and its ceiling is the same");
+                Assert.AreEqual(BigFloat.MaxFloorCeilingBits, (int)floor.GetBitLength(),
+                    $"e{exponentSize}: which is the widest the limit allows");
+
+                // Declining has to be cheap, which is the whole point of deciding it from the exponent.
+                var before = GC.GetTotalAllocatedBytes(precise: true);
+                Assert.IsFalse(firstDeclined.TryFloorCeiling(out _, out _),
+                    $"e{exponentSize}: one binade further and the integer part no longer fits");
+                Assert.Less(GC.GetTotalAllocatedBytes(precise: true) - before, 1024 * 1024,
+                    $"e{exponentSize}: declining should not compute the value first");
+            }
+
+            // The limit exempts zero, whose integer part is zero however wide the exponent field. A
+            // subnormal is exempt in effect too, since its actual exponent is 1 rather than its stored 0.
+            foreach (var (value, floorExpected, ceilingExpected, what) in new[]
+                     {
+                         (BigFloat.CreateZero(false, 24, 22), 0, 0, "+0"),
+                         (BigFloat.CreateZero(true, 24, 22), 0, 0, "-0"),
+                         (new BigFloat(false, 1, 0, 24, 22), 0, 1, "the smallest subnormal"),
+                         (new BigFloat(true, 1, 0, 24, 22), -1, 0, "its negation")
+                     })
+            {
+                Assert.IsTrue(value.TryFloorCeiling(out var f, out var c), $"{what} is never declined");
+                Assert.AreEqual((BigInteger)floorExpected, f, $"floor of {what}");
+                Assert.AreEqual((BigInteger)ceilingExpected, c, $"ceiling of {what}");
+            }
+        }
+
+        [Test]
         public void TestTryFloorCeilingAgreesWithFloorCeiling()
         {
             foreach (var literal in new[]

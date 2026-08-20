@@ -518,11 +518,9 @@ namespace Microsoft.BaseTypes
 
       var ((xSig, xExp), (ySig, yExp), resultSign) = PrepareOperandsForMultDiv(x, y);
 
-      // Multiply and check for zero
+      // Both operands are nonzero here, so their prepared significands are too and the product cannot
+      // be zero.
       var product = xSig * ySig;
-      if (product == 0) {
-        return CreateZero(resultSign, x.SignificandSize, x.ExponentSize);
-      }
 
       // The product is exact, so RoundToFormat performs the only rounding. Multiplying two values adds
       // their scales.
