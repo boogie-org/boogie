@@ -2577,13 +2577,10 @@ namespace BaseTypesTests
             Assert.AreEqual(BigInteger.Zero, midSig, "2 + 2^-23 should tie down to 2.0");
             Assert.IsTrue(midpoint.Equals(two24), "the tie should land on 2.0");
             Assert.IsFalse(midpoint.Equals(nextAfterTwo), "the tie should not land on 2.0's successor");
-            // In IEEE format with implicit leading 1:
-            // 3.0 = 1.1 × 2^1, stored sig = 0x400000 = 4194304
-            // Next = 1.10000000000000000000001 × 2^1, stored sig = 4194305
 
-            // Let's create a simpler test with smaller significand
-            // Use 4-bit significand (3 bits stored)
-            // Can represent: 1.000, 1.001, 1.010, 1.011, 1.100, 1.101, 1.110, 1.111
+            // A 4-bit significand stores 3 bits and so represents 1.000 through 1.111, which makes the
+            // two cases below easy to read off: a tie whose even neighbour is the lower one, and a tie
+            // whose even neighbour is the higher.
 
             // Test tie between 1.010 and 1.011 (stored as 010=2 and 011=3)
             // The exact middle is 1.0101, which should round to 1.010 (even)
@@ -4582,8 +4579,8 @@ namespace BaseTypesTests
         {
             // A 24-bit significand is six hex digits, so a seventh digit is the one that gets rounded away:
             // below 8 rounds down, 8 is an exact tie that goes to the even neighbour, and above 8 rounds up.
-            // 0x1.fffff8 and 0x1.fffffc, which this test used to use, are both exactly representable and so
-            // exercise no rounding at all.
+            // A literal with only six fractional digits, such as 0x1.fffff8, is exactly representable and
+            // exercises no rounding at all.
             var roundDown = BigFloat.FromString("0xF.FFFFF7e0f24e8");   // tail 7, below half
             var tieUp = BigFloat.FromString("0xF.FFFFF8e0f24e8");       // tail 8 on an odd significand
             var tieDown = BigFloat.FromString("0x8.000008e0f24e8");     // tail 8 on an even significand
