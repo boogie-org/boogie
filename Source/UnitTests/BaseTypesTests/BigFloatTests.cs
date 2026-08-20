@@ -2177,20 +2177,22 @@ namespace BaseTypesTests
         [Test]
         public void TestToStringTrailingZeros()
         {
-            // Values that might have trailing zeros in hex representation
-            BigFloat.FromRational(1, 1, 24, 8, out var one);
-            var str = one.ToString();
-
-            // Check that the string representation is reasonable
-            // For the value 1.0, we expect something like "0x1.0e0f24e8"
-            Assert.IsTrue(str.StartsWith("0x"));
-            Assert.IsTrue(str.Contains("e"));
-            Assert.IsTrue(str.Contains("f"));
-
-            // The exact format may include trailing zeros for alignment
-            // Just verify it's parseable
-            var parsed = BigFloat.FromString(str);
-            Assert.AreEqual(one, parsed);
+            // A 24-bit significand is six hex digits, but ToString trims trailing zeros from the fraction.
+            // An all-zero fraction keeps a single "0" rather than emptying: the grammar requires a digit
+            // after the point, so the printer must not emit what the parser would reject.
+            foreach (var (numerator, denominator, expected, trimmed) in new[]
+                     {
+                         (1, 1, "0x1.0e0f24e8", "000000 -> 0"),
+                         (17, 16, "0x1.1e0f24e8", "100000 -> 1"),
+                         (3, 2, "0x1.8e0f24e8", "800000 -> 8"),
+                         (255, 256, "0x0.FFe0f24e8", "FF0000 -> FF")
+                     })
+            {
+                BigFloat.FromRational(numerator, denominator, 24, 8, out var value);
+                var str = value.ToString();
+                Assert.AreEqual(expected, str, $"{numerator}/{denominator}: {trimmed}");
+                Assert.AreEqual(value, BigFloat.FromString(str), $"{str} should parse back unchanged");
+            }
         }
 
         #endregion
