@@ -2482,24 +2482,21 @@ namespace BaseTypesTests
         [Test]
         public void TestBoundaryRounding()
         {
-            // Test rounding at normal/subnormal boundary
+            // The first value above the normal/subnormal boundary. (2^23 + 1) / 2^149 is 2^-126 + 2^-149,
+            // and 2^23 + 1 occupies exactly 24 bits, so it needs no rounding at all: it lands on the
+            // smallest normal plus one unit in the last place, not on the smallest normal itself.
             var minNormalExp = 1;
             var bias = (1 << 7) - 1;
-
-            // Create value just above minimum normal
             var numerator = (BigInteger.One << 23) + 1;
             var denominator = BigInteger.One << (bias + 22);
 
-            BigFloat.FromRational(numerator, denominator, 24, 8, out var result);
-
-            // Should round to minimum normal
+            var exact = BigFloat.FromRational(numerator, denominator, 24, 8, out var result);
             var (sig, exp, _) = GetBigFloatInternals(result);
 
-            // The value (2^23 + 1) / 2^(127+22) = (2^23 + 1) / 2^149
-            // This is slightly larger than 2^(-126) (minimum normal)
-            // It should round to the minimum normal value
+            Assert.IsTrue(exact, "2^-126 + 2^-149 is representable, so no rounding occurs");
             Assert.IsTrue(result.IsNormal);
-            Assert.AreEqual((BigInteger)minNormalExp, exp);
+            Assert.AreEqual((BigInteger)minNormalExp, exp, "the smallest normal exponent");
+            Assert.AreEqual(BigInteger.One, sig, "one ULP above the smallest normal, whose significand is 0");
         }
 
         [Test]
