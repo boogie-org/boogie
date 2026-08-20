@@ -38,20 +38,12 @@ namespace Microsoft.BaseTypes
 
     #endregion
 
-    // ============================================================================
-    // PUBLIC INTERFACE
-    // ============================================================================
-
     #region Constructors and Factory Methods
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="BigFloat"/> struct from its IEEE 754 fields.
-    /// </summary>
+    /// <summary>Initializes a new instance of the <see cref="BigFloat"/> struct from its IEEE 754 fields.</summary>
     /// <param name="signBit">The sign bit: true for negative, false for positive</param>
     /// <param name="significand">The trailing significand field (without implicit leading significand bit for normal numbers)</param>
     /// <param name="exponent">The biased exponent value</param>
-    /// <param name="significandSize">Total bits for significand (including implicit leading significand bit)</param>
-    /// <param name="exponentSize">Total bits for exponent</param>
     public BigFloat(bool signBit, BigInteger significand, BigInteger exponent, int significandSize, int exponentSize)
       : this(signBit, significand, exponent, significandSize, exponentSize, false)
     {
@@ -95,12 +87,8 @@ namespace Microsoft.BaseTypes
       leadingBit = GetLeadingBitPower(significandSize);
     }
 
-    /// <summary>
-    /// Tries to parse a string representation of a BigFloat with IEEE 754 compliant behavior
-    /// </summary>
+    /// <summary>Tries to parse a string representation of a BigFloat with IEEE 754 compliant behavior</summary>
     /// <param name="s">The string to parse in format: [-]0x^.^e*f*e* or 0NaN*e* or 0+/-oo*e*</param>
-    /// <param name="result">The parsed BigFloat value if successful; default(BigFloat) otherwise</param>
-    /// <returns>True if the parse was successful; false otherwise</returns>
     [Pure]
     public static bool TryParse(string s, out BigFloat result)
     {
@@ -114,19 +102,14 @@ namespace Microsoft.BaseTypes
     /// is not quite exactness. Boogie's parser uses this mode.
     /// </summary>
     /// <param name="s">The string to parse in format: [-]0x^.^e*f*e* or 0NaN*e* or 0+/-oo*e*</param>
-    /// <param name="result">The parsed BigFloat value if successful; default(BigFloat) otherwise</param>
-    /// <returns>True if the parse was successful; false otherwise</returns>
     [Pure]
     public static bool TryParseExact(string s, out BigFloat result)
     {
       return TryParseFloatString(s, strict: true, out result);
     }
 
-    /// <summary>
-    /// Parses a string representation of a BigFloat with IEEE 754 compliant behavior
-    /// </summary>
+    /// <summary>Parses a string representation of a BigFloat with IEEE 754 compliant behavior</summary>
     /// <param name="s">The string to parse in format: [-]0x^.^e*f*e* or 0NaN*e* or 0+/-oo*e*</param>
-    /// <returns>The parsed BigFloat value</returns>
     [Pure]
     public static BigFloat FromString(string s)
     {
@@ -137,11 +120,8 @@ namespace Microsoft.BaseTypes
       throw new FormatException($"Unable to parse '{s}' as BigFloat");
     }
 
-    /// <summary>
-    /// As <see cref="TryParseExact"/>, but throws instead of returning false.
-    /// </summary>
+    /// <summary>As <see cref="TryParseExact"/>, but throws instead of returning false.</summary>
     /// <param name="s">The string to parse in format: [-]0x^.^e*f*e* or 0NaN*e* or 0+/-oo*e*</param>
-    /// <returns>The parsed BigFloat value</returns>
     [Pure]
     public static BigFloat FromStringStrict(string s)
     {
@@ -151,14 +131,9 @@ namespace Microsoft.BaseTypes
       throw new FormatException($"Unable to parse '{s}' as BigFloat in strict mode");
     }
 
-    /// <summary>
-    /// Core parsing logic that handles both IEEE 754 compliant and Boogie strict parsing modes
-    /// </summary>
-    /// <param name="s">The string to parse</param>
+    /// <summary>Core parsing logic that handles both IEEE 754 compliant and Boogie strict parsing modes</summary>
     /// <param name="strict">When true, applies the restrictions described on <see cref="TryParseExact"/>;
     /// when false, rounds and underflows as IEEE 754 prescribes</param>
-    /// <param name="result">The parsed BigFloat value if successful; default(BigFloat) otherwise</param>
-    /// <returns>True if the parse was successful; false otherwise</returns>
     private static bool TryParseFloatString(string s, bool strict, out BigFloat result)
     {
       result = default;
@@ -202,9 +177,7 @@ namespace Microsoft.BaseTypes
         TryCreateSpecialFromString(s[1..4], significandSize, exponentSize, out result);
     }
 
-    /// <summary>
-    /// Creates a BigFloat from an integer value (default: double precision)
-    /// </summary>
+    /// <summary>Creates a BigFloat from an integer value (default: double precision)</summary>
     [Pure] public static BigFloat FromInt(int v) => ConvertIntegerToBigFloat(v, 53, 11);
     [Pure] public static BigFloat FromInt(int v, int significandSize, int exponentSize) => ConvertIntegerToBigFloat(v, significandSize, exponentSize);
     public static BigFloat FromBigInt(BigInteger v, int significandSize, int exponentSize) => ConvertIntegerToBigFloat(v, significandSize, exponentSize);
@@ -213,11 +186,6 @@ namespace Microsoft.BaseTypes
     /// Converts a rational number to a BigFloat.
     /// Returns false if the number cannot be accurately represented as a BigFloat.
     /// </summary>
-    /// <param name="numerator">The numerator of the rational number</param>
-    /// <param name="denominator">The denominator of the rational number</param>
-    /// <param name="significandSize">The size of the significand in bits</param>
-    /// <param name="exponentSize">The size of the exponent in bits</param>
-    /// <param name="result">The resulting BigFloat</param>
     /// <returns>True if the conversion is exact, false otherwise</returns>
     [Pure]
     public static bool FromRational(
@@ -261,10 +229,6 @@ namespace Microsoft.BaseTypes
     /// Converts a BigDec (decimal) value to a BigFloat.
     /// Returns false if the number cannot be accurately represented as a BigFloat.
     /// </summary>
-    /// <param name="value">The BigDec value to convert</param>
-    /// <param name="significandSize">The size of the significand in bits</param>
-    /// <param name="exponentSize">The size of the exponent in bits</param>
-    /// <param name="result">The resulting BigFloat</param>
     /// <returns>True if the conversion is exact, false otherwise</returns>
     [Pure]
     public static bool FromBigDec(
@@ -290,11 +254,7 @@ namespace Microsoft.BaseTypes
 
     #region Validation and Parameter Checking
 
-    /// <summary>
-    /// Validates that significand and exponent sizes meet minimum requirements (must be > 1)
-    /// </summary>
-    /// <param name="significandSize">The size of the significand in bits</param>
-    /// <param name="exponentSize">The size of the exponent in bits</param>
+    /// <summary>Validates that significand and exponent sizes meet minimum requirements (must be > 1)</summary>
     private static void ValidateSizeParameters(int significandSize, int exponentSize)
     {
       if (significandSize <= 1) {
@@ -348,9 +308,7 @@ namespace Microsoft.BaseTypes
       return (sig, exp);
     }
 
-    /// <summary>
-    /// Prepares operands for multiplication/division operations (with combined sign calculation)
-    /// </summary>
+    /// <summary>Prepares operands for multiplication/division operations (with combined sign calculation)</summary>
     private static ((BigInteger sig, BigInteger exp) x, (BigInteger sig, BigInteger exp) y, bool resultSign) PrepareOperandsForMultDiv(BigFloat x, BigFloat y)
     {
       var leadingBit = x.leadingBit;
@@ -360,9 +318,7 @@ namespace Microsoft.BaseTypes
 
       return ((xSig, xExp), (ySig, yExp), resultSign);
     }
-    /// <summary>
-    /// The low "bits" bits set, i.e. 2^bits - 1, and zero for a non-positive width.
-    /// </summary>
+    /// <summary>The low "bits" bits set, i.e. 2^bits - 1, and zero for a non-positive width.</summary>
     private static BigInteger GetMask(BigInteger bits)
     {
       return bits <= 0 ? BigInteger.Zero : BigIntegerMath.LeftShift(BigInteger.One, bits) - 1;
@@ -420,9 +376,6 @@ namespace Microsoft.BaseTypes
     /// return from (get-value ...) as ((x (_ &lt;special&gt; &lt;eb&gt; &lt;sb&gt;))). Case insensitive.
     /// </summary>
     /// <param name="specialValue">Special value string ("NaN", "+oo", "-oo", "+zero", "-zero")</param>
-    /// <param name="sigSize">Significand size in bits</param>
-    /// <param name="expSize">Exponent size in bits</param>
-    /// <param name="result">The resulting BigFloat if successful; default(BigFloat) otherwise</param>
     /// <returns>True if the special value was recognized and created; false otherwise</returns>
     public static bool TryCreateSpecialFromString(string specialValue, int sigSize, int expSize, out BigFloat result) {
       switch (specialValue.ToLowerInvariant()) {
@@ -447,9 +400,7 @@ namespace Microsoft.BaseTypes
       }
     }
 
-    /// <summary>
-    /// Convert integer to BigFloat using direct IEEE 754 conversion
-    /// </summary>
+    /// <summary>Convert integer to BigFloat using direct IEEE 754 conversion</summary>
     private static BigFloat ConvertIntegerToBigFloat(BigInteger value, int significandSize, int exponentSize)
     {
       ValidateSizeParameters(significandSize, exponentSize);
@@ -472,10 +423,6 @@ namespace Microsoft.BaseTypes
 
     #endregion
 
-    // ============================================================================
-    // ARITHMETIC AND COMPARISON OPERATIONS
-    // ============================================================================
-
     #region Arithmetic Operations
 
     [Pure] public static BigFloat operator -(BigFloat x) => new (!x.signBit, x.significand, x.exponent, x.SignificandSize, x.ExponentSize);
@@ -491,9 +438,7 @@ namespace Microsoft.BaseTypes
       return x.signBit == y.signBit ? x : -x;
     }
 
-    /// <summary>
-    /// Returns the sign: -1 for negative, 0 for zero/NaN, 1 for positive
-    /// </summary>
+    /// <summary>Returns the sign: -1 for negative, 0 for zero/NaN, 1 for positive</summary>
     public int Sign() => IsNaN || IsZero ? 0 : (signBit ? -1 : 1);
 
     [Pure]
@@ -717,9 +662,7 @@ namespace Microsoft.BaseTypes
         : new BigFloat(isNegative, rounded, 0, significandSize, exponentSize);
     }
 
-    /// <summary>
-    /// Arithmetic operation types for special value handling
-    /// </summary>
+    /// <summary>Arithmetic operation types for special value handling</summary>
     private enum ArithmeticOperation
     {
       Addition,
@@ -885,7 +828,6 @@ namespace Microsoft.BaseTypes
     /// equal to itself so that collections containing one can be sorted. The comparison operators keep
     /// IEEE 754 semantics instead, where every NaN comparison is false; the difference is deliberate.
     /// </summary>
-    /// <param name="that">The BigFloat to compare with</param>
     /// <returns>
     /// Less than zero: This instance is less than 'that'
     /// Zero: This instance equals 'that' (including NaN == NaN for ordering)
@@ -1059,16 +1001,10 @@ namespace Microsoft.BaseTypes
 
     #region String Parsing
 
-    /// <summary>
-    /// Tries to parse hex format BigFloat strings according to the specification
-    /// </summary>
+    /// <summary>Tries to parse hex format BigFloat strings according to the specification</summary>
     /// <param name="s">The hex format string to parse (without size suffixes)</param>
-    /// <param name="sigSize">The significand size in bits</param>
-    /// <param name="expSize">The exponent size in bits</param>
     /// <param name="strict">When true, enforces Boogie's strict parsing rules (no precision loss, no extreme underflow);
     /// when false, follows IEEE 754 standard behavior</param>
-    /// <param name="result">The parsed BigFloat value if successful; default(BigFloat) otherwise</param>
-    /// <returns>True if the parse was successful; false otherwise</returns>
     private static bool TryParseHexFormat(string s, int sigSize, int expSize, bool strict, out BigFloat result)
     {
       result = default;
@@ -1173,9 +1109,7 @@ namespace Microsoft.BaseTypes
       return !result.IsZero && result.exponent == 0;
     }
 
-    /// <summary>
-    /// Converts to SMT-LIB format string
-    /// </summary>
+    /// <summary>Converts to SMT-LIB format string</summary>
     public string ToSMTLibString() =>
       exponent == maxExponent ?
         $"_ {(significand == 0 ? $"{(signBit ? "-" : "+")}oo" : "NaN")} {ExponentSize} {SignificandSize}" :
@@ -1184,15 +1118,10 @@ namespace Microsoft.BaseTypes
     #endregion
   }
 
-  /// <summary>
-  /// Helper class for BigInteger arithmetic operations that require shift amounts larger than int.MaxValue
-  /// </summary>
+  /// <summary>Helper class for BigInteger arithmetic operations that require shift amounts larger than int.MaxValue</summary>
   internal static class BigIntegerMath
   {
-    /// <summary>
-    /// Left shift operation that handles BigInteger shift amounts
-    /// </summary>
-    /// <param name="value">The value to shift</param>
+    /// <summary>Left shift operation that handles BigInteger shift amounts</summary>
     /// <param name="shift">The number of bits to shift left (can be negative for right shift)</param>
     /// <returns>The result of value << shift, handling shifts larger than int.MaxValue</returns>
     public static BigInteger LeftShift(BigInteger value, BigInteger shift)
@@ -1217,10 +1146,7 @@ namespace Microsoft.BaseTypes
       return result;
     }
 
-    /// <summary>
-    /// Right shift operation that handles BigInteger shift amounts
-    /// </summary>
-    /// <param name="value">The value to shift</param>
+    /// <summary>Right shift operation that handles BigInteger shift amounts</summary>
     /// <param name="shift">The number of bits to shift right (can be negative for left shift)</param>
     /// <returns>The result of value >> shift, handling shifts larger than int.MaxValue</returns>
     public static BigInteger RightShift(BigInteger value, BigInteger shift)
