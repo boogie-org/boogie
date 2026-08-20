@@ -1298,8 +1298,9 @@ namespace Microsoft.Boogie.AbstractInterpretation
                   // A product over a box is extremal at a corner. With both intervals reaching
                   // below zero the maximum is at the two lower bounds or at the two upper bounds
                   // (a corner mixing the two has a non-positive factor pairing, which cannot beat
-                  // lo0 * lo1 > 0). An unbounded upper end therefore leaves the product unbounded
-                  // above: taking lo0 * lo1 there claims a bound that x = y = 100 already exceeds.
+                  // lo0 * lo1 > 0). Without both upper bounds, decline to infer one: some such
+                  // intervals are still bounded above, but recognizing them requires more sign
+                  // cases than this incomplete approximation handles.
                   if (hi0 != null && hi1 != null)
                   {
                     var upper0 = isReal ? (BigInteger) hi0 : (BigInteger) hi0 - 1;
@@ -1353,16 +1354,8 @@ namespace Microsoft.Boogie.AbstractInterpretation
 
               break;
             case BinaryOperator.Opcode.Pow:
-              // this uses an incomplete approximation that could be tightened up.
-              // The exponent's upper bound says nothing about the size of the power, so there is
-              // no upper bound to report: with y <= 3, 2.0 ** y still reaches 8.0. The result is
-              // at least one only when the base is, since 0 ** 1 is 0.
-              if (lo0 != null && lo1 != null && 0 <= (BigInteger) lo0 && 0 <= (BigInteger) lo1)
-              {
-                Lo = 1 <= (BigInteger) lo0 ? BigInteger.One : BigInteger.Zero;
-                Hi = null;
-              }
-
+              // Real exponentiation is encoded as an uninterpreted function without axioms, so
+              // no result bound follows from bounds on its operands.
               break;
             default:
               break;

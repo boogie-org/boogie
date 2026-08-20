@@ -46,6 +46,33 @@ procedure ModByPossiblyZero(x: int, y: int) returns (r: int)
   while (i < 1) { i := i + 1; }
 }
 
+// RealDiv needs the same zero-divisor guard. With only y >= 0, the SMT encoding permits
+// a negative value for x / 0 even when x is nonnegative.
+procedure RealDivByPossiblyZero(x: real, y: real) returns (r: real)
+  requires 0.0 <= x;
+  requires 0.0 <= y;
+  ensures 0.0 <= r;  // error
+{
+  var i: int;
+  r := x / y;
+  i := 0;
+  while (i < 1) { i := i + 1; }
+}
+
+// A divisor of at least one still gives both the lower bound and r <= x.
+procedure RealDivByAtLeastOne(x: real, y: real) returns (r: real)
+  requires 0.0 <= x;
+  requires x <= 100.0;
+  requires 1.0 <= y;
+  ensures 0.0 <= r;
+  ensures r <= 100.0;
+{
+  var i: int;
+  r := x / y;
+  i := 0;
+  while (i < 1) { i := i + 1; }
+}
+
 // The bounds are still inferred when the divisor is known to be positive.
 procedure DivByPositive(x: int, y: int) returns (r: int)
   requires 0 <= x;
