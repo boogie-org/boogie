@@ -1363,6 +1363,36 @@ namespace BaseTypesTests
         }
 
         [Test]
+        public void TestSizeMismatchInEitherDimensionIsRejected()
+        {
+            // The size-rejection tests above pair (24,8) with (53,11), where both dimensions differ, so
+            // either half of the compatibility check on its own would satisfy them all. These pairs differ
+            // in one dimension at a time.
+            var reference = BigFloat.FromInt(1, 24, 8);
+            var wideExponent = BigFloat.FromInt(1, 24, 11);    // same significand size
+            var wideSignificand = BigFloat.FromInt(1, 53, 8);  // same exponent size
+
+            foreach (var (other, dimension) in new[]
+                     { (wideExponent, "exponent size"), (wideSignificand, "significand size") })
+            {
+                Assert.Throws<ArgumentException>(() => { var _ = reference + other; },
+                    $"addition should reject a differing {dimension}");
+                Assert.Throws<ArgumentException>(() => { var _ = reference - other; },
+                    $"subtraction should reject a differing {dimension}");
+                Assert.Throws<ArgumentException>(() => { var _ = reference * other; },
+                    $"multiplication should reject a differing {dimension}");
+                Assert.Throws<ArgumentException>(() => { var _ = reference / other; },
+                    $"division should reject a differing {dimension}");
+                Assert.Throws<ArgumentException>(() => reference.CompareTo(other),
+                    $"CompareTo should reject a differing {dimension}");
+                Assert.Throws<ArgumentException>(() => { var _ = reference < other; },
+                    $"comparison should reject a differing {dimension}");
+                Assert.Throws<ArgumentException>(() => BigFloat.CopySign(reference, other),
+                    $"CopySign should reject a differing {dimension}");
+            }
+        }
+
+        [Test]
         public void TestCompareToValidatesCompatibleSizes()
         {
             // Test that CompareTo now validates size compatibility
