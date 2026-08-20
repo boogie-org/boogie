@@ -989,6 +989,12 @@ namespace BaseTypesTests
             three.FloorCeiling(out floor, out ceiling);
             Assert.AreEqual(BigInteger.Parse("3"), floor);
             Assert.AreEqual(BigInteger.Parse("3"), ceiling);
+
+            // A negative exact integer has nothing to carry, so its floor and ceiling are both itself.
+            var negFour = BigFloat.FromInt(-4, 24, 8);
+            negFour.FloorCeiling(out floor, out ceiling);
+            Assert.AreEqual(new BigInteger(-4), floor, "floor of -4.0");
+            Assert.AreEqual(new BigInteger(-4), ceiling, "ceiling of -4.0");
         }
         [Test]
         public void TestFloorCeilingSpecialValues()
@@ -1354,6 +1360,16 @@ namespace BaseTypesTests
                 Assert.AreEqual(floor, ceiling, $"e{exponentSize}: and its ceiling is the same");
                 Assert.AreEqual(BigFloat.MaxFloorCeilingBits, (int)floor.GetBitLength(),
                     $"e{exponentSize}: which is the widest the limit allows");
+
+                // The same value negated is an exact negative integer, which is the one shape that reaches
+                // the branch where a negative value has no fractional part to carry.
+                var negated = new BigFloat(true, 0, BigFloat.MaxFloorCeilingBits - 1 + bias, 24, exponentSize);
+                Assert.IsTrue(negated.TryFloorCeiling(out var negFloor, out var negCeiling),
+                    $"e{exponentSize}: the limit does not depend on the sign");
+                Assert.AreEqual(-(BigInteger.One << (BigFloat.MaxFloorCeilingBits - 1)), negFloor,
+                    $"e{exponentSize}: floor of the negated boundary value");
+                Assert.AreEqual(negFloor, negCeiling,
+                    $"e{exponentSize}: an exact integer floors and ceilings to itself");
 
                 // Declining has to be cheap, which is the whole point of deciding it from the exponent.
                 var before = GC.GetTotalAllocatedBytes(precise: true);
