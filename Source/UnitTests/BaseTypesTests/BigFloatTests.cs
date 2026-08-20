@@ -834,15 +834,9 @@ namespace BaseTypesTests
             // Multiply back to check rounding
             var result = oneThird * three;
 
-            // Due to rounding, might not get exactly 1
-            var diff = BigFloat.Abs(result - one);
-
-            // Should be very close - within rounding error
-            // For 24-bit significand, the error should be very small
-            // Create the comparison value with the same size parameters
-            BigFloat.FromRational(1, 1 << 20, 24, 8, out var epsilon);
-            Assert.IsTrue(diff.IsZero || diff < epsilon,
-                         "1/3 * 3 should be very close to 1");
+            // Rounding 1/3 up and multiplying by 3 comes back to exactly 1.0 at this precision, so there is
+            // no tolerance to allow: anything else is a rounding defect.
+            Assert.AreEqual(one, result, "1/3 * 3 should be exactly 1");
         }
 
         [Test]
@@ -2659,19 +2653,14 @@ namespace BaseTypesTests
             var product2 = oneSeventh * eleven;
             var result2 = product1 + product2;
 
-            // These may differ due to cascading rounding
-            var diff = BigFloat.Abs(result1 - result2);
-
-            // The difference should be small but may not be zero
-            if (!diff.IsZero)
-            {
-                // Verify the error is within expected bounds
-                // For 24-bit precision, relative error should be < 2^(-22) per operation
-                // With 3 operations, cumulative error < 3 * 2^(-22)
-                BigFloat.FromRational(3, BigInteger.One << 22, 24, 8, out var maxError);
-                Assert.IsTrue(diff < maxError,
-                    "Cascading rounding error should be within bounds");
-            }
+            // The two orderings differ by exactly one unit in the last place, which is what makes the point:
+            // a bound of "small enough" would hold whatever the rounding did, so pin both results instead.
+            var (sig1, exp1, _) = GetBigFloatInternals(result1);
+            var (sig2, exp2, _) = GetBigFloatInternals(result2);
+            Assert.AreEqual(new BigInteger(129), exp1, "(1/3 + 1/7) * 11");
+            Assert.AreEqual(new BigInteger(2596475), sig1, "(1/3 + 1/7) * 11");
+            Assert.AreEqual(new BigInteger(129), exp2, "1/3 * 11 + 1/7 * 11");
+            Assert.AreEqual(new BigInteger(2596474), sig2, "1/3 * 11 + 1/7 * 11, one ULP lower");
 
             // Test case with many operations
             // To ensure rounding errors, we need a value that doesn't align perfectly
@@ -2690,17 +2679,12 @@ namespace BaseTypesTests
             var hundred = BigFloat.FromInt(100, 24, 8);
             var expected = x + hundred;
 
-            // Accumulated rounding errors
-            diff = BigFloat.Abs(accumulated - expected);
-
-            // Error should exist due to repeated rounding of 1/3
-            Assert.IsFalse(diff.IsZero,
-                "300 additions of 1/3 should show rounding error compared to adding 100");
-
-            // But error should still be reasonable
-            BigFloat.FromRational(1, BigInteger.One << 10, 24, 8, out var reasonableError);
-            Assert.IsTrue(diff < reasonableError,
-                "Accumulated error should be reasonable");
+            // Repeated rounding of 1/3 leaves the sum 24 units in the last place above 101, deterministically.
+            var (accSig, accExp, _) = GetBigFloatInternals(accumulated);
+            var (expSig, expExp, _) = GetBigFloatInternals(expected);
+            Assert.AreEqual(expExp, accExp, "the accumulated sum lands in the same binade as 101");
+            Assert.AreEqual(new BigInteger(4849664), expSig, "1 + 100");
+            Assert.AreEqual(new BigInteger(4849688), accSig, "1 + 300 * (1/3), 24 ULP higher");
         }
 
         #endregion
@@ -4501,23 +4485,12 @@ namespace BaseTypesTests
 
             // This number cannot be exactly represented in 24 bits
             // The current implementation appears to round rather than fail
+            // Only the low bit is discarded and it is below half, so 2^25 + 1 rounds down to 2^25 exactly.
+            // The conversion still reports itself inexact, since the input was not representable.
             var success = BigFloat.FromRational(value, 1, 24, 8, out var bf);
-
-            if (!success)
-            {
-                // If it fails (strict mode), verify the exact value succeeds
-                success = BigFloat.FromRational(BigInteger.One << 25, 1, 24, 8, out var exact);
-                Assert.IsTrue(success, "2^25 should be exactly representable");
-            }
-            else
-            {
-                // If it succeeds (rounding mode), verify it rounded correctly
-                var exact = BigFloat.FromBigInt(BigInteger.One << 25, 24, 8);
-                // The difference should be minimal (lost the +1)
-                var diff = BigFloat.Abs(bf - exact);
-                Assert.IsTrue(diff.IsZero || diff <= BigFloat.FromInt(1),
-                            "Rounding should lose at most the least significant bit");
-            }
+            Assert.IsFalse(success, "2^25 + 1 is not representable in 24 bits");
+            Assert.AreEqual(BigFloat.FromBigInt(BigInteger.One << 25, 24, 8), bf,
+                "2^25 + 1 should round down to 2^25, losing exactly the low bit");
         }
         [Test]
         public void TestConstructorWithVariousSignificandAndExponentSizes()
@@ -4578,15 +4551,25 @@ namespace BaseTypesTests
         [Test]
         public void TestRoundingBehaviorWhenLosingPrecision()
         {
-            // Test IEEE 754 round-to-nearest-even
-            // These values test rounding at the bit boundary
-            var roundDown = BigFloat.FromString("0x1.fffff8e0f24e8");
-            var roundUp = BigFloat.FromString("0x1.fffffce0f24e8");
+            // A 24-bit significand is six hex digits, so a seventh digit is the one that gets rounded away:
+            // below 8 rounds down, 8 is an exact tie that goes to the even neighbour, and above 8 rounds up.
+            // 0x1.fffff8 and 0x1.fffffc, which this test used to use, are both exactly representable and so
+            // exercise no rounding at all.
+            var roundDown = BigFloat.FromString("0xF.FFFFF7e0f24e8");   // tail 7, below half
+            var tieUp = BigFloat.FromString("0xF.FFFFF8e0f24e8");       // tail 8 on an odd significand
+            var tieDown = BigFloat.FromString("0x8.000008e0f24e8");     // tail 8 on an even significand
 
-            Assert.IsFalse(roundDown.IsZero);
-            Assert.IsFalse(roundUp.IsZero);
+            var (downSig, downExp, _) = GetBigFloatInternals(roundDown);
+            Assert.AreEqual(new BigInteger(130), downExp, "0xFFFFFF keeps its exponent");
+            Assert.AreEqual(new BigInteger(8388607), downSig, "and its significand, the tail being below half");
 
-            // Both should be valid but potentially rounded
+            var (upSig, upExp, _) = GetBigFloatInternals(tieUp);
+            Assert.AreEqual(new BigInteger(131), upExp, "the tie carries 0xFFFFFF into the next binade");
+            Assert.AreEqual(BigInteger.Zero, upSig, "leaving no stored significand");
+
+            var (evenSig, evenExp, _) = GetBigFloatInternals(tieDown);
+            Assert.AreEqual(new BigInteger(130), evenExp, "an even significand stays put on a tie");
+            Assert.AreEqual(BigInteger.Zero, evenSig, "at 0x800000");
         }
 
         [Test]
