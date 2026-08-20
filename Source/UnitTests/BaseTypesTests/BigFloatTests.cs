@@ -871,10 +871,11 @@ namespace BaseTypesTests
             var result1 = (hundred / five) / four;
             var result2 = hundred / (five * four);
 
-            // Should be equal (or very close due to rounding)
-            var diff = BigFloat.Abs(result1 - result2);
-            Assert.IsTrue(diff.IsZero || diff < BigFloat.FromInt(1) / BigFloat.FromInt(1 << 20),
-                         "Division should be approximately associative");
+            // Every step here is exact -- 100/5 is 20, 20/4 is 5, 5*4 is 20, 100/20 is 5 -- so the two
+            // orderings agree outright and there is no tolerance to allow. The comparison this replaced
+            // could not have run: BigFloat.FromInt(1) is (53,11) while diff is (24,8), so had the results
+            // differed it would have thrown on the size mismatch rather than reporting the difference.
+            Assert.AreEqual(result1, result2, "(100/5)/4 and 100/(5*4) are both exactly 5");
         }
 
         [Test]
@@ -2042,6 +2043,7 @@ namespace BaseTypesTests
             Assert.IsTrue(zero.IsZero);
             Assert.IsFalse(one.IsZero);
             Assert.IsTrue(negOne.IsNegative);
+            Assert.AreEqual("1000000", large.ToDecimalString(), "1000000 is exact at double precision");
 
             // Test with custom precision
             var customOne = BigFloat.FromInt(1, 16, 5);
