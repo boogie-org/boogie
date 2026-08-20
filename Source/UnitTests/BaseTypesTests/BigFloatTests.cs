@@ -5152,18 +5152,13 @@ namespace BaseTypesTests
             Assert.IsFalse(result1.IsZero, "2^(-149) should not be zero");
             Assert.IsTrue(result1.IsSubnormal, "2^(-149) should be subnormal");
 
-            // Test Case 2: 2^(-150) should underflow to zero
+            // Test Case 2: 2^(-150) is exactly half the smallest subnormal, so it ties to the even zero,
+            // and the conversion reports itself inexact because the input was not zero.
             var num2 = BigInteger.One;
             var den2 = BigInteger.One << 150;
-            if (BigFloat.FromRational(num2, den2, 24, 8, out var result2))
-            {
-                Assert.IsTrue(result2.IsZero, "2^(-150) should underflow to zero");
-            }
-            else
-            {
-                // Also acceptable - return false for unrepresentable value
-                Assert.Pass("FromRational correctly returned false for 2^(-150)");
-            }
+            Assert.IsFalse(BigFloat.FromRational(num2, den2, 24, 8, out var result2),
+                "2^(-150) is not representable, so the conversion is inexact");
+            Assert.IsTrue(result2.IsZero, "2^(-150) should underflow to zero");
         }
         #endregion
 
