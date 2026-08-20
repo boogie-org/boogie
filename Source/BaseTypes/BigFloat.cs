@@ -489,8 +489,8 @@ namespace Microsoft.BaseTypes
         xSigned + BigIntegerMath.LeftShift(ySigned, absDiff);
 
       if (sum == 0) {
-        // IEEE 754: cancellation gives -0 only when both operands are negative.
-        return CreateZero(x.signBit && y.signBit, x.SignificandSize, x.ExponentSize);
+        // Two nonzero operands can only cancel if their signs differ, and IEEE 754 makes that sum +0.
+        return CreateZero(false, x.SignificandSize, x.ExponentSize);
       }
 
       // Aligning upward left both significands weighted by the smaller of the two exponents, so the
