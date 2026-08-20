@@ -872,9 +872,7 @@ namespace BaseTypesTests
             var result2 = hundred / (five * four);
 
             // Every step here is exact -- 100/5 is 20, 20/4 is 5, 5*4 is 20, 100/20 is 5 -- so the two
-            // orderings agree outright and there is no tolerance to allow. The comparison this replaced
-            // could not have run: BigFloat.FromInt(1) is (53,11) while diff is (24,8), so had the results
-            // differed it would have thrown on the size mismatch rather than reporting the difference.
+            // orderings agree outright and there is no tolerance to allow.
             Assert.AreEqual(result1, result2, "(100/5)/4 and 100/(5*4) are both exactly 5");
         }
 
@@ -1341,10 +1339,8 @@ namespace BaseTypesTests
         {
             // The limit is a width in bits, and a normal value's integer part is one bit wider than its
             // unbiased exponent, so the last accepted value is the one whose unbiased exponent is
-            // MaxFloorCeilingBits - 1. A 22-bit exponent field is the narrowest that reaches that far: its
-            // bias is 2^21 - 1, so the two exponents either side of the limit are both finite normals.
-            // The limit is on the width, not on the format, so it falls at the same unbiased exponent
-            // whatever the exponent field.
+            // MaxFloorCeilingBits - 1, at any exponent size. A 22-bit field is the narrowest that reaches
+            // that far, its bias being 2^21 - 1, so both exponents either side of the limit are normal.
             foreach (var exponentSize in new[] { 22, 23, 30 })
             {
                 var bias = BigFloat.GetBias(exponentSize);
@@ -4577,10 +4573,8 @@ namespace BaseTypesTests
             // Create a number that requires more than 24 bits
             var value = (BigInteger.One << 25) + 1; // 2^25 + 1
 
-            // This number cannot be exactly represented in 24 bits
-            // The current implementation appears to round rather than fail
-            // Only the low bit is discarded and it is below half, so 2^25 + 1 rounds down to 2^25 exactly.
-            // The conversion still reports itself inexact, since the input was not representable.
+            // Only the low bit is discarded and it is below half, so 2^25 + 1 rounds down to 2^25 exactly,
+            // and the conversion reports itself inexact because the input was not representable.
             var success = BigFloat.FromRational(value, 1, 24, 8, out var bf);
             Assert.IsFalse(success, "2^25 + 1 is not representable in 24 bits");
             Assert.AreEqual(BigFloat.FromBigInt(BigInteger.One << 25, 24, 8), bf,
