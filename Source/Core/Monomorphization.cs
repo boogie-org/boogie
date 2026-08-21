@@ -1586,9 +1586,7 @@ namespace Microsoft.Boogie
       if (procToImpl.ContainsKey(callCmd.Proc))
       {
         var impl = procToImpl[callCmd.Proc];
-        // The dictionary contains a null sentinel while an instantiation's body is being walked.
-        // That prevents recursive inlined calls from trying to build the same instantiation again.
-        if (IsInlined(impl) && !implInstantiations[impl].ContainsKey(actualTypeParams))
+        if (IsInlined(impl))
         {
           InstantiateImplementation(impl, actualTypeParams);
         }
@@ -1716,14 +1714,15 @@ namespace Microsoft.Boogie
     {
       if (!implInstantiations[impl].ContainsKey(actualTypeParams))
       {
+        // Record the key before walking the blocks, since an inlined call in the body can lead
+        // back to this instantiation. The completed implementation replaces the sentinel below.
+        implInstantiations[impl][actualTypeParams] = null;
+        
         var implTypeParamInstantiation = impl.TypeParameters.MapTo(actualTypeParams);
         var instantiatedInParams = InstantiateFormals(impl.InParams, implTypeParamInstantiation);
         var instantiatedOutParams = InstantiateFormals(impl.OutParams, implTypeParamInstantiation);
         var instantiatedLocalVariables = InstantiateLocalVariables(impl.LocVars, implTypeParamInstantiation);
         var variableMapping = impl.InParams.Union(impl.OutParams).Union(impl.LocVars).MapTo(instantiatedInParams.Union(instantiatedOutParams).Union(instantiatedLocalVariables));
-        // Record the key before walking the blocks, since an inlined call in the body can lead
-        // back to this instantiation. The completed implementation replaces the sentinel below.
-        implInstantiations[impl][actualTypeParams] = null;
         var blocks = impl.Blocks
           .Select(block => (Block)InstantiateAbsy(block, implTypeParamInstantiation, variableMapping)).ToList();
         var blockMapping = impl.Blocks.MapTo(blocks);
