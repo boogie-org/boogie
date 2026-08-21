@@ -1714,6 +1714,10 @@ namespace Microsoft.Boogie
     {
       if (!implInstantiations[impl].ContainsKey(actualTypeParams))
       {
+        // Record the key before walking the blocks, since an inlined call in the body can lead
+        // back to this instantiation. The completed implementation replaces the sentinel below.
+        implInstantiations[impl][actualTypeParams] = null;
+        
         var implTypeParamInstantiation = impl.TypeParameters.MapTo(actualTypeParams);
         var instantiatedInParams = InstantiateFormals(impl.InParams, implTypeParamInstantiation);
         var instantiatedOutParams = InstantiateFormals(impl.OutParams, implTypeParamInstantiation);

@@ -101,7 +101,7 @@ namespace BaseTypesTests
         [Test]
         public void TestInvalidStringFormats()
         {
-            // All parsing errors now throw FormatException consistently
+            // FromString throws FormatException for every rejected input; TryParse returns false instead.
             Assert.Throws<FormatException>(() => BigFloat.FromString("invalid"));
             Assert.Throws<FormatException>(() => BigFloat.FromString("0x1.0")); // Missing exponent and sizes
             Assert.Throws<FormatException>(() => BigFloat.FromString("0x1.0e0")); // Missing sizes
@@ -155,8 +155,8 @@ namespace BaseTypesTests
             }
             catch (FormatException)
             {
-                // Strict mode may reject all extreme underflow, even representable subnormals
-                // This is noted in the documentation as "arguably overly restrictive"
+                // Strict mode rejects a literal that underflows to zero, which this one does; see
+                // TryParseExact for what it does and does not accept.
             }
         }
 
@@ -326,8 +326,7 @@ namespace BaseTypesTests
                 "TryParseExact should parse -infinity");
             Assert.IsTrue(result.IsInfinity && result.IsNegative);
 
-            // Test whitespace handling with exact parsing
-            // TryParseExact likely rejects whitespace (unlike TryParse)
+            // Whitespace is rejected in both modes; the check sits outside the strict/lenient split.
             Assert.IsFalse(BigFloat.TryParseExact(" 0x1.0e0f24e8", out result),
                 "TryParseExact should reject leading whitespace");
 
@@ -371,8 +370,8 @@ namespace BaseTypesTests
             // Test hex strings that require rounding during parsing
             // Create a hex string with more precision than can be represented in 24 bits
 
-            // 24-bit significand can represent 6 hex digits after the point precisely
-            // Let's create one with 8 hex digits that will require rounding
+            // A 24-bit significand is six hex digits in total, and this literal supplies fourteen after
+            // the point, so most of them have to be rounded away.
             var longHexString = "0x1.123456789abcdee0f24e8";
 
             Assert.IsTrue(BigFloat.TryParse(longHexString, out var result),
@@ -669,9 +668,9 @@ namespace BaseTypesTests
         [Test]
         public void TestAdditionBugWithExtremeDifferenceOppositeSigns()
         {
-            // This test verifies the fix for a bug where adding a large negative number
-            // to a very small positive number produces an invalid BigFloat
-            // with significand=0 and normal exponent (should be impossible)
+            // Adding a very small positive number to a large negative one used to lose the significand
+            // altogether, leaving the exponent of the large operand with a zero significand: a power of two
+            // rather than the operand itself.
 
             // Create a very large negative number (near max normal)
             var negLarge = new BigFloat(true, ((BigInteger)1 << 52) - 1, 2046, 53, 11);
@@ -689,15 +688,10 @@ namespace BaseTypesTests
             var resultSig = (BigInteger)sigField.GetValue(result);
             var resultExp = (BigInteger)expField.GetValue(result);
 
-            // Verify no invalid normal number is produced
-            if (resultExp > 0 && resultExp < BigFloat.GetMaxExponent(11))
-            {
-                // This is a normal number - should not have sig=0
-                Assert.AreNotEqual(BigInteger.Zero, resultSig,
-                    "Normal numbers must have non-zero significand (implicit leading 1 bit)");
-            }
-
-            // The result should equal negLarge (the larger operand)
+            // A normal number may perfectly well store a zero significand -- every power of two does -- so
+            // the invariant worth checking is that the operand came through intact.
+            Assert.AreEqual(((BigInteger)1 << 52) - 1, resultSig, "the large operand's significand survives");
+            Assert.AreEqual(new BigInteger(2046), resultExp, "and so does its exponent");
             Assert.AreEqual(negLarge.ToString(), result.ToString(),
                 "Result should equal the larger operand when difference is extreme");
         }
@@ -732,19 +726,17 @@ namespace BaseTypesTests
         [Test]
         public void TestExactHalfwayRounding()
         {
-            // Create values that produce exact halfway cases for rounding
-            // For 24-bit significand, we need 25 bits with the LSB = 1
-
-            // Create 1.5 * 2^24 + 0.5 = exact halfway case
+            // (3 * 2^23 + 1) / 2 is 1.5 * 2^23 + 0.5. The gap between representable values in that binade
+            // is 1, so the value sits exactly halfway and must round to the even neighbour, 1.5 * 2^23.
             var num = (BigInteger)(3 * (1 << 23) + 1);  // Binary: 1 1000...001
             var denom = BigInteger.One << 1;
 
-            BigFloat.FromRational(num, denom, 24, 8, out var result);
+            var exact = BigFloat.FromRational(num, denom, 24, 8, out var result);
+            var (sig, exp, _) = GetBigFloatInternals(result);
 
-            // This should round to nearest even
-            // The value needs rounding, so FromRational returns false
-            // but we should verify the rounding was correct
-            Assert.IsNotNull(result);
+            Assert.IsFalse(exact, "the value is not representable, so the conversion is inexact");
+            Assert.AreEqual(new BigInteger(150), exp, "biased exponent of 1.5 * 2^23");
+            Assert.AreEqual(new BigInteger(4194304), sig, "should tie down to 1.5 * 2^23, whose stored significand is 2^22");
         }
         #endregion
 
@@ -842,15 +834,9 @@ namespace BaseTypesTests
             // Multiply back to check rounding
             var result = oneThird * three;
 
-            // Due to rounding, might not get exactly 1
-            var diff = BigFloat.Abs(result - one);
-
-            // Should be very close - within rounding error
-            // For 24-bit significand, the error should be very small
-            // Create the comparison value with the same size parameters
-            BigFloat.FromRational(1, 1 << 20, 24, 8, out var epsilon);
-            Assert.IsTrue(diff.IsZero || diff < epsilon,
-                         "1/3 * 3 should be very close to 1");
+            // Rounding 1/3 up and multiplying by 3 comes back to exactly 1.0 at this precision, so there is
+            // no tolerance to allow: anything else is a rounding defect.
+            Assert.AreEqual(one, result, "1/3 * 3 should be exactly 1");
         }
 
         [Test]
@@ -885,10 +871,9 @@ namespace BaseTypesTests
             var result1 = (hundred / five) / four;
             var result2 = hundred / (five * four);
 
-            // Should be equal (or very close due to rounding)
-            var diff = BigFloat.Abs(result1 - result2);
-            Assert.IsTrue(diff.IsZero || diff < BigFloat.FromInt(1) / BigFloat.FromInt(1 << 20),
-                         "Division should be approximately associative");
+            // Every step here is exact -- 100/5 is 20, 20/4 is 5, 5*4 is 20, 100/20 is 5 -- so the two
+            // orderings agree outright and there is no tolerance to allow.
+            Assert.AreEqual(result1, result2, "(100/5)/4 and 100/(5*4) are both exactly 5");
         }
 
         [Test]
@@ -1002,6 +987,12 @@ namespace BaseTypesTests
             three.FloorCeiling(out floor, out ceiling);
             Assert.AreEqual(BigInteger.Parse("3"), floor);
             Assert.AreEqual(BigInteger.Parse("3"), ceiling);
+
+            // A negative exact integer has nothing to carry, so its floor and ceiling are both itself.
+            var negFour = BigFloat.FromInt(-4, 24, 8);
+            negFour.FloorCeiling(out floor, out ceiling);
+            Assert.AreEqual(new BigInteger(-4), floor, "floor of -4.0");
+            Assert.AreEqual(new BigInteger(-4), ceiling, "ceiling of -4.0");
         }
         [Test]
         public void TestFloorCeilingSpecialValues()
@@ -1344,6 +1335,63 @@ namespace BaseTypesTests
         }
 
         [Test]
+        public void TestTryFloorCeilingSitsExactlyOnItsLimit()
+        {
+            // The limit is a width in bits, and a normal value's integer part is one bit wider than its
+            // unbiased exponent, so the last accepted value is the one whose unbiased exponent is
+            // MaxFloorCeilingBits - 1, at any exponent size. A 22-bit field is the narrowest that reaches
+            // that far, its bias being 2^21 - 1, so both exponents either side of the limit are normal.
+            foreach (var exponentSize in new[] { 22, 23, 30 })
+            {
+                var bias = BigFloat.GetBias(exponentSize);
+                var lastAccepted =
+                    new BigFloat(false, 0, BigFloat.MaxFloorCeilingBits - 1 + bias, 24, exponentSize);
+                var firstDeclined =
+                    new BigFloat(false, 0, BigFloat.MaxFloorCeilingBits + bias, 24, exponentSize);
+
+                Assert.IsTrue(lastAccepted.TryFloorCeiling(out var floor, out var ceiling),
+                    $"e{exponentSize}: an integer part of exactly MaxFloorCeilingBits bits is still produced");
+                Assert.AreEqual(BigInteger.One << (BigFloat.MaxFloorCeilingBits - 1), floor,
+                    $"e{exponentSize}: the value is a power of two, so its floor is exact");
+                Assert.AreEqual(floor, ceiling, $"e{exponentSize}: and its ceiling is the same");
+                Assert.AreEqual(BigFloat.MaxFloorCeilingBits, (int)floor.GetBitLength(),
+                    $"e{exponentSize}: which is the widest the limit allows");
+
+                // The same value negated is an exact negative integer, which is the one shape that reaches
+                // the branch where a negative value has no fractional part to carry.
+                var negated = new BigFloat(true, 0, BigFloat.MaxFloorCeilingBits - 1 + bias, 24, exponentSize);
+                Assert.IsTrue(negated.TryFloorCeiling(out var negFloor, out var negCeiling),
+                    $"e{exponentSize}: the limit does not depend on the sign");
+                Assert.AreEqual(-(BigInteger.One << (BigFloat.MaxFloorCeilingBits - 1)), negFloor,
+                    $"e{exponentSize}: floor of the negated boundary value");
+                Assert.AreEqual(negFloor, negCeiling,
+                    $"e{exponentSize}: an exact integer floors and ceilings to itself");
+
+                // Declining has to be cheap, which is the whole point of deciding it from the exponent.
+                var before = GC.GetTotalAllocatedBytes(precise: true);
+                Assert.IsFalse(firstDeclined.TryFloorCeiling(out _, out _),
+                    $"e{exponentSize}: one binade further and the integer part no longer fits");
+                Assert.Less(GC.GetTotalAllocatedBytes(precise: true) - before, 1024 * 1024,
+                    $"e{exponentSize}: declining should not compute the value first");
+            }
+
+            // The limit exempts zero, whose integer part is zero however wide the exponent field. A
+            // subnormal is exempt in effect too, since its actual exponent is 1 rather than its stored 0.
+            foreach (var (value, floorExpected, ceilingExpected, what) in new[]
+                     {
+                         (BigFloat.CreateZero(false, 24, 22), 0, 0, "+0"),
+                         (BigFloat.CreateZero(true, 24, 22), 0, 0, "-0"),
+                         (new BigFloat(false, 1, 0, 24, 22), 0, 1, "the smallest subnormal"),
+                         (new BigFloat(true, 1, 0, 24, 22), -1, 0, "its negation")
+                     })
+            {
+                Assert.IsTrue(value.TryFloorCeiling(out var f, out var c), $"{what} is never declined");
+                Assert.AreEqual((BigInteger)floorExpected, f, $"floor of {what}");
+                Assert.AreEqual((BigInteger)ceilingExpected, c, $"ceiling of {what}");
+            }
+        }
+
+        [Test]
         public void TestTryFloorCeilingAgreesWithFloorCeiling()
         {
             foreach (var literal in new[]
@@ -1374,6 +1422,36 @@ namespace BaseTypesTests
             // Matching formats still work, taking the sign from the second operand
             Assert.AreEqual(-float24bit, BigFloat.CopySign(float24bit, BigFloat.FromInt(-1, 24, 8)),
                 "CopySign(10, -1) should be -10");
+        }
+
+        [Test]
+        public void TestSizeMismatchInEitherDimensionIsRejected()
+        {
+            // The size-rejection tests above pair (24,8) with (53,11), where both dimensions differ, so
+            // either half of the compatibility check on its own would satisfy them all. These pairs differ
+            // in one dimension at a time.
+            var reference = BigFloat.FromInt(1, 24, 8);
+            var wideExponent = BigFloat.FromInt(1, 24, 11);    // same significand size
+            var wideSignificand = BigFloat.FromInt(1, 53, 8);  // same exponent size
+
+            foreach (var (other, dimension) in new[]
+                     { (wideExponent, "exponent size"), (wideSignificand, "significand size") })
+            {
+                Assert.Throws<ArgumentException>(() => { var _ = reference + other; },
+                    $"addition should reject a differing {dimension}");
+                Assert.Throws<ArgumentException>(() => { var _ = reference - other; },
+                    $"subtraction should reject a differing {dimension}");
+                Assert.Throws<ArgumentException>(() => { var _ = reference * other; },
+                    $"multiplication should reject a differing {dimension}");
+                Assert.Throws<ArgumentException>(() => { var _ = reference / other; },
+                    $"division should reject a differing {dimension}");
+                Assert.Throws<ArgumentException>(() => reference.CompareTo(other),
+                    $"CompareTo should reject a differing {dimension}");
+                Assert.Throws<ArgumentException>(() => { var _ = reference < other; },
+                    $"comparison should reject a differing {dimension}");
+                Assert.Throws<ArgumentException>(() => BigFloat.CopySign(reference, other),
+                    $"CopySign should reject a differing {dimension}");
+            }
         }
 
         [Test]
@@ -2026,6 +2104,7 @@ namespace BaseTypesTests
             Assert.IsTrue(zero.IsZero);
             Assert.IsFalse(one.IsZero);
             Assert.IsTrue(negOne.IsNegative);
+            Assert.AreEqual("1000000", large.ToDecimalString(), "1000000 is exact at double precision");
 
             // Test with custom precision
             var customOne = BigFloat.FromInt(1, 16, 5);
@@ -2161,20 +2240,22 @@ namespace BaseTypesTests
         [Test]
         public void TestToStringTrailingZeros()
         {
-            // Values that might have trailing zeros in hex representation
-            BigFloat.FromRational(1, 1, 24, 8, out var one);
-            var str = one.ToString();
-
-            // Check that the string representation is reasonable
-            // For the value 1.0, we expect something like "0x1.0e0f24e8"
-            Assert.IsTrue(str.StartsWith("0x"));
-            Assert.IsTrue(str.Contains("e"));
-            Assert.IsTrue(str.Contains("f"));
-
-            // The exact format may include trailing zeros for alignment
-            // Just verify it's parseable
-            var parsed = BigFloat.FromString(str);
-            Assert.AreEqual(one, parsed);
+            // A 24-bit significand is six hex digits, but ToString trims trailing zeros from the fraction.
+            // An all-zero fraction keeps a single "0" rather than emptying: the grammar requires a digit
+            // after the point, so the printer must not emit what the parser would reject.
+            foreach (var (numerator, denominator, expected, trimmed) in new[]
+                     {
+                         (1, 1, "0x1.0e0f24e8", "000000 -> 0"),
+                         (17, 16, "0x1.1e0f24e8", "100000 -> 1"),
+                         (3, 2, "0x1.8e0f24e8", "800000 -> 8"),
+                         (255, 256, "0x0.FFe0f24e8", "FF0000 -> FF")
+                     })
+            {
+                BigFloat.FromRational(numerator, denominator, 24, 8, out var value);
+                var str = value.ToString();
+                Assert.AreEqual(expected, str, $"{numerator}/{denominator}: {trimmed}");
+                Assert.AreEqual(value, BigFloat.FromString(str), $"{str} should parse back unchanged");
+            }
         }
 
         #endregion
@@ -2184,15 +2265,16 @@ namespace BaseTypesTests
         [Test]
         public void TestToSMTLibStringNormalNumbers()
         {
-            var one = BigFloat.FromInt(1, 24, 8);
-            var smtStr = one.ToSMTLibString();
-
-            // Should produce: fp (_ bv0 1) (_ bv127 8) (_ bv0 23)
-            // Sign bit: 0, Exponent: 127 (bias for 1.0), Significand: 0 (implicit 1.0)
-            Assert.IsTrue(smtStr.StartsWith("fp (_ bv"));
-            Assert.IsTrue(smtStr.Contains(" 1) (_ bv")); // 1-bit sign
-            Assert.IsTrue(smtStr.Contains(" 8) (_ bv")); // 8-bit exponent
-            Assert.IsTrue(smtStr.Contains(" 23)"));      // 23-bit significand
+            // This is the form SMTLibLineariser writes into the query, so the fields have to be right and
+            // not merely present: sign, then the biased exponent, then the stored significand.
+            Assert.AreEqual("fp (_ bv0 1) (_ bv127 8) (_ bv0 23)",
+                BigFloat.FromInt(1, 24, 8).ToSMTLibString(), "1.0");
+            Assert.AreEqual("fp (_ bv1 1) (_ bv127 8) (_ bv0 23)",
+                BigFloat.FromInt(-1, 24, 8).ToSMTLibString(), "-1.0 differs only in the sign bit");
+            Assert.AreEqual("fp (_ bv1 1) (_ bv0 8) (_ bv0 23)",
+                BigFloat.CreateZero(true, 24, 8).ToSMTLibString(), "negative zero");
+            Assert.AreEqual("fp (_ bv1 1) (_ bv0 8) (_ bv1 23)",
+                new BigFloat(true, 1, 0, 24, 8).ToSMTLibString(), "the negative smallest subnormal");
         }
 
         [Test]
@@ -2466,24 +2548,21 @@ namespace BaseTypesTests
         [Test]
         public void TestBoundaryRounding()
         {
-            // Test rounding at normal/subnormal boundary
+            // The first value above the normal/subnormal boundary. (2^23 + 1) / 2^149 is 2^-126 + 2^-149,
+            // and 2^23 + 1 occupies exactly 24 bits, so it needs no rounding at all: it lands on the
+            // smallest normal plus one unit in the last place, not on the smallest normal itself.
             var minNormalExp = 1;
             var bias = (1 << 7) - 1;
-
-            // Create value just above minimum normal
             var numerator = (BigInteger.One << 23) + 1;
             var denominator = BigInteger.One << (bias + 22);
 
-            BigFloat.FromRational(numerator, denominator, 24, 8, out var result);
-
-            // Should round to minimum normal
+            var exact = BigFloat.FromRational(numerator, denominator, 24, 8, out var result);
             var (sig, exp, _) = GetBigFloatInternals(result);
 
-            // The value (2^23 + 1) / 2^(127+22) = (2^23 + 1) / 2^149
-            // This is slightly larger than 2^(-126) (minimum normal)
-            // It should round to the minimum normal value
+            Assert.IsTrue(exact, "2^-126 + 2^-149 is representable, so no rounding occurs");
             Assert.IsTrue(result.IsNormal);
-            Assert.AreEqual((BigInteger)minNormalExp, exp);
+            Assert.AreEqual((BigInteger)minNormalExp, exp, "the smallest normal exponent");
+            Assert.AreEqual(BigInteger.One, sig, "one ULP above the smallest normal, whose significand is 0");
         }
 
         [Test]
@@ -2530,22 +2609,8 @@ namespace BaseTypesTests
             BigFloat.FromRational(11, 8, 2, 8, out var elevenEighths);
             var (sig118, exp118, sign118) = GetBigFloatInternals(elevenEighths);
 
-            // Let's also test 13/8 = 1.625 = 1.101 binary
-            BigFloat.FromRational(13, 8, 2, 8, out var thirteenEighths);
-            var (sig138, exp138, sign138) = GetBigFloatInternals(thirteenEighths);
-
-            // And the actual tie case: 12/8 = 1.5 = 1.1 binary (fits exactly)
-            BigFloat.FromRational(12, 8, 2, 8, out var twelveEighths);
-            var (sig128, exp128, sign128) = GetBigFloatInternals(twelveEighths);
-
-            // For a true tie with 2-bit significand, I need a value that's exactly between
-            // two representable values. Let me think...
-            // With 2 bits, we can represent: 1.0, 1.1 (1.5), and then 10.0 (2.0), 10.1 (2.5), etc.
-
-            // Actually, let me create a simpler test that definitely creates a tie
-            // Use 3-bit significand (2 bits stored) to have more control
-            // We can represent: 1.00, 1.01, 1.10, 1.11
-            // A tie would be exactly between any two of these
+            // A 3-bit significand stores 2 bits, so it represents 1.00, 1.01, 1.10 and 1.11, which puts a
+            // tie exactly between any two neighbours.
 
             // 9/8 = 1.125 = 1.001 binary
             // With 3-bit significand, this is exactly between 1.00 and 1.01
@@ -2561,54 +2626,25 @@ namespace BaseTypesTests
             var (sig118_3, exp118_3, sign118_3) = GetBigFloatInternals(elevenEighths3);
             Assert.AreEqual(new BigInteger(2), sig118_3, "11/8 with 3-bit significand should round to even (2)");
 
-            // Now the main test with 24-bit significand
-            // I need to be very careful about what constitutes a tie
-            // For significand size S, we have S-1 stored bits
-            // So with 24-bit significand, we store 23 bits
+            // Now with a 24-bit significand, which stores 23 bits. (2^24 + 1) / 2^23 is 2 + 2^-23, and the
+            // gap above 2.0 is 2^-22, so the value lies exactly halfway between 2.0 and its successor. The
+            // even neighbour is 2.0, whose stored significand is 0.
+            numerator = (BigInteger.One << 24) + 1;
+            denominator = BigInteger.One << 23;
 
-            // Let me manually trace through (2^24 + 1) / 2^23
-            numerator = (BigInteger.One << 24) + 1;  // 16777217
-            denominator = BigInteger.One << 23;      // 8388608
-
-            // scaleBitsLong = 24 + 3 + (24 - 25) = 24 + 3 - 1 = 26
-            // scaledNumerator = 16777217 << 26 = 1125899973951488
-            // quotient = 1125899973951488 / 8388608 = 134217729
-            // remainder = 1125899973951488 - 134217729 * 8388608 = 8388608
-
-            // So remainder = 8388608 = denominator / 2 * 2 = denominator!
-            // Wait, that's not right. Let me recalculate...
-
-            // Actually, let me just test if my expectation is correct
             BigFloat.FromRational(numerator, denominator, 24, 8, out var midpoint);
             var two24 = BigFloat.FromInt(2, 24, 8);
-
-            // Create next value after 2.0
-            // In IEEE format with 24-bit significand, 2.0 has stored bits = 0
-            // Next value has stored bits = 1
             var nextAfterTwo = new BigFloat(false, 1, 128, 24, 8);
+            var (midSig, midExp, _) = GetBigFloatInternals(midpoint);
 
-            // Check which one midpoint equals
-            var equalsTwo = midpoint.Equals(two24);
-            var equalsNext = midpoint.Equals(nextAfterTwo);
+            Assert.AreEqual(new BigInteger(128), midExp, "biased exponent of 2.0");
+            Assert.AreEqual(BigInteger.Zero, midSig, "2 + 2^-23 should tie down to 2.0");
+            Assert.IsTrue(midpoint.Equals(two24), "the tie should land on 2.0");
+            Assert.IsFalse(midpoint.Equals(nextAfterTwo), "the tie should not land on 2.0's successor");
 
-            var (midSig, midExp, midSign) = GetBigFloatInternals(midpoint);
-
-            // Good, that shows BigFloat rounds to even (sig=0) correctly
-            // Let me test another tie case where even is the higher value
-
-            // Create a tie between values where the higher one has even last bit
-            // 3.0 has sig=4194304 (binary ...10000000000000000000000, last bit 0 = even)
-            // Next value has sig=4194305 (binary ...10000000000000000000001, last bit 1 = odd)
-            // Midpoint between them should round UP to 3.0
-
-            // Actually, that's not right. Let me think more carefully.
-            // In IEEE format with implicit leading 1:
-            // 3.0 = 1.1 × 2^1, stored sig = 0x400000 = 4194304
-            // Next = 1.10000000000000000000001 × 2^1, stored sig = 4194305
-
-            // Let's create a simpler test with smaller significand
-            // Use 4-bit significand (3 bits stored)
-            // Can represent: 1.000, 1.001, 1.010, 1.011, 1.100, 1.101, 1.110, 1.111
+            // A 4-bit significand stores 3 bits and so represents 1.000 through 1.111, which makes the
+            // two cases below easy to read off: a tie whose even neighbour is the lower one, and a tie
+            // whose even neighbour is the higher.
 
             // Test tie between 1.010 and 1.011 (stored as 010=2 and 011=3)
             // The exact middle is 1.0101, which should round to 1.010 (even)
@@ -2626,26 +2662,6 @@ namespace BaseTypesTests
 
             Assert.AreEqual(new BigInteger(2), tieSig1, "21/16 should round to even (sig=2)");
             Assert.AreEqual(new BigInteger(4), tieSig2, "23/16 should round to even (sig=4)");
-
-            // The original test already proved correctness
-            Assert.Pass($"BigFloat correctly implements round-to-nearest-even. Midpoint sig={midSig} (even)");
-
-            // According to IEEE 754 round-to-nearest-even:
-            // If the value is exactly between two representable values,
-            // choose the one with even least significant bit
-            // 2.0 has sig=0 (even), next has sig=1 (odd)
-            // So it should round to 2.0
-
-            if (!equalsTwo && equalsNext) {
-                // This would indicate BigFloat is NOT doing round-to-even correctly
-                Assert.Fail($"BigFloat appears to round ties away from even. Midpoint sig={midSig} (should be 0)");
-            } else if (equalsTwo) {
-                // This is correct behavior
-                Assert.Pass("BigFloat correctly implements round-to-nearest-even");
-            } else {
-                // Neither? That's unexpected
-                Assert.Fail($"Midpoint doesn't equal either expected value. Sig={midSig}, Exp={midExp}");
-            }
         }
 
         [Test]
@@ -2727,19 +2743,14 @@ namespace BaseTypesTests
             var product2 = oneSeventh * eleven;
             var result2 = product1 + product2;
 
-            // These may differ due to cascading rounding
-            var diff = BigFloat.Abs(result1 - result2);
-
-            // The difference should be small but may not be zero
-            if (!diff.IsZero)
-            {
-                // Verify the error is within expected bounds
-                // For 24-bit precision, relative error should be < 2^(-22) per operation
-                // With 3 operations, cumulative error < 3 * 2^(-22)
-                BigFloat.FromRational(3, BigInteger.One << 22, 24, 8, out var maxError);
-                Assert.IsTrue(diff < maxError,
-                    "Cascading rounding error should be within bounds");
-            }
+            // The two orderings differ by exactly one unit in the last place, which is what makes the point:
+            // a bound of "small enough" would hold whatever the rounding did, so pin both results instead.
+            var (sig1, exp1, _) = GetBigFloatInternals(result1);
+            var (sig2, exp2, _) = GetBigFloatInternals(result2);
+            Assert.AreEqual(new BigInteger(129), exp1, "(1/3 + 1/7) * 11");
+            Assert.AreEqual(new BigInteger(2596475), sig1, "(1/3 + 1/7) * 11");
+            Assert.AreEqual(new BigInteger(129), exp2, "1/3 * 11 + 1/7 * 11");
+            Assert.AreEqual(new BigInteger(2596474), sig2, "1/3 * 11 + 1/7 * 11, one ULP lower");
 
             // Test case with many operations
             // To ensure rounding errors, we need a value that doesn't align perfectly
@@ -2758,17 +2769,12 @@ namespace BaseTypesTests
             var hundred = BigFloat.FromInt(100, 24, 8);
             var expected = x + hundred;
 
-            // Accumulated rounding errors
-            diff = BigFloat.Abs(accumulated - expected);
-
-            // Error should exist due to repeated rounding of 1/3
-            Assert.IsFalse(diff.IsZero,
-                "300 additions of 1/3 should show rounding error compared to adding 100");
-
-            // But error should still be reasonable
-            BigFloat.FromRational(1, BigInteger.One << 10, 24, 8, out var reasonableError);
-            Assert.IsTrue(diff < reasonableError,
-                "Accumulated error should be reasonable");
+            // Repeated rounding of 1/3 leaves the sum 24 units in the last place above 101, deterministically.
+            var (accSig, accExp, _) = GetBigFloatInternals(accumulated);
+            var (expSig, expExp, _) = GetBigFloatInternals(expected);
+            Assert.AreEqual(expExp, accExp, "the accumulated sum lands in the same binade as 101");
+            Assert.AreEqual(new BigInteger(4849664), expSig, "1 + 100");
+            Assert.AreEqual(new BigInteger(4849688), accSig, "1 + 300 * (1/3), 24 ULP higher");
         }
 
         #endregion
@@ -3197,7 +3203,7 @@ namespace BaseTypesTests
         [Test]
         public void TestSubnormalArithmeticUnderflowBoundary()
         {
-            // Test the underflow threshold fix in HandleExponentBounds
+            // Test the underflow threshold handling in RoundToFormat
             // This is used internally by arithmetic operations
 
             // Create 2^(-126) (smallest normal) and divide by 2^20 to get 2^(-146)
@@ -3467,7 +3473,7 @@ namespace BaseTypesTests
         [Test]
         public void TestAllSubnormalSignificandValues()
         {
-            // Test creating subnormals with all valid significand values
+            // Test creating subnormals across the significand's width, one bit at a time
             for (int i = 1; i < 24; i++)
             {
                 var sig = (BigInteger)1 << i;
@@ -3491,7 +3497,7 @@ namespace BaseTypesTests
         public void TestSubnormalRoundingUpToNormal()
         {
             // Test the edge case where arithmetic on subnormals can produce normal results
-            // This tests the fix in HandleExponentBounds
+            // This exercises the subnormal-to-normal carry in RoundToFormat
 
             // The largest subnormal is (2^23 - 1) × 2^(-149)
             var maxSubnormal = new BigFloat(false, (BigInteger)(1 << 23) - 1, 0, 24, 8);
@@ -3509,7 +3515,7 @@ namespace BaseTypesTests
         [Test]
         public void TestSubnormalRoundingOverflowToNormal()
         {
-            // This test catches bug 1: When rounding a subnormal causes it to need significandSize bits,
+            // When rounding a subnormal causes it to need significandSize bits,
             // it should become the smallest normal number, not get truncated
 
             // For a 24-bit significand (23 stored + 1 implicit), test various sizes
@@ -4008,7 +4014,7 @@ namespace BaseTypesTests
 
             // Valid format requires at least one digit after decimal point
             var result = BigFloat.FromString("0x1.0e0f24e8");
-            Assert.IsNotNull(result);
+            Assert.AreEqual(BigFloat.FromInt(1, 24, 8), result, "0x1.0e0f24e8 is 1.0");
         }
 
         [Test]
@@ -4021,7 +4027,6 @@ namespace BaseTypesTests
 
             // Valid format requires at least one digit before decimal point
             var half = BigFloat.FromString("0x0.8e0f24e8");
-            Assert.IsNotNull(half);
 
             // Verify it's actually 0.5
             var expectedHalf = BigFloat.FromRational(1, 2, 24, 8, out var h);
@@ -4044,7 +4049,7 @@ namespace BaseTypesTests
         [Test]
         public void TestHexParsingRoundingNonStrictMode()
         {
-            // This test catches bug 2: Non-strict hex parsing should apply IEEE 754 rounding,
+            // Non-strict hex parsing should apply IEEE 754 rounding,
             // not truncation
 
             // Create hex values that need rounding
@@ -4203,17 +4208,11 @@ namespace BaseTypesTests
                 }
                 else
                 {
-                    // Debug output for failures
-                    if (original != parsed)
-                    {
-                        var (origSig, origExp, origSign) = GetBigFloatInternals(original);
-                        var (parsedSig, parsedExp, parsedSign) = GetBigFloatInternals(parsed);
-                        Console.WriteLine($"Round-trip failure for: {stringForm}");
-                        Console.WriteLine($"  Original: sig={origSig}, exp={origExp}, sign={origSign}");
-                        Console.WriteLine($"  Parsed:   sig={parsedSig}, exp={parsedExp}, sign={parsedSign}");
-                        Console.WriteLine($"  Exp diff: {parsedExp - origExp}");
-                    }
-                    Assert.AreEqual(original, parsed, $"Round-trip failed for: {stringForm}");
+                    var (origSig, origExp, origSign) = GetBigFloatInternals(original);
+                    var (parsedSig, parsedExp, parsedSign) = GetBigFloatInternals(parsed);
+                    Assert.AreEqual(original, parsed,
+                        $"Round-trip failed for {stringForm}: was (sig={origSig}, exp={origExp}, "
+                        + $"sign={origSign}), came back as (sig={parsedSig}, exp={parsedExp}, sign={parsedSign})");
                 }
             }
 
@@ -4311,8 +4310,9 @@ namespace BaseTypesTests
 
             // 1. Precision loss - IEEE mode rounds, strict mode rejects
             var precisionLoss = "0x1.ffffffe0f24e8"; // Too many bits for 24-bit significand
+            // 2 - 2^-24 is a tie between 2 - 2^-23 and 2, so IEEE mode rounds it to the even 2.0.
             var ieee1 = BigFloat.FromString(precisionLoss);
-            Assert.IsNotNull(ieee1); // IEEE mode accepts and rounds
+            Assert.AreEqual(BigFloat.FromInt(2, 24, 8), ieee1, "IEEE mode accepts and rounds");
             Assert.Throws<FormatException>(() => BigFloat.FromStringStrict(precisionLoss));
 
             // 2. Extreme underflow - IEEE mode returns zero, strict mode rejects
@@ -4367,13 +4367,12 @@ namespace BaseTypesTests
             var num = (BigInteger.One << 24) + 1; // 2^24 + 1
             var inexactSuccess = BigFloat.FromRational(num, BigInteger.One << 24, 53, 11, out var inexact);
 
-            // The behavior here depends on whether FromRational rounds or fails for inexact values
-            // Current implementation appears to round, so we test that behavior
-            if (inexactSuccess)
-            {
-                // If it succeeds, it should have rounded
-                Assert.IsNotNull(inexact);
-            }
+            // 2^24 + 1 needs 25 bits, which a 53-bit significand holds outright, so this is exact and
+            // 1 + 2^-24 stores a trailing significand of 2^28.
+            Assert.IsTrue(inexactSuccess, "(2^24 + 1) / 2^24 is representable at double precision");
+            var (inexactSig, inexactExp, _) = GetBigFloatInternals(inexact);
+            Assert.AreEqual(new BigInteger(1023), inexactExp, "1 + 2^-24 sits at the bias");
+            Assert.AreEqual(new BigInteger(268435456), inexactSig, "with 2^28 in the trailing significand");
         }
         [Test]
         public void TestMultiplicationAndDivisionOverflow()
@@ -4457,21 +4456,12 @@ namespace BaseTypesTests
             var diffSign = (bool)signField.GetValue(diff);
 
             // Check what's happening
-            Console.WriteLine($"\n=== Test Results ===");
-            Console.WriteLine($"negLarge: sign={negLargeSign}, sig={negLargeSig:X}, exp={negLargeExp}");
-            Console.WriteLine($"posSmall: created with sig=1, exp=0");
-            Console.WriteLine($"diff:     sign={diffSign}, sig={diffSig:X}, exp={diffExp}");
-            Console.WriteLine($"negLarge string: {negLarge}");
-            Console.WriteLine($"diff string:     {diff}");
 
-            // The issue is that diff has sig=0 with exp=2046
-            // This is INVALID - a normal number cannot have significand 0
-            if (diffSig == 0 && diffExp > 0 && diffExp < BigFloat.GetMaxExponent(diff.ExponentSize))
-            {
-                Assert.Fail($"BUG: Addition produced invalid normal number with sig=0, exp={diffExp}");
-            }
-
-            // If we get here, internal representations are identical
+            // The subtraction used to drop the significand, leaving the large operand's exponent with a
+            // zero significand. A zero significand is legitimate on its own -- every power of two has one --
+            // so what this checks is that the operand came through unchanged.
+            Assert.AreEqual(negLargeSig, diffSig, "the large operand's significand survives");
+            Assert.AreEqual(negLargeExp, diffExp, "and so does its exponent");
             Assert.AreEqual(negLarge, diff,
                 "Result should equal the larger operand");
 
@@ -4512,13 +4502,15 @@ namespace BaseTypesTests
             // We need a denominator with GetBitLength() > int.MaxValue / 0.31 ≈ 6.9 billion bits
             // This is impractical to create directly, so let's test the calculation logic
 
-            // For now, let's verify that extremely small numbers produce "0.0"
-            // Create the smallest possible subnormal for a large exponent size
+            // The smallest subnormal at a 16-bit exponent is 2^-32818, so ToDecimalString does not collapse
+            // it to "0.0": the scale it derives from the denominator's width gives an expansion thousands
+            // of digits long, ending in significant figures rather than in zeros.
             var extremeFormat = new BigFloat(false, 1, 0, 53, 16); // 16-bit exponent allows much smaller values
 
             var decimalStr = extremeFormat.ToDecimalString();
-            // This should work without overflow
-            Assert.IsNotNull(decimalStr);
+            Assert.IsTrue(decimalStr.StartsWith("0."), "a subnormal lies between 0 and 1");
+            Assert.Greater(decimalStr.Length, 10000, "the scale should track the exponent rather than truncate");
+            Assert.AreNotEqual('0', decimalStr[^1], "the expansion should end in a significant digit");
 
             // Note: Testing the actual overflow case where scale > int.MaxValue would require
             // a denominator with billions of bits, which is impractical in a unit test
@@ -4566,10 +4558,13 @@ namespace BaseTypesTests
             var sum = medium1 + medium2;
             Assert.IsFalse(sum.IsInfinity, "Addition of equal numbers shouldn't overflow");
 
-            // Test with maximum allowed exponent size (30 bits)
+            // A 30-bit exponent is nothing special -- there is no upper bound on the size -- but it is wide
+            // enough that the bias no longer fits in a short int, so pin the value it produces.
             var extreme = BigFloat.FromInt(1, 24, 30);
-            Assert.IsNotNull(extreme, "Should be able to create BigFloat with 30-bit exponent");
+            var (extremeSig, extremeExp, _) = GetBigFloatInternals(extreme);
             Assert.IsFalse(extreme.IsInfinity, "FromInt(1) should not be infinity");
+            Assert.AreEqual(BigFloat.GetBias(30), extremeExp, "1.0 sits at the bias, whatever its width");
+            Assert.AreEqual(BigInteger.Zero, extremeSig, "and stores no significand bits");
         }
 
         [Test]
@@ -4578,25 +4573,12 @@ namespace BaseTypesTests
             // Create a number that requires more than 24 bits
             var value = (BigInteger.One << 25) + 1; // 2^25 + 1
 
-            // This number cannot be exactly represented in 24 bits
-            // The current implementation appears to round rather than fail
+            // Only the low bit is discarded and it is below half, so 2^25 + 1 rounds down to 2^25 exactly,
+            // and the conversion reports itself inexact because the input was not representable.
             var success = BigFloat.FromRational(value, 1, 24, 8, out var bf);
-
-            if (!success)
-            {
-                // If it fails (strict mode), verify the exact value succeeds
-                success = BigFloat.FromRational(BigInteger.One << 25, 1, 24, 8, out var exact);
-                Assert.IsTrue(success, "2^25 should be exactly representable");
-            }
-            else
-            {
-                // If it succeeds (rounding mode), verify it rounded correctly
-                var exact = BigFloat.FromBigInt(BigInteger.One << 25, 24, 8);
-                // The difference should be minimal (lost the +1)
-                var diff = BigFloat.Abs(bf - exact);
-                Assert.IsTrue(diff.IsZero || diff <= BigFloat.FromInt(1),
-                            "Rounding should lose at most the least significant bit");
-            }
+            Assert.IsFalse(success, "2^25 + 1 is not representable in 24 bits");
+            Assert.AreEqual(BigFloat.FromBigInt(BigInteger.One << 25, 24, 8), bf,
+                "2^25 + 1 should round down to 2^25, losing exactly the low bit");
         }
         [Test]
         public void TestConstructorWithVariousSignificandAndExponentSizes()
@@ -4629,8 +4611,8 @@ namespace BaseTypesTests
             var ieee = BigFloat.FromString("0x1.ffffffe0f24e8");  // Should round
             Assert.IsFalse(ieee.IsZero);
 
-            // In strict mode, this would throw (but we don't have access to FromStringStrict here)
-            // So we just verify IEEE mode handles it
+            Assert.Throws<FormatException>(() => BigFloat.FromStringStrict("0x1.ffffffe0f24e8"),
+                "strict mode rejects the precision loss that IEEE mode rounds away");
         }
 
         [Test]
@@ -4657,15 +4639,25 @@ namespace BaseTypesTests
         [Test]
         public void TestRoundingBehaviorWhenLosingPrecision()
         {
-            // Test IEEE 754 round-to-nearest-even
-            // These values test rounding at the bit boundary
-            var roundDown = BigFloat.FromString("0x1.fffff8e0f24e8");
-            var roundUp = BigFloat.FromString("0x1.fffffce0f24e8");
+            // A 24-bit significand is six hex digits, so a seventh digit is the one that gets rounded away:
+            // below 8 rounds down, 8 is an exact tie that goes to the even neighbour, and above 8 rounds up.
+            // A literal with only six fractional digits, such as 0x1.fffff8, is exactly representable and
+            // exercises no rounding at all.
+            var roundDown = BigFloat.FromString("0xF.FFFFF7e0f24e8");   // tail 7, below half
+            var tieUp = BigFloat.FromString("0xF.FFFFF8e0f24e8");       // tail 8 on an odd significand
+            var tieDown = BigFloat.FromString("0x8.000008e0f24e8");     // tail 8 on an even significand
 
-            Assert.IsFalse(roundDown.IsZero);
-            Assert.IsFalse(roundUp.IsZero);
+            var (downSig, downExp, _) = GetBigFloatInternals(roundDown);
+            Assert.AreEqual(new BigInteger(130), downExp, "0xFFFFFF keeps its exponent");
+            Assert.AreEqual(new BigInteger(8388607), downSig, "and its significand, the tail being below half");
 
-            // Both should be valid but potentially rounded
+            var (upSig, upExp, _) = GetBigFloatInternals(tieUp);
+            Assert.AreEqual(new BigInteger(131), upExp, "the tie carries 0xFFFFFF into the next binade");
+            Assert.AreEqual(BigInteger.Zero, upSig, "leaving no stored significand");
+
+            var (evenSig, evenExp, _) = GetBigFloatInternals(tieDown);
+            Assert.AreEqual(new BigInteger(130), evenExp, "an even significand stays put on a tie");
+            Assert.AreEqual(BigInteger.Zero, evenSig, "at 0x800000");
         }
 
         [Test]
@@ -4750,28 +4742,25 @@ namespace BaseTypesTests
         [Test]
         public void TestHexUnderflowRounding()
         {
-            // This test catches bug 3: Hex parsing of subnormal values should round,
+            // Hex parsing of subnormal values should round,
             // not truncate
 
-            // Create a hex value that will underflow to subnormal range
-            // and needs rounding. For sigSize=24, expSize=8:
-            // - Smallest subnormal: 2^-149 = 0x0.8e-37
-            // - To test rounding, use a value between 0 and smallest subnormal
-            // - 0x0.ce-37 = 12/16 * 16^-37 = 0.75 * smallest subnormal
-            // - This should round UP to the smallest subnormal (0x0.8e-37)
-            // But hex parsing gives 0x1.0e-37 instead due to a bug
-            string underflowHex = "0x0.ce-37f24e8";  // 0.75 * smallest subnormal
+            // Create a hex value that underflows into the subnormal range and needs rounding. For
+            // sigSize=24, expSize=8 the smallest subnormal is 2^-149, which 0x0.8e-37 names exactly.
+            // 0x0.ce-37 is 12/16 * 16^-37, and since 16^-37 is 2^-148 that comes to 1.5 * 2^-149: exactly
+            // halfway between the first two subnormals, so it ties to the even one, 2 * 2^-149 = 0x1.0e-37.
+            string underflowHex = "0x0.ce-37f24e8";  // 1.5 * smallest subnormal
 
             bool parsed = BigFloat.TryParse(underflowHex, out var result);
             Assert.IsTrue(parsed, "Should parse underflow value");
 
             // This should round to a subnormal, not truncate to zero
             Assert.IsTrue(result.IsSubnormal, "Should be subnormal, not zero");
-
-            // The hex parsing has a bug where it rounds 0x0.ce-37 to 0x1.0e-37
-            // instead of 0x0.8e-37 (smallest subnormal)
-            // For now, just verify it didn't truncate to zero
             Assert.IsFalse(result.IsZero, "Should not truncate to zero");
+
+            var (underflowSig, underflowExp, _) = GetBigFloatInternals(result);
+            Assert.AreEqual(BigInteger.Zero, underflowExp, "a subnormal is stored at exponent 0");
+            Assert.AreEqual(new BigInteger(2), underflowSig, "1.5 * 2^-149 ties to the even 2 * 2^-149");
         }
 
         [Test]
@@ -4782,7 +4771,6 @@ namespace BaseTypesTests
 
             // Test 1: Exactly 0.5 × smallest subnormal = 2^(-150)
             var isExact = BigFloat.FromRational(BigInteger.One, BigInteger.Pow(2, 150), 24, 8, out var half);
-            Console.WriteLine($"0.5 × smallest subnormal: {half}, isZero: {half.IsZero}");
             Assert.IsTrue(half.IsZero, "Should round to zero (banker's rounding)");
 
             // Test 2: Slightly more than 0.5 × smallest subnormal
@@ -4791,18 +4779,15 @@ namespace BaseTypesTests
             var num = new BigInteger(50001);
             var den = new BigInteger(100000) * BigInteger.Pow(2, 149);
             isExact = BigFloat.FromRational(num, den, 24, 8, out var slightlyMore);
-            Console.WriteLine($"Slightly > 0.5 × smallest: {slightlyMore}, isSubnormal: {slightlyMore.IsSubnormal}");
             Assert.IsTrue(slightlyMore.IsSubnormal, "Should round to smallest subnormal");
             Assert.AreEqual("0x0.8e-37f24e8", slightlyMore.ToString());
 
             // Test 3: 0.75 × smallest subnormal
             isExact = BigFloat.FromRational(new BigInteger(3), BigInteger.Pow(2, 151), 24, 8, out var threeQuarters);
-            Console.WriteLine($"0.75 × smallest subnormal: {threeQuarters}");
             Assert.IsTrue(threeQuarters.IsSubnormal, "Should round to smallest subnormal");
 
             // Test 4: 1.5 × smallest subnormal
             isExact = BigFloat.FromRational(new BigInteger(3), BigInteger.Pow(2, 150), 24, 8, out var oneAndHalf);
-            Console.WriteLine($"1.5 × smallest subnormal: {oneAndHalf}");
             Assert.IsTrue(oneAndHalf.IsSubnormal, "Should round to 2 × smallest subnormal");
             Assert.AreEqual("0x1.0e-37f24e8", oneAndHalf.ToString());
         }
@@ -5064,10 +5049,7 @@ namespace BaseTypesTests
             var result2 = minusZero + plusZero;
             var (_, _, isNeg2) = GetBigFloatInternals(result2);
 
-            // Current behavior: (-0) + (+0) = +0 (Correct)
             Assert.IsFalse(isNeg2, "(-0) + (+0) correctly returns +0");
-
-            // The bug is asymmetric - only affects (+0) + (-0), not (-0) + (+0)
         }
 
         [Test]
@@ -5241,18 +5223,13 @@ namespace BaseTypesTests
             Assert.IsFalse(result1.IsZero, "2^(-149) should not be zero");
             Assert.IsTrue(result1.IsSubnormal, "2^(-149) should be subnormal");
 
-            // Test Case 2: 2^(-150) should underflow to zero
+            // Test Case 2: 2^(-150) is exactly half the smallest subnormal, so it ties to the even zero,
+            // and the conversion reports itself inexact because the input was not zero.
             var num2 = BigInteger.One;
             var den2 = BigInteger.One << 150;
-            if (BigFloat.FromRational(num2, den2, 24, 8, out var result2))
-            {
-                Assert.IsTrue(result2.IsZero, "2^(-150) should underflow to zero");
-            }
-            else
-            {
-                // Also acceptable - return false for unrepresentable value
-                Assert.Pass("FromRational correctly returned false for 2^(-150)");
-            }
+            Assert.IsFalse(BigFloat.FromRational(num2, den2, 24, 8, out var result2),
+                "2^(-150) is not representable, so the conversion is inexact");
+            Assert.IsTrue(result2.IsZero, "2^(-150) should underflow to zero");
         }
         #endregion
 
@@ -5284,39 +5261,31 @@ namespace BaseTypesTests
         [Test]
         public void TestBiasedExponentAtBoundaries()
         {
-            // Test all values where biasedExp is near critical boundaries
-            // This tests the specific range where the original bug occurred
-
-            // For double precision: bias = 1023, significandSize = 53
-            // minBiasedExp = 2 - 53 = -51
-            // Bug occurred when biasedExp == -52
-
-            // Create values that will have biasedExp in [-54, -50]
+            // Walks the boundary between what the subnormal grid can hold and what underflows to zero.
+            // The quantity that decides it is the biased exponent a value would have if normalized where it
+            // stands, which for 2^k is k + bias. At double precision the smallest such value still
+            // representable is that of the smallest subnormal, 2^(1 - bias - 52), which comes to
+            // 2 - significandSize = -51. So 2^(targetBiasedExp - 1023) is representable down to -51,
+            // exactly half the smallest subnormal at -52, and smaller still below that.
             for (int targetBiasedExp = -54; targetBiasedExp <= -50; targetBiasedExp++)
             {
-                // For a value 2^k, biasedExp = bias + 1 - scaleBits - 1 = 1023 - scaleBits
-                // So for biasedExp = targetBiasedExp, we need scaleBits = 1023 - targetBiasedExp
-                var exponent = targetBiasedExp - 1023; // Actual exponent
-
-                // Test exact power of 2
+                var exponent = targetBiasedExp - 1023;
                 var num = BigInteger.One;
-                var denom = BigInteger.One << (-exponent); // 2^(-exponent)
+                var denom = BigInteger.One << (-exponent);
 
                 BigFloat.FromRational(num, denom, 53, 11, out var result);
 
                 if (targetBiasedExp >= -51)
                 {
-                    // Should be subnormal or normal
-                    Assert.IsFalse(result.IsZero, $"2^({exponent}) should not underflow to zero");
+                    Assert.IsFalse(result.IsZero, $"2^({exponent}) is on the subnormal grid");
                 }
                 else if (targetBiasedExp == -52)
                 {
-                    // This is exactly 0.5 * smallest subnormal - should round to zero
-                    Assert.IsTrue(result.IsZero, $"2^({exponent}) = 0.5 * smallest should round to zero");
+                    // Exactly half the smallest subnormal, so a tie, so it goes to the even zero.
+                    Assert.IsTrue(result.IsZero, $"2^({exponent}) = 0.5 * smallest should tie to zero");
                 }
                 else
                 {
-                    // Should underflow to zero
                     Assert.IsTrue(result.IsZero, $"2^({exponent}) should underflow to zero");
                 }
             }
@@ -5402,7 +5371,6 @@ namespace BaseTypesTests
         [Test]
         public void TestExtremelyLargeNegativeExponentHandling()
         {
-            // Fix for test at line 2909 - verify what the value actually is
             var extreme = BigFloat.FromRational(BigInteger.One, BigInteger.Pow(2, 1000000), 24, 30, out var result);
 
             // With 30-bit exponent, this value is exactly representable as 2^(-1000000)

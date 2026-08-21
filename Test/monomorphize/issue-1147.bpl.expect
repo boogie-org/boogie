@@ -1,0 +1,5 @@
+issue-1147.bpl(96,3): Error: this assertion could not be proved
+issue-1147.bpl(105,3): Error: this assertion could not be proved
+issue-1147.bpl(114,3): Error: this assertion could not be proved
+
+Boogie program verifier finished with 4 verified, 3 errors
