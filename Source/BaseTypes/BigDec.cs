@@ -83,7 +83,8 @@ namespace Microsoft.BaseTypes
         len = i;
       }
 
-      integral = BIM.Parse(v.Substring(0, len));
+      string integralText = v.Substring(0, len);
+      integral = BIM.Parse(integralText);
 
       if (!fraction.IsZero)
       {
@@ -95,7 +96,8 @@ namespace Microsoft.BaseTypes
         }
       }
 
-      if (integral.Sign == -1)
+      // BigInteger has no negative zero, so "-0" parses with Sign 0 and the sign survives only in the text
+      if (integralText.Contains('-'))
       {
         return new BigDec(integral - fraction, exponent);
       }
