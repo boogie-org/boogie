@@ -921,11 +921,15 @@ namespace Microsoft.BaseTypes
       return signBit ? "-" + magnitude : magnitude;
     }
 
+    // Both are where a render passes about a second: cost grows with the scale, and with precision squared.
+    private const int MaxRenderableScale = 3_500_000;
+    private const int MaxRenderablePrecision = 100_000;
+
     /// <summary>This value's magnitude as the shortest decimal "digits * 10^placeValue" that rounds back to it,
     /// by Steele and White / Burger and Dybvig: stop at the first digit where truncating or rounding up lands
     /// in the span of reals rounding to this value. Those bracket the value, so stopping there is
     /// shortest.</summary>
-    private (BigInteger Digits, BigInteger PlaceValue) ShortestDecimalMagnitude()
+    private (BigInteger Digits, int PlaceValue) ShortestDecimalMagnitude()
     {
       var (value, valueScale) = AsScaledInteger();
 
@@ -934,30 +938,22 @@ namespace Microsoft.BaseTypes
       var step = significand.IsZero && exponent > BigInteger.One ? 2 : 1;
       var here = value << step;
       var endpointsIncluded = value.IsEven;
-      var scale = valueScale - step;
-
-      // The rendering spends a character per fractional digit, and the exact expansion of 2^scale has -scale
-      // of them, so a scale beyond a string's reach cannot be rendered at all.
-      if (BigInteger.Abs(scale) > int.MaxValue) {
-        throw new OverflowException(
-          $"Cannot convert to decimal string: an f{SignificandSize}e{ExponentSize} value weighted by " +
-          $"2^{scale} needs more digits than a string can hold");
-      }
+      var scale = NarrowedScale(valueScale - step);
 
       // Over a divisor of 10^(exponent + 1) the first digit taken off is the leading one. Splitting that ten
       // into a two and a five cancels the powers of two across the ratio, a third of the bits at a wide scale.
-      var decimalExponent = new BigInteger(Math.Floor(BigInteger.Log10(here) + ((double)scale * Math.Log10(2))));
+      var decimalExponent = (int)Math.Floor(BigInteger.Log10(here) + (scale * Math.Log10(2)));
       var twos = scale - (decimalExponent + 1);
       var fives = decimalExponent + 1;
 
       // Each power goes on whichever side its sign puts it; the gap below measures one, so it comes to the
       // numerator's own factor.
-      var gap = twos > 0 ? BigIntegerMath.LeftShift(BigInteger.One, twos) : BigInteger.One;
-      var divisor = twos < 0 ? BigIntegerMath.LeftShift(BigInteger.One, -twos) : BigInteger.One;
+      var gap = twos > 0 ? BigInteger.One << twos : BigInteger.One;
+      var divisor = twos < 0 ? BigInteger.One << -twos : BigInteger.One;
       if (fives > 0) {
-        divisor *= BigInteger.Pow(5, (int)fives);
+        divisor *= BigInteger.Pow(5, fives);
       } else if (fives < 0) {
-        gap *= BigInteger.Pow(5, (int)-fives);
+        gap *= BigInteger.Pow(5, -fives);
       }
 
       var remainder = here * gap;
@@ -984,7 +980,7 @@ namespace Microsoft.BaseTypes
         remainder = next;
         placeValue -= 1;
 
-        var gapAbove = step == 2 ? gap << 1 : gap;
+        var gapAbove = gap << (step - 1);
         var truncatingFits = endpointsIncluded ? remainder <= gap : remainder < gap;
         var roundingUpFits = endpointsIncluded
           ? remainder + gapAbove >= divisor
@@ -1008,8 +1004,22 @@ namespace Microsoft.BaseTypes
       return doubled > divisor || (doubled == divisor && !digits.IsEven);
     }
 
+    /// <summary>The scale as an int, refusing a value too wide to render; the counting below then fits too.</summary>
+    private int NarrowedScale(BigInteger scale)
+    {
+      if (BigInteger.Abs(scale) > MaxRenderableScale || SignificandSize > MaxRenderablePrecision) {
+        // log10 2 as a ratio, since a scale that got here may be too large for a double.
+        var characters = (BigInteger.Abs(scale) + SignificandSize) * 30103 / 100000;
+        throw new OverflowException(
+          $"Cannot convert to decimal string: an f{SignificandSize}e{ExponentSize} value weighted by " +
+          $"2^{scale} would run to roughly {characters} characters, more than this rendering supports");
+      }
+
+      return (int)scale;
+    }
+
     /// <summary>Moves trailing zeros of "digits" into "placeValue"; only a carry onto a power of ten makes any.</summary>
-    private static (BigInteger Digits, BigInteger PlaceValue) StripTrailingZeros(BigInteger digits, BigInteger placeValue)
+    private static (BigInteger Digits, int PlaceValue) StripTrailingZeros(BigInteger digits, int placeValue)
     {
       while (!digits.IsZero && (digits % 10).IsZero) {
         digits /= 10;
@@ -1021,13 +1031,13 @@ namespace Microsoft.BaseTypes
 
     /// <summary>Writes "digits * 10^placeValue" without an exponent, always with a point so that the result
     /// cannot read as an integer; the padding covers a value below one.</summary>
-    private static string RenderPlainDecimal(BigInteger digits, BigInteger placeValue)
+    private static string RenderPlainDecimal(BigInteger digits, int placeValue)
     {
       if (placeValue >= 0) {
-        return digits + new string('0', (int)placeValue) + ".0";
+        return digits + new string('0', placeValue) + ".0";
       }
 
-      var fractionLength = (int)-placeValue;
+      var fractionLength = -placeValue;
       var text = digits.ToString().PadLeft(fractionLength + 1, '0');
 
       return $"{text[..^fractionLength]}.{text[^fractionLength..]}";

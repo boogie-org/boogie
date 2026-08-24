@@ -4678,11 +4678,29 @@ namespace BaseTypesTests
                 "the rendering should track the exponent rather than truncate");
             AssertPrintsShortestRoundTrip(extremeFormat);
 
-            // Past a 31-bit exponent size the scale outgrows what a string could hold, and the guard says so
-            // rather than attempting the expansion.
-            var beyondReach = new BigFloat(false, 1, 0, 53, 32);
-            var overflow = Assert.Throws<OverflowException>(() => beyondReach.ToDecimalString());
-            Assert.IsTrue(overflow.Message.Contains("f53e32"), "the message should name the format at fault");
+            // Out of reach in either direction: f53e32's smallest subnormal would need 646 million characters
+            // of leading zeros, the largest finite f8e32 the same in trailing ones. The second matters because
+            // its scale is positive, which no earlier guard looked at, and clears int.MaxValue by only seven.
+            foreach (var (beyondReach, format) in new[]
+            {
+                (new BigFloat(false, 1, 0, 53, 32), "f53e32"),
+                (new BigFloat(false, 127, BigInteger.Pow(2, 32) - 2, 8, 32), "f8e32"),
+            })
+            {
+                var overflow = Assert.Throws<OverflowException>(() => beyondReach.ToDecimalString());
+                Assert.IsTrue(overflow.Message.Contains(format), "the message should name the format at fault");
+            }
+
+            // A scale inside the bound but past any real format stays workable rather than crawling.
+            Assert.AreEqual(157844, new BigFloat(false, 1, 0, 53, 20).ToDecimalString().Length);
+
+            // Precision needs its own bound: it drives the digit count, so the work grows with its square. A
+            // wide exponent size holds the scale at zero while the precision stays huge, which the scale missed.
+            var wideBias = BigInteger.Pow(2, 31) - 1;
+            var hugePrecision = new BigFloat(false, 1, wideBias + 199999, 200000, 32);
+            Assert.Throws<OverflowException>(() => hugePrecision.ToDecimalString());
+            Assert.AreEqual(3013, new BigFloat(false, BigInteger.Pow(2, 9999) - 1, wideBias + 9999, 10000, 32)
+                .ToDecimalString().Length);
         }
 
         [Test]
