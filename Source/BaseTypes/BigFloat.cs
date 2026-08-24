@@ -902,7 +902,14 @@ namespace Microsoft.BaseTypes
     /// <summary>The shortest decimal that rounds back to this value in this format, written without an
     /// exponent and always with a point, so that it cannot read as an integer literal.</summary>
     [Pure]
-    public string ToDecimalString()
+    public string ToDecimalString() => Rendered(scientific: false);
+
+    /// <summary>As <see cref="ToDecimalString"/>, but with the digits placed by an exponent. Every finite value
+    /// gets one, zero included, so nothing this returns reads as an integer; the reach is unchanged.</summary>
+    [Pure]
+    public string ToScientificString() => Rendered(scientific: true);
+
+    private string Rendered(bool scientific)
     {
       if (IsNaN) {
         return "NaN";
@@ -912,11 +919,13 @@ namespace Microsoft.BaseTypes
       }
       if (IsZero) {
         // "-0" alone is an integer literal, and negating an integer zero gives a positive one.
-        return signBit ? "-0.0" : "0.0";
+        return (signBit ? "-0" : "0") + (scientific ? "e0" : ".0");
       }
 
       var (digits, placeValue) = ShortestDecimalMagnitude();
-      var magnitude = RenderPlainDecimal(digits, placeValue);
+      var magnitude = scientific
+        ? RenderScientific(digits, placeValue)
+        : RenderPlainDecimal(digits, placeValue);
 
       return signBit ? "-" + magnitude : magnitude;
     }
@@ -1041,6 +1050,16 @@ namespace Microsoft.BaseTypes
       var text = digits.ToString().PadLeft(fractionLength + 1, '0');
 
       return $"{text[..^fractionLength]}.{text[^fractionLength..]}";
+    }
+
+    /// <summary>Writes "digits * 10^placeValue" as one digit, the rest behind a point, and an exponent; the
+    /// digits arrive with a non-zero leader and no trailing zeros, so the mantissa is already normal.</summary>
+    private static string RenderScientific(BigInteger digits, int placeValue)
+    {
+      var text = digits.ToString();
+      var mantissa = text.Length == 1 ? text : $"{text[0]}.{text[1..]}";
+
+      return $"{mantissa}e{placeValue + text.Length - 1}";
     }
 
     public override string ToString()

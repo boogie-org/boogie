@@ -2202,6 +2202,50 @@ namespace BaseTypesTests
             Assert.AreEqual("NaN", nan.ToDecimalString());
         }
 
+        [Test]
+        public void TestToScientificString()
+        {
+            // Same digits as ToDecimalString, placed by an exponent rather than by padding.
+            BigFloat.FromRational(1, 2, 24, 8, out var half);
+            Assert.AreEqual("5e-1", half.ToScientificString());
+
+            BigFloat.FromRational(5, 4, 24, 8, out var onePointTwoFive);
+            Assert.AreEqual("1.25e0", onePointTwoFive.ToScientificString());
+            Assert.AreEqual("-1.25e0", (-onePointTwoFive).ToScientificString());
+
+            BigFloat.FromRational(10737405, BigInteger.Pow(2, 5), 24, 8, out var big);
+            Assert.AreEqual("3.355439e5", big.ToScientificString());
+
+            // A magnitude whose plain form is all padding shrinks to nothing here.
+            Assert.AreEqual("1e6", BigFloat.FromInt(1000000).ToScientificString());
+
+            BigFloat.FromRational(1, BigInteger.Pow(2, 52), 53, 11, out var twoToMinus52);
+            Assert.AreEqual("2.220446049250313e-16", twoToMinus52.ToScientificString());
+
+            // The two extremes of binary64, which plain decimal spends hundreds of characters on.
+            Assert.AreEqual("5e-324", new BigFloat(false, 1, 0, 53, 11).ToScientificString());
+            Assert.AreEqual("1.7976931348623157e308",
+                new BigFloat(false, BigInteger.Pow(2, 52) - 1, 2046, 53, 11).ToScientificString());
+
+            // Wide exponent sizes are where the difference tells: seven characters against 9882.
+            Assert.AreEqual("6e-9880", new BigFloat(false, 1, 0, 53, 16).ToScientificString());
+
+            // The digits cost a power of ten the size of the value either way, so both stop at the same place.
+            var beyondReach = new BigFloat(false, 1, 0, 53, 32);
+            Assert.Throws<OverflowException>(() => beyondReach.ToDecimalString());
+            Assert.Throws<OverflowException>(() => beyondReach.ToScientificString());
+
+            // Zero carries an exponent too, so nothing returned reads as an integer and a negative zero read
+            // back is still negative -- which "-0" alone does not manage in a C-like language.
+            Assert.AreEqual("0e0", BigFloat.CreateZero(false, 24, 8).ToScientificString());
+            Assert.AreEqual("-0e0", (-BigFloat.CreateZero(false, 24, 8)).ToScientificString());
+            Assert.AreEqual("0.0", BigFloat.CreateZero(false, 24, 8).ToDecimalString());
+            Assert.AreEqual("-0.0", (-BigFloat.CreateZero(false, 24, 8)).ToDecimalString());
+            Assert.AreEqual("Infinity", BigFloat.CreateInfinity(false, 24, 8).ToScientificString());
+            Assert.AreEqual("-Infinity", BigFloat.CreateInfinity(true, 24, 8).ToScientificString());
+            Assert.AreEqual("NaN", BigFloat.CreateNaN(false, 24, 8).ToScientificString());
+        }
+
         /// <summary>
         /// Drops trailing zeros, leaving the significant digit count. Restating the production code is
         /// deliberate: sharing it would make the assertions below partly tautological.
@@ -2247,9 +2291,20 @@ namespace BaseTypesTests
             return result;
         }
 
+        /// <summary>Reads a scientific rendering as "digits * 10^placeValue", to hold against the plain one.</summary>
+        private static (bool Negative, BigInteger Digits, int PlaceValue) SplitScientific(string text)
+        {
+            var marker = text.IndexOf('e');
+            var exponent = int.Parse(text.Substring(marker + 1));
+            var (negative, digits, placeValue) = SplitPlainDecimal(text.Substring(0, marker));
+
+            return (negative, digits, placeValue + exponent);
+        }
+
         /// <summary>
-        /// Asserts what makes a rendering usable: it rounds back to the value, and no shorter decimal would
-        /// have. Round-tripping alone does not pin the digit count, since printing extra digits preserves it.
+        /// Asserts what makes a rendering usable: it rounds back to the value, no shorter decimal would have,
+        /// and the scientific form denotes the same number. Round-tripping alone does not pin the digit count,
+        /// since printing extra digits preserves it.
         /// </summary>
         private static void AssertPrintsShortestRoundTrip(BigFloat value)
         {
@@ -2265,6 +2320,14 @@ namespace BaseTypesTests
 
             Assert.IsTrue(text.EndsWith(".0") || text[^1] != '0',
                 $"\"{text}\" ends in a fractional zero the value does not need");
+
+            var scientific = value.ToScientificString();
+            Assert.AreEqual((negative, digits, placeValue), SplitScientific(scientific),
+                $"\"{scientific}\" and \"{text}\" should denote the same number");
+
+            var mantissa = scientific.Substring(negative ? 1 : 0).Split('e')[0];
+            Assert.IsTrue(mantissa.Length == 1 || mantissa[1] == '.',
+                $"\"{scientific}\" should carry exactly one digit ahead of the point");
 
             // Nothing on the ten-times-coarser grid may round back either, and only points neighbouring the
             // printed one can: that grid is wider than the span of reals rounding to this value.
@@ -4699,6 +4762,7 @@ namespace BaseTypesTests
             var wideBias = BigInteger.Pow(2, 31) - 1;
             var hugePrecision = new BigFloat(false, 1, wideBias + 199999, 200000, 32);
             Assert.Throws<OverflowException>(() => hugePrecision.ToDecimalString());
+            Assert.Throws<OverflowException>(() => hugePrecision.ToScientificString());
             Assert.AreEqual(3013, new BigFloat(false, BigInteger.Pow(2, 9999) - 1, wideBias + 9999, 10000, 32)
                 .ToDecimalString().Length);
         }
