@@ -1066,6 +1066,27 @@ namespace Microsoft.Boogie
   //=====================================================================
 
   //Note that the functions in this class were directly copied from the BV class just below
+  /// <summary>
+  /// An IEEE 754 binary floating point type, modelling the SMT-LIB FloatingPoint sort. Code that
+  /// transforms Boogie programs has to respect what its operators mean:
+  ///
+  /// "==" and "!=" are SMT "=", i.e. bit identity: total, reflexive even at NaN (the sort has one NaN,
+  /// so "x == x" holds of everything), and keeping -0.0 and +0.0 apart.
+  ///
+  /// "&lt;", "&lt;=", "&gt;" and "&gt;=" are fp.lt, fp.leq, fp.gt and fp.geq: partial, false whenever an operand
+  /// is NaN, and tying the two zeros. So "x &lt;= x" is not a tautology -- it holds exactly when x is not
+  /// NaN, which is how the core language says that.
+  ///
+  /// Neither implies the other, so trichotomy does not hold. Hence a negated order relation is not the
+  /// reverse relation, the negation being true of a NaN where the reverse is false; and a pair of
+  /// numeric bounds does not describe a float, as bounds neither separate the zeros nor hold of NaN.
+  ///
+  /// Arithmetic rounds: "+", "-", "*" and "/" are the fp operations under round-to-nearest-even, so
+  /// results round, overflow to an infinity, and give NaN for 0/0.
+  ///
+  /// The IEEE predicates with no syntax here (fp.isNaN and its siblings) and IEEE numeric equality
+  /// (fp.eq) are reachable only through a {:builtin} function.
+  /// </summary>
   public class FloatType : Type
   {
     public readonly int Significand; //Size of Significand in bits
