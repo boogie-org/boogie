@@ -1,0 +1,8 @@
+IntervalDisequality.bpl(21,5): Error: this assertion could not be proved
+Execution trace:
+    IntervalDisequality.bpl(15,3): anon0
+    IntervalDisequality.bpl(19,7): anon4_Then
+    IntervalDisequality.bpl(20,5): anon5_LoopHead
+    IntervalDisequality.bpl(20,5): anon5_LoopDone
+
+Boogie program verifier finished with 0 verified, 1 error

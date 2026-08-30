@@ -1,0 +1,7 @@
+IntervalPointInterval.bpl(24,3): Error: this assertion could not be proved
+Execution trace:
+    IntervalPointInterval.bpl(16,5): anon0
+    IntervalPointInterval.bpl(18,3): anon6_LoopHead
+    IntervalPointInterval.bpl(18,3): anon6_LoopDone
+
+Boogie program verifier finished with 0 verified, 1 error

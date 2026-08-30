@@ -1,0 +1,7 @@
+IntervalSignedZero.bpl(23,3): Error: this assertion could not be proved
+Execution trace:
+    IntervalSignedZero.bpl(15,5): anon0
+    IntervalSignedZero.bpl(17,3): anon3_LoopHead
+    IntervalSignedZero.bpl(17,3): anon3_LoopDone
+
+Boogie program verifier finished with 0 verified, 1 error

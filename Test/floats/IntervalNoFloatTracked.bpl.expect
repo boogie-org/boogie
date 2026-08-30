@@ -1,0 +1,46 @@
+procedure Routes(w: float24e8, more: bool) returns (r: int);
+
+
+
+implementation Routes(w: float24e8, more: bool) returns (r: int)
+{
+  var x: float24e8;
+  var y: float24e8;
+  var z: float24e8;
+  var i: int;
+
+  anon0:
+    assume {:inferred} true;
+    x := 0x1.8e0f24e8;
+    y := x;
+    z := (if x <= y then x else y);
+    assume 0x1.0e0f24e8 <= w;
+    assume w != 0x2.0e0f24e8;
+    i := 0;
+    assume {:inferred} i == 0;
+    goto anon3_LoopHead;
+
+  anon3_LoopHead:  // cut point
+    assume {:inferred} 0 <= i;
+    assume {:inferred} 0 <= i;
+    goto anon3_LoopDone, anon3_LoopBody;
+
+  anon3_LoopBody:
+    assume {:inferred} 0 <= i;
+    assume {:partition} more;
+    z := x + y;
+    i := i + 1;
+    assume {:inferred} 1 <= i && more;
+    goto anon3_LoopHead;
+
+  anon3_LoopDone:
+    assume {:inferred} 0 <= i;
+    assume {:partition} !more;
+    r := (if z == 0NaN24e8 then 1 else 0);
+    assume {:inferred} 0 <= i && !more && 0 <= r && r < 2;
+    return;
+}
+
+
+
+Boogie program verifier finished with 0 verified, 0 errors
