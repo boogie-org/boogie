@@ -1,0 +1,7 @@
+ArithmeticBounds.bpl(15,3): Error: this assertion could not be proved
+ArithmeticBounds.bpl(25,3): Error: this assertion could not be proved
+ArithmeticBounds.bpl(35,3): Error: this assertion could not be proved
+ArithmeticBounds.bpl(44,3): Error: this assertion could not be proved
+ArithmeticBounds.bpl(53,3): Error: this assertion could not be proved
+
+Boogie program verifier finished with 0 verified, 5 errors
