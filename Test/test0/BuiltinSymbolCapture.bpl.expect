@@ -1,0 +1,5 @@
+BuiltinSymbolCapture.bpl(14,34): Error: {:builtin "ControlFlow"} names a symbol Boogie emits for its own encoding
+BuiltinSymbolCapture.bpl(16,30): Error: {:builtin "int_2_U"} names a symbol Boogie emits for its own encoding
+BuiltinSymbolCapture.bpl(18,37): Error: {:builtin "MapType0Select"} names a symbol Boogie emits for its own encoding
+BuiltinSymbolCapture.bpl(20,26): Error: {:builtin "T@U"} names a symbol Boogie emits for its own encoding
+4 type checking errors detected in BuiltinSymbolCapture.bpl

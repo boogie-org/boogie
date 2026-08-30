@@ -2139,15 +2139,22 @@ namespace Microsoft.Boogie
       base.Typecheck(tc);
       // TypecheckAttributes(tc);
 
-      // A {:builtin ...} function IS the solver's symbol: its applications are translated to that
-      // symbol and no declaration is emitted for it. A definition says instead that the function is
-      // this expression, and is turned into an axiom -- which would then be an axiom about the
-      // solver's symbol, so a definition that is merely wrong stops being a definition and becomes a
-      // way to contradict the theory. The two annotations cannot both be honoured.
-      if ((this as ICarriesAttributes).FindStringAttribute("builtin") != null &&
-          (Body != null || DefinitionBody != null || DefinitionAxiom != null))
+      // A {:builtin ...} function IS the named solver symbol: its applications are translated to that
+      // symbol and no declaration is emitted for it. Two things follow.
+      var builtin = (this as ICarriesAttributes).FindStringAttribute("builtin");
+
+      // A definition says instead that the function is this expression, and a definition is turned into
+      // an axiom -- which would then be an axiom about the solver's symbol, so a definition that is
+      // merely wrong stops being a definition and becomes a way to contradict the theory.
+      if (builtin != null && (Body != null || DefinitionBody != null || DefinitionAxiom != null))
       {
         tc.Error(this, "a function declared {{:builtin ...}} must not also have a definition");
+      }
+
+      // And naming a symbol Boogie emits for its own encoding makes this function share it.
+      if (builtin != null && EmittedSymbols.Contains(builtin))
+      {
+        tc.Error(this, "{{:builtin \"{0}\"}} names a symbol Boogie emits for its own encoding", builtin);
       }
 
       if (Body != null)
