@@ -2138,6 +2138,18 @@ namespace Microsoft.Boogie
       // PR: why was the base call left out previously?
       base.Typecheck(tc);
       // TypecheckAttributes(tc);
+
+      // A {:builtin ...} function IS the solver's symbol: its applications are translated to that
+      // symbol and no declaration is emitted for it. A definition says instead that the function is
+      // this expression, and is turned into an axiom -- which would then be an axiom about the
+      // solver's symbol, so a definition that is merely wrong stops being a definition and becomes a
+      // way to contradict the theory. The two annotations cannot both be honoured.
+      if ((this as ICarriesAttributes).FindStringAttribute("builtin") != null &&
+          (Body != null || DefinitionBody != null || DefinitionAxiom != null))
+      {
+        tc.Error(this, "a function declared {{:builtin ...}} must not also have a definition");
+      }
+
       if (Body != null)
       {
         Contract.Assert(DefinitionBody == null);
