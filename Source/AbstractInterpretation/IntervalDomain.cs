@@ -1629,7 +1629,10 @@ namespace Microsoft.Boogie.AbstractInterpretation
         Contract.Assert(node.Args.Count == 2);
         var arg0 = node.Args[0];
         var arg1 = node.Args[1];
-        var offset = arg0.Type.IsReal ? 0 : 1;
+        // An untyped expression should not reach here, but a producer that leaves Type unset is a
+        // crash rather than a wrong answer, and the offset only picks a widening threshold, which is a
+        // weakening either way.
+        var offset = arg0.Type != null && arg0.Type.IsReal ? 0 : 1;
         BigInteger? k;
         switch (op.Op)
         {
