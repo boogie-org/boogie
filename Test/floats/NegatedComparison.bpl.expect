@@ -1,0 +1,19 @@
+NegatedComparison.bpl(12,36): Error: this assertion could not be proved
+Execution trace:
+    NegatedComparison.bpl(12,3): anon0
+    NegatedComparison.bpl(12,36): anon3_Else
+NegatedComparison.bpl(18,26): Error: this assertion could not be proved
+Execution trace:
+    NegatedComparison.bpl(18,3): anon0
+    NegatedComparison.bpl(18,26): anon3_Else
+NegatedComparison.bpl(25,3): Error: this assertion could not be proved
+Execution trace:
+    NegatedComparison.bpl(24,3): anon0
+    NegatedComparison.bpl(24,36): anon4_Else
+    NegatedComparison.bpl(25,3): anon3
+NegatedComparison.bpl(32,3): Error: this assertion could not be proved
+Execution trace:
+    NegatedComparison.bpl(31,3): anon0
+    NegatedComparison.bpl(31,3): anon3_LoopDone
+
+Boogie program verifier finished with 3 verified, 4 errors

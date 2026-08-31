@@ -207,6 +207,29 @@ public class Program : Absy
       {
         seeker.Visit(d);
       }
+
+      ReverseGuardNegations();
+    }
+  }
+
+  /// <summary>
+  /// Finishes negating the guards of "if" and "while". The parser negates them while building an
+  /// implementation's blocks, before anything has a type, so Expr.Not leaves an order relation alone --
+  /// see there. Asking it again here reverses the ones it can, and still leaves a float's alone.
+  /// </summary>
+  private void ReverseGuardNegations()
+  {
+    foreach (var cmd in Implementations
+               .SelectMany(impl => impl.Blocks)
+               .SelectMany(block => block.Cmds)
+               .OfType<AssumeCmd>()
+               .Where(cmd => cmd.Attributes.FindBoolAttribute("partition")))
+    {
+      if (cmd.Expr is NAryExpr { Fun: UnaryOperator { Op: UnaryOperator.Opcode.Not } } negation &&
+          Expr.TryPushNegation(negation, out var reversed))
+      {
+        cmd.Expr = reversed;
+      }
     }
   }
 
