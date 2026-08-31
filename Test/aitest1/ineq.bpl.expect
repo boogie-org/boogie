@@ -20,7 +20,7 @@ implementation SimpleLoop()
   Else:
     assume {:inferred} 0 <= i && i < 11;
     assume !(i < 10);
-    assume {:inferred} 0 <= i && i < 11;
+    assume {:inferred} i == 10;
     return;
 
   Then:
