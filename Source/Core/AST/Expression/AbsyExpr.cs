@@ -301,6 +301,15 @@ namespace Microsoft.Boogie
           BinaryOperator op = (BinaryOperator) nary.Fun;
           Expr arg0 = Cce.NonNull(nary.Args[0]);
           Expr arg1 = Cce.NonNull(nary.Args[1]);
+          // A negated order relation is the reverse relation only where the order is total. On floats it
+          // is not: every IEEE comparison is false when an operand is NaN, so "!(a < b)" holds of a NaN
+          // while "b <= a" does not. Equality is different -- Boogie's == on floats is bit identity,
+          // which is total -- so complementing Eq and Neq stays correct.
+          //
+          // The type is not always known here: an "if" or "while" guard is negated while the parser
+          // builds the implementation's blocks (BigBlocksResolutionContext), well before typechecking.
+          // An unknown type is therefore treated as possibly float, leaving the negation to the prover.
+          var knownTotalOrder = arg0.Type != null && !arg0.Type.IsFloat;
           if (op.Op == BinaryOperator.Opcode.Eq)
           {
             return Neq(arg0, arg1);
@@ -309,19 +318,19 @@ namespace Microsoft.Boogie
           {
             return Eq(arg0, arg1);
           }
-          else if (op.Op == BinaryOperator.Opcode.Lt)
+          else if (knownTotalOrder && op.Op == BinaryOperator.Opcode.Lt)
           {
             return Le(arg1, arg0);
           }
-          else if (op.Op == BinaryOperator.Opcode.Le)
+          else if (knownTotalOrder && op.Op == BinaryOperator.Opcode.Le)
           {
             return Lt(arg1, arg0);
           }
-          else if (op.Op == BinaryOperator.Opcode.Ge)
+          else if (knownTotalOrder && op.Op == BinaryOperator.Opcode.Ge)
           {
             return Gt(arg1, arg0);
           }
-          else if (op.Op == BinaryOperator.Opcode.Gt)
+          else if (knownTotalOrder && op.Op == BinaryOperator.Opcode.Gt)
           {
             return Ge(arg1, arg0);
           }
@@ -329,6 +338,33 @@ namespace Microsoft.Boogie
       }
 
       return Unary(Token.NoToken, UnaryOperator.Opcode.Not, e1);
+    }
+
+    /// <summary>
+    /// Negates what "negation" negates, for a negation that Not was not able to push inwards when it was
+    /// built -- either because the operand had no type yet or because it never went through Not at all.
+    /// Fails when there is still nothing to be had, which is when the result is a negation again.
+    /// </summary>
+    public static bool TryPushNegation(NAryExpr negation, out Expr pushed)
+    {
+      Contract.Requires(negation.Fun is UnaryOperator { Op: UnaryOperator.Opcode.Not });
+      pushed = Not(negation.Args[0]);
+      if (pushed is NAryExpr { Fun: UnaryOperator { Op: UnaryOperator.Opcode.Not } })
+      {
+        return false;
+      }
+
+      // Not is normally called before typechecking, so what it builds carries no type. Compare
+      // BinaryOperator.ResolveOverloading, which types a node it builds in the same two steps. This is
+      // also why callers must be past typechecking: setting TypeParameters is what tells
+      // NAryExpr.Typecheck a node has been checked already, so doing it earlier would skip the check.
+      if (pushed is NAryExpr { Type: null } nary)
+      {
+        nary.Type = Type.Bool;
+        nary.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
+      }
+
+      return true;
     }
 
     public static Expr Neg(Expr e1)

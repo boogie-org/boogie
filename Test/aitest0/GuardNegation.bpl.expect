@@ -1,0 +1,108 @@
+procedure IntGuard() returns (r: int);
+
+
+
+implementation IntGuard() returns (r: int)
+{
+  var i: int;
+
+  anon0:
+    assume {:inferred} true;
+    i := 0;
+    assume {:inferred} true;
+    goto anon5_LoopHead;
+
+  anon5_LoopHead:  // cut point
+    assume {:inferred} true;
+    assume {:inferred} true;
+    goto anon5_LoopDone, anon5_LoopBody;
+
+  anon5_LoopBody:
+    assume {:inferred} true;
+    assume {:partition} i < 3;
+    i := i + 1;
+    assume {:inferred} true;
+    goto anon5_LoopHead;
+
+  anon5_LoopDone:
+    assume {:inferred} true;
+    assume {:partition} 3 <= i;
+    assume {:inferred} true;
+    goto anon6_Then, anon6_Else;
+
+  anon6_Else:
+    assume {:inferred} true;
+    assume {:partition} i < 7;
+    r := 0;
+    assume {:inferred} true;
+    return;
+
+  anon6_Then:
+    assume {:inferred} true;
+    assume {:partition} 7 <= i;
+    r := 1;
+    assume {:inferred} true;
+    return;
+}
+
+
+
+procedure FloatGuard(f: float24e8) returns (r: int);
+
+
+
+implementation FloatGuard(f: float24e8) returns (r: int)
+{
+
+  anon0:
+    assume {:inferred} true;
+    assume {:inferred} true;
+    goto anon3_Then, anon3_Else;
+
+  anon3_Else:
+    assume {:inferred} true;
+    assume {:partition} !(f < 0x1.0e0f24e8);
+    r := 0;
+    assume {:inferred} true;
+    return;
+
+  anon3_Then:
+    assume {:inferred} true;
+    assume {:partition} f < 0x1.0e0f24e8;
+    r := 1;
+    assume {:inferred} true;
+    return;
+}
+
+
+
+procedure BoolGuard(b: bool) returns (r: int);
+
+
+
+implementation BoolGuard(b: bool) returns (r: int)
+{
+
+  anon0:
+    assume {:inferred} true;
+    assume {:inferred} true;
+    goto anon3_Then, anon3_Else;
+
+  anon3_Else:
+    assume {:inferred} true;
+    assume {:partition} !b;
+    r := 0;
+    assume {:inferred} true;
+    return;
+
+  anon3_Then:
+    assume {:inferred} true;
+    assume {:partition} b;
+    r := 1;
+    assume {:inferred} true;
+    return;
+}
+
+
+
+Boogie program verifier finished with 0 verified, 0 errors
