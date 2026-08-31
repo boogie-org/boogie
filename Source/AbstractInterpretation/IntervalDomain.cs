@@ -724,6 +724,16 @@ namespace Microsoft.Boogie.AbstractInterpretation
               var n = new Node(v, null, BigInteger.One);
               return new E(n);
             }
+            else
+            {
+              // A negation written with "!" never went through Expr.Not, so push it inwards now, with the
+              // types it needs in place. This fails on a float's order relation, which cannot be
+              // reversed, and there is nothing to learn from the negation itself.
+              if (Expr.TryPushNegation(e, out var pushed))
+              {
+                return Constraint(pushed, state);
+              }
+            }
           }
         }
         else if (e.Fun is BinaryOperator)
