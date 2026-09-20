@@ -483,12 +483,34 @@ namespace Microsoft.Boogie
       return Function(new VCExprBvExtractOp(start, end, bits), bv);
     }
 
+    /// <summary>
+    /// A map type with no index arguments is represented by its result type:
+    /// Boogie2VCExprTranslator.Visit(MapSelect)/Visit(MapStore) translate a nullary
+    /// select/store to the underlying value, and SMTLibLineariser.TypeToString emits a
+    /// nullary map as the sort of its result type. The translated expression keeps the
+    /// map type, so anything that inspects an operand's type has to look through the
+    /// nullary map wrappers first.
+    /// </summary>
+    public static Type UnwrapNullaryMapType(Type t)
+    {
+      Contract.Requires(t != null);
+      Contract.Ensures(Contract.Result<Type>() != null);
+      while (t.IsMap && t.AsMap.Arguments.Count == 0)
+      {
+        t = Cce.NonNull(t.AsMap.Result);
+      }
+
+      return t;
+    }
+
     public VCExpr BvConcat(VCExpr bv1, VCExpr bv2)
     {
       Contract.Requires(bv2 != null);
       Contract.Requires(bv1 != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
-      return Function(new VCExprBvConcatOp(bv1.Type.BvBits, bv2.Type.BvBits), bv1, bv2);
+      return Function(
+        new VCExprBvConcatOp(UnwrapNullaryMapType(bv1.Type).BvBits, UnwrapNullaryMapType(bv2.Type).BvBits),
+        bv1, bv2);
     }
 
     ////////////////////////////////////////////////////////////////////////////////

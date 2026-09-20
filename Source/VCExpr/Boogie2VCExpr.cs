@@ -1269,7 +1269,7 @@ namespace Microsoft.Boogie.VCExprAST
       if (unaryOperator.Op == UnaryOperator.Opcode.Neg)
       {
         VCExpr e = Cce.NonNull(this.args[0]);
-        if (Cce.NonNull(e.Type).IsInt)
+        if (VCExpressionGenerator.UnwrapNullaryMapType(Cce.NonNull(e.Type)).IsInt)
         {
           return Gen.Function(VCExpressionGenerator.SubIOp, Gen.Integer(BigNum.ZERO), e);
         }
@@ -1385,7 +1385,7 @@ namespace Microsoft.Boogie.VCExprAST
       Contract.Requires(Cce.NonNullElements(args));
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       Contract.Assert(args.Count == 2);
-      Type t = Cce.NonNull(Cce.NonNull(args[0]).Type);
+      Type t = VCExpressionGenerator.UnwrapNullaryMapType(Cce.NonNull(Cce.NonNull(args[0]).Type));
 
       switch (app.Op)
       {
@@ -1443,12 +1443,12 @@ namespace Microsoft.Boogie.VCExprAST
 
           VCExpr arg0 = Cce.NonNull(args[0]);
           VCExpr arg1 = Cce.NonNull(args[1]);
-          if (Cce.NonNull(arg0.Type).IsInt)
+          if (VCExpressionGenerator.UnwrapNullaryMapType(Cce.NonNull(arg0.Type)).IsInt)
           {
             arg0 = Gen.Function(VCExpressionGenerator.ToRealOp, arg0);
           }
 
-          if (Cce.NonNull(arg1.Type).IsInt)
+          if (VCExpressionGenerator.UnwrapNullaryMapType(Cce.NonNull(arg1.Type)).IsInt)
           {
             arg1 = Gen.Function(VCExpressionGenerator.ToRealOp, arg1);
           }
