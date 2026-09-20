@@ -66,18 +66,12 @@ jobs:
       # One leg carries the packages forward to the publish job. If the matrix
       # changes so that no leg matches, publishing fails on a missing artifact
       # instead of silently skipping the release.
-      - name: Collect packages
-        if: matrix.configuration == 'Release' && matrix.lit_param == 'batch_mode=False'
-        run: |
-          mkdir -p packages
-          find Source -path '*/bin/Release/*' -name 'Boogie*.nupkg' -exec cp {} packages/ \;
-          ls -1 packages
       - name: Upload packages
         if: matrix.configuration == 'Release' && matrix.lit_param == 'batch_mode=False'
         uses: actions/upload-artifact@v4
         with:
           name: nuget-packages
-          path: packages/*.nupkg
+          path: Source/**/bin/Release/Boogie*.nupkg
           if-no-files-found: error
 
   publish:
@@ -109,7 +103,7 @@ jobs:
         # --skip-duplicate so that re-running after a partial push of the 14
         # packages succeeds.
         run: >
-          dotnet nuget push "packages/*.nupkg" --skip-duplicate
+          dotnet nuget push "packages/**/Boogie*.nupkg" --skip-duplicate
           -k ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
           -s https://api.nuget.org/v3/index.json
       - name: Create GitHub release containing .nupkg files
@@ -118,5 +112,5 @@ jobs:
           name: Boogie ${{ github.ref_name }}
           draft: false
           prerelease: false
-          files: packages/*.nupkg
+          files: packages/**/Boogie*.nupkg
           fail_on_unmatched_files: true
