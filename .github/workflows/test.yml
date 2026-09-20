@@ -107,7 +107,7 @@ jobs:
           -k ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
           -s https://api.nuget.org/v3/index.json
       - name: Create GitHub release containing .nupkg files
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           name: Boogie ${{ github.ref_name }}
           draft: false
