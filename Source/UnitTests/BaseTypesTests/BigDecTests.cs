@@ -19,6 +19,25 @@ namespace BaseTypesTests
       Assert.AreEqual(new BigInteger(-15.0), v.Mantissa);
     }
 
+    [TestCase("-0.5", -5, -1)]
+    [TestCase("-0.05", -5, -2)]
+    [TestCase("-0.0625", -625, -4)]
+    [TestCase("-0.50", -5, -1)]
+    [TestCase("-00.5", -5, -1)]
+    [TestCase("-0.5e3", -5, 2)]
+    [TestCase("-0.5e-3", -5, -4)]
+    // Spelled with a non-zero integral part these always worked: "-5e-1" is the "-0.5" above.
+    [TestCase("-5e-1", -5, -1)]
+    [TestCase("-1.5", -15, -1)]
+    public void FromStringNegativeBelowOne(string value, int expectedMantissa, int expectedExponent)
+    {
+      // These all came back positive, since "-0" parses with Sign 0.
+      var v = BigDec.FromString(value);
+      Assert.AreEqual(new BigInteger(expectedMantissa), v.Mantissa, "mantissa");
+      Assert.AreEqual(expectedExponent, v.Exponent, "exponent");
+      Assert.IsTrue(v.IsNegative, "the sign should survive parsing");
+    }
+
     [Test()]
     public void FromStringPositive()
     {
