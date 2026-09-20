@@ -27,11 +27,11 @@ jobs:
         lit_param: ["batch_mode=True", "batch_mode=False"]
     steps:
       - name: Setup dotnet
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '8.0.x'
       - name: Checkout Boogie
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Install tools, build Boogie, test Boogie
