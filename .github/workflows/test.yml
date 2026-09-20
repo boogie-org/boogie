@@ -68,7 +68,7 @@ jobs:
       # instead of silently skipping the release.
       - name: Upload packages
         if: matrix.configuration == 'Release' && matrix.lit_param == 'batch_mode=False'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: nuget-packages
           path: Source/**/bin/Release/Boogie*.nupkg
@@ -86,7 +86,7 @@ jobs:
       contents: write   # create the GitHub release
     steps:
       - name: Download packages
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: nuget-packages
           path: packages
