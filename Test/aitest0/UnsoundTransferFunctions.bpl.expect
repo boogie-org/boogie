@@ -1,0 +1,9 @@
+UnsoundTransferFunctions.bpl(21,5): Error: this assertion could not be proved
+UnsoundTransferFunctions.bpl(35,3): Error: a postcondition could not be proved on this return path
+UnsoundTransferFunctions.bpl(30,3): Related location: this is the postcondition that could not be proved
+UnsoundTransferFunctions.bpl(46,3): Error: a postcondition could not be proved on this return path
+UnsoundTransferFunctions.bpl(41,3): Related location: this is the postcondition that could not be proved
+UnsoundTransferFunctions.bpl(59,3): Error: a postcondition could not be proved on this return path
+UnsoundTransferFunctions.bpl(54,3): Related location: this is the postcondition that could not be proved
+
+Boogie program verifier finished with 3 verified, 4 errors

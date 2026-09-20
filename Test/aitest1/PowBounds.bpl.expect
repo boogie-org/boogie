@@ -1,0 +1,79 @@
+procedure PowNonnegativeOperands(x: real, y: real);
+  requires 0e0 <= x;
+  requires 0e0 <= y;
+
+
+
+implementation PowNonnegativeOperands(x: real, y: real)
+{
+  var r: real;
+  var i: int;
+
+  anon0:
+    assume {:inferred} 0e0 <= x && 0e0 <= y;
+    r := x ** y;
+    i := 0;
+    assume {:inferred} i == 0 && 0e0 <= x && 0e0 <= y;
+    goto anon2_LoopHead;
+
+  anon2_LoopHead:  // cut point
+    assume {:inferred} 0 <= i && i < 2 && 0e0 <= x && 0e0 <= y;
+    assume {:inferred} 0 <= i && i < 2 && 0e0 <= x && 0e0 <= y;
+    goto anon2_LoopDone, anon2_LoopBody;
+
+  anon2_LoopBody:
+    assume {:inferred} 0 <= i && i < 2 && 0e0 <= x && 0e0 <= y;
+    assume {:partition} i < 1;
+    i := i + 1;
+    assume {:inferred} i == 1 && 0e0 <= x && 0e0 <= y;
+    goto anon2_LoopHead;
+
+  anon2_LoopDone:
+    assume {:inferred} 0 <= i && i < 2 && 0e0 <= x && 0e0 <= y;
+    assume {:partition} 1 <= i;
+    assume {:inferred} i == 1 && 0e0 <= x && 0e0 <= y;
+    return;
+}
+
+
+
+procedure PowBaseAtLeastOne(x: real, y: real);
+  requires 1e0 <= x;
+  requires 0e0 <= y;
+
+
+
+implementation PowBaseAtLeastOne(x: real, y: real)
+{
+  var r: real;
+  var i: int;
+
+  anon0:
+    assume {:inferred} 1e0 <= x && 0e0 <= y;
+    r := x ** y;
+    i := 0;
+    assume {:inferred} i == 0 && 1e0 <= x && 0e0 <= y;
+    goto anon2_LoopHead;
+
+  anon2_LoopHead:  // cut point
+    assume {:inferred} 0 <= i && i < 2 && 1e0 <= x && 0e0 <= y;
+    assume {:inferred} 0 <= i && i < 2 && 1e0 <= x && 0e0 <= y;
+    goto anon2_LoopDone, anon2_LoopBody;
+
+  anon2_LoopBody:
+    assume {:inferred} 0 <= i && i < 2 && 1e0 <= x && 0e0 <= y;
+    assume {:partition} i < 1;
+    i := i + 1;
+    assume {:inferred} i == 1 && 1e0 <= x && 0e0 <= y;
+    goto anon2_LoopHead;
+
+  anon2_LoopDone:
+    assume {:inferred} 0 <= i && i < 2 && 1e0 <= x && 0e0 <= y;
+    assume {:partition} 1 <= i;
+    assume {:inferred} i == 1 && 1e0 <= x && 0e0 <= y;
+    return;
+}
+
+
+
+Boogie program verifier finished with 0 verified, 0 errors

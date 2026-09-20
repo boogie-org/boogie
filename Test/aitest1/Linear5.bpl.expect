@@ -30,11 +30,11 @@ implementation p()
   C:
     assume {:inferred} -1 <= x && 0 <= y;
     x := x * x;
-    assume {:inferred} x < 2 && 0 <= y;
+    assume {:inferred} 0 <= y;
     goto D, E;
 
   D:
-    assume {:inferred} x < 2 && 0 <= y;
+    assume {:inferred} 0 <= y;
     x := y;
     assume {:inferred} 0 <= x && 0 <= y;
     return;
