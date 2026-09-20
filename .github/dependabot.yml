@@ -4,8 +4,3 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-    # One grouped pull request per week rather than one per action.
-    groups:
-      actions:
-        patterns:
-          - "*"
