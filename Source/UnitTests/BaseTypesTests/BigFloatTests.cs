@@ -2104,7 +2104,7 @@ namespace BaseTypesTests
             Assert.IsTrue(zero.IsZero);
             Assert.IsFalse(one.IsZero);
             Assert.IsTrue(negOne.IsNegative);
-            Assert.AreEqual("1000000", large.ToDecimalString(), "1000000 is exact at double precision");
+            Assert.AreEqual("1000000.0", large.ToDecimalString(), "1000000 is exact at double precision");
 
             // Test with custom precision
             var customOne = BigFloat.FromInt(1, 16, 5);
@@ -2154,7 +2154,7 @@ namespace BaseTypesTests
         {
             // Test basic values
             BigFloat.FromRational(1, 1, 24, 8, out var one);
-            Assert.AreEqual("1", one.ToDecimalString());
+            Assert.AreEqual("1.0", one.ToDecimalString());
 
             BigFloat.FromRational(1, 2, 24, 8, out var half);
             Assert.AreEqual("0.5", half.ToDecimalString());
@@ -2165,12 +2165,32 @@ namespace BaseTypesTests
             // Test negative
             Assert.AreEqual("-1.25", (-onePointTwoFive).ToDecimalString());
 
+            // Adjacent binary32 values well above 1.0, where too short a rendering stops identifying the
+            // value: 335543.90625 and 335543.9375 both used to print as "335543.9".
+            BigFloat.FromRational(10737405, BigInteger.Pow(2, 5), 24, 8, out var lower);
+            BigFloat.FromRational(5368703, BigInteger.Pow(2, 4), 24, 8, out var upper);
+            Assert.AreEqual("335543.9", lower.ToDecimalString());
+            Assert.AreEqual("335543.94", upper.ToDecimalString());
+            Assert.AreNotEqual(lower.ToDecimalString(), upper.ToDecimalString(),
+                "distinct values must print distinctly");
+
+            // A fractional part a truncating digit count drops: this used to print "3561247".
+            BigFloat.FromRational(7122495, 2, 24, 8, out var withHalf);
+            Assert.AreEqual("3561247.5", withHalf.ToDecimalString());
+
+            // Shortest, not exact: 0.1's exact expansion at double precision runs to 55 fractional digits.
+            BigFloat.FromRational(1, 10, 53, 11, out var tenth);
+            Assert.AreEqual("0.1", tenth.ToDecimalString());
+
+            BigFloat.FromRational(1, 3, 53, 11, out var third);
+            Assert.AreEqual("0.3333333333333333", third.ToDecimalString());
+
             // Test special values
             var zero = BigFloat.CreateZero(false, 24, 8);
-            Assert.AreEqual("0", zero.ToDecimalString());
+            Assert.AreEqual("0.0", zero.ToDecimalString());
 
             var negZero = -zero;
-            Assert.AreEqual("-0", negZero.ToDecimalString());
+            Assert.AreEqual("-0.0", negZero.ToDecimalString());
 
             var posInf = BigFloat.CreateInfinity(false, 24, 8);
             Assert.AreEqual("Infinity", posInf.ToDecimalString());
@@ -2180,6 +2200,218 @@ namespace BaseTypesTests
 
             var nan = BigFloat.CreateNaN(false, 24, 8);
             Assert.AreEqual("NaN", nan.ToDecimalString());
+        }
+
+        [Test]
+        public void TestToScientificString()
+        {
+            // Same digits as ToDecimalString, placed by an exponent rather than by padding.
+            BigFloat.FromRational(1, 2, 24, 8, out var half);
+            Assert.AreEqual("5e-1", half.ToScientificString());
+
+            BigFloat.FromRational(5, 4, 24, 8, out var onePointTwoFive);
+            Assert.AreEqual("1.25e0", onePointTwoFive.ToScientificString());
+            Assert.AreEqual("-1.25e0", (-onePointTwoFive).ToScientificString());
+
+            BigFloat.FromRational(10737405, BigInteger.Pow(2, 5), 24, 8, out var big);
+            Assert.AreEqual("3.355439e5", big.ToScientificString());
+
+            // A magnitude whose plain form is all padding shrinks to nothing here.
+            Assert.AreEqual("1e6", BigFloat.FromInt(1000000).ToScientificString());
+
+            BigFloat.FromRational(1, BigInteger.Pow(2, 52), 53, 11, out var twoToMinus52);
+            Assert.AreEqual("2.220446049250313e-16", twoToMinus52.ToScientificString());
+
+            // The two extremes of binary64, which plain decimal spends hundreds of characters on.
+            Assert.AreEqual("5e-324", new BigFloat(false, 1, 0, 53, 11).ToScientificString());
+            Assert.AreEqual("1.7976931348623157e308",
+                new BigFloat(false, BigInteger.Pow(2, 52) - 1, 2046, 53, 11).ToScientificString());
+
+            // Wide exponent sizes are where the difference tells: seven characters against 9882.
+            Assert.AreEqual("6e-9880", new BigFloat(false, 1, 0, 53, 16).ToScientificString());
+
+            // The digits cost a power of ten the size of the value either way, so both stop at the same place.
+            var beyondReach = new BigFloat(false, 1, 0, 53, 32);
+            Assert.Throws<OverflowException>(() => beyondReach.ToDecimalString());
+            Assert.Throws<OverflowException>(() => beyondReach.ToScientificString());
+
+            // Zero carries an exponent too, so nothing returned reads as an integer and a negative zero read
+            // back is still negative -- which "-0" alone does not manage in a C-like language.
+            Assert.AreEqual("0e0", BigFloat.CreateZero(false, 24, 8).ToScientificString());
+            Assert.AreEqual("-0e0", (-BigFloat.CreateZero(false, 24, 8)).ToScientificString());
+            Assert.AreEqual("0.0", BigFloat.CreateZero(false, 24, 8).ToDecimalString());
+            Assert.AreEqual("-0.0", (-BigFloat.CreateZero(false, 24, 8)).ToDecimalString());
+            Assert.AreEqual("Infinity", BigFloat.CreateInfinity(false, 24, 8).ToScientificString());
+            Assert.AreEqual("-Infinity", BigFloat.CreateInfinity(true, 24, 8).ToScientificString());
+            Assert.AreEqual("NaN", BigFloat.CreateNaN(false, 24, 8).ToScientificString());
+        }
+
+        /// <summary>
+        /// Drops trailing zeros, leaving the significant digit count. Restating the production code is
+        /// deliberate: sharing it would make the assertions below partly tautological.
+        /// </summary>
+        private static (BigInteger Digits, int PlaceValue) WithoutTrailingZeros(BigInteger digits, int placeValue)
+        {
+            while (!digits.IsZero && (digits % 10).IsZero)
+            {
+                digits /= 10;
+                placeValue++;
+            }
+
+            return (digits, placeValue);
+        }
+
+        /// <summary>Reads a plain decimal as "digits * 10^placeValue", sign apart so the digit count is significant.</summary>
+        private static (bool Negative, BigInteger Digits, int PlaceValue) SplitPlainDecimal(string text)
+        {
+            var negative = text.StartsWith("-", StringComparison.Ordinal);
+            var magnitude = negative ? text.Substring(1) : text;
+            var point = magnitude.IndexOf('.');
+            var (digits, placeValue) = WithoutTrailingZeros(
+                BigInteger.Parse(magnitude.Replace(".", "")),
+                point < 0 ? 0 : -(magnitude.Length - point - 1));
+
+            return (negative, digits, placeValue);
+        }
+
+        /// <summary>
+        /// Rounds "digits * 10^placeValue" into the given format as a reader of the printed form would, through
+        /// exact rationals rather than a host parser, so it works at any format.
+        /// </summary>
+        private static BigFloat RoundIntoFormat(bool negative, BigInteger digits, int placeValue,
+            int significandSize, int exponentSize)
+        {
+            var numerator = placeValue > 0 ? digits * BigInteger.Pow(10, placeValue) : digits;
+            var denominator = placeValue < 0 ? BigInteger.Pow(10, -placeValue) : BigInteger.One;
+
+            // The sign rides on the denominator so that it survives a zero numerator, as "-0" needs.
+            BigFloat.FromRational(numerator, negative ? -denominator : denominator,
+                significandSize, exponentSize, out var result);
+
+            return result;
+        }
+
+        /// <summary>Reads a scientific rendering as "digits * 10^placeValue", to hold against the plain one.</summary>
+        private static (bool Negative, BigInteger Digits, int PlaceValue) SplitScientific(string text)
+        {
+            var marker = text.IndexOf('e');
+            var exponent = int.Parse(text.Substring(marker + 1));
+            var (negative, digits, placeValue) = SplitPlainDecimal(text.Substring(0, marker));
+
+            return (negative, digits, placeValue + exponent);
+        }
+
+        /// <summary>
+        /// Asserts what makes a rendering usable: it rounds back to the value, no shorter decimal would have,
+        /// and the scientific form denotes the same number. Round-tripping alone does not pin the digit count,
+        /// since printing extra digits preserves it.
+        /// </summary>
+        private static void AssertPrintsShortestRoundTrip(BigFloat value)
+        {
+            var significandSize = value.SignificandSize;
+            var exponentSize = value.ExponentSize;
+            var text = value.ToDecimalString();
+            var (negative, digits, placeValue) = SplitPlainDecimal(text);
+            var identity = value.ToSMTLibString(); // bit-for-bit, unlike ==, which equates the two zeros
+
+            Assert.AreEqual(identity,
+                RoundIntoFormat(negative, digits, placeValue, significandSize, exponentSize).ToSMTLibString(),
+                $"\"{text}\" should round back into f{significandSize}e{exponentSize} as the value it was printed from");
+
+            Assert.IsTrue(text.EndsWith(".0") || text[^1] != '0',
+                $"\"{text}\" ends in a fractional zero the value does not need");
+
+            var scientific = value.ToScientificString();
+            Assert.AreEqual((negative, digits, placeValue), SplitScientific(scientific),
+                $"\"{scientific}\" and \"{text}\" should denote the same number");
+
+            var mantissa = scientific.Substring(negative ? 1 : 0).Split('e')[0];
+            Assert.IsTrue(mantissa.Length == 1 || mantissa[1] == '.',
+                $"\"{scientific}\" should carry exactly one digit ahead of the point");
+
+            // Nothing on the ten-times-coarser grid may round back either, and only points neighbouring the
+            // printed one can: that grid is wider than the span of reals rounding to this value.
+            var significantDigits = digits.ToString().Length;
+            var coarser = digits / 10;
+
+            for (var offset = -1; offset <= 2; offset++)
+            {
+                var (candidate, candidatePlace) = WithoutTrailingZeros(coarser + offset, placeValue + 1);
+                if (candidate.Sign <= 0 || candidate.ToString().Length >= significantDigits)
+                {
+                    continue; // not actually shorter than what was printed
+                }
+
+                Assert.AreNotEqual(identity,
+                    RoundIntoFormat(negative, candidate, candidatePlace, significandSize, exponentSize).ToSMTLibString(),
+                    $"\"{text}\" is longer than it needs to be: {candidate}e{candidatePlace} also round-trips");
+            }
+        }
+
+        [Test]
+        public void TestToDecimalStringIsShortestAndInjectiveAtASmallFormat()
+        {
+            // Small enough to enumerate whole, and still covering every subnormal, both binade boundaries and
+            // the largest finite value, where the gap to a neighbour is not the usual one. Round-tripping
+            // implies injectivity, but the old symptom was two values sharing a rendering, so pin that too.
+            var seen = new Dictionary<string, string>();
+
+            for (var exponentField = 0; exponentField < 31; exponentField++)
+            {
+                for (var significandField = 0; significandField < 128; significandField++)
+                {
+                    if (exponentField == 0 && significandField == 0)
+                    {
+                        continue; // zero prints as "0", which is not a rounding of anything else
+                    }
+
+                    foreach (var negative in new[] { false, true })
+                    {
+                        var value = new BigFloat(negative, significandField, exponentField, 8, 5);
+                        AssertPrintsShortestRoundTrip(value);
+
+                        var text = value.ToDecimalString();
+                        var identity = value.ToSMTLibString();
+                        Assert.IsTrue(seen.TryAdd(text, identity),
+                            $"\"{text}\" prints both {seen.GetValueOrDefault(text)} and {identity}");
+                    }
+                }
+            }
+        }
+
+        [Test]
+        public void TestToDecimalStringIsShortestAcrossTheExponentRange()
+        {
+            // How far the old digit count fell short varied with the magnitude -- worst between 1 and 1000,
+            // mildest past 2^24 where the value is an integer anyway -- so visit every binade rather than
+            // trust a sample to land in the affected ones. The four payloads per binade take in its bottom and
+            // top and both ends of the subnormal range.
+            var random = new Random(1150);
+
+            foreach (var (significandSize, exponentSize) in new[] { (24, 8), (53, 11) })
+            {
+                var trailingBits = significandSize - 1;
+                var largestPayload = BigInteger.Pow(2, trailingBits) - 1;
+                var payloadBytes = new byte[trailingBits / 8 + 1];
+
+                for (var exponentField = 0; exponentField < BigInteger.Pow(2, exponentSize) - 1; exponentField++)
+                {
+                    random.NextBytes(payloadBytes);
+                    payloadBytes[^1] = 0; // keep the payload non-negative
+                    var drawn = new BigInteger(payloadBytes) & largestPayload;
+
+                    foreach (var payload in new[] { BigInteger.Zero, BigInteger.One, largestPayload, drawn })
+                    {
+                        if (exponentField == 0 && payload.IsZero)
+                        {
+                            continue; // zero
+                        }
+
+                        AssertPrintsShortestRoundTrip(
+                            new BigFloat(payload.IsEven, payload, exponentField, significandSize, exponentSize));
+                    }
+                }
+            }
         }
 
         #endregion
@@ -4498,22 +4730,41 @@ namespace BaseTypesTests
         [Test]
         public void TestToDecimalStringExtremeScaleOverflow()
         {
-            // Test the case where scale calculation would exceed int.MaxValue
-            // We need a denominator with GetBitLength() > int.MaxValue / 0.31 ≈ 6.9 billion bits
-            // This is impractical to create directly, so let's test the calculation logic
-
             // The smallest subnormal at a 16-bit exponent is 2^-32818, so ToDecimalString does not collapse
-            // it to "0.0": the scale it derives from the denominator's width gives an expansion thousands
-            // of digits long, ending in significant figures rather than in zeros.
+            // it to "0.0". 2^-32818 is 6.27e-9880, whose shortest round-tripping decimal is 6e-9880, so the
+            // rendering is "0." then 9879 zeros and a 6. Only the length tells this from a rendering that gave
+            // up early: the gap to its neighbours is so wide that even a truncated expansion rounds back.
             var extremeFormat = new BigFloat(false, 1, 0, 53, 16); // 16-bit exponent allows much smaller values
 
             var decimalStr = extremeFormat.ToDecimalString();
-            Assert.IsTrue(decimalStr.StartsWith("0."), "a subnormal lies between 0 and 1");
-            Assert.Greater(decimalStr.Length, 10000, "the scale should track the exponent rather than truncate");
-            Assert.AreNotEqual('0', decimalStr[^1], "the expansion should end in a significant digit");
+            Assert.AreEqual("0." + new string('0', 9879) + "6", decimalStr,
+                "the rendering should track the exponent rather than truncate");
+            AssertPrintsShortestRoundTrip(extremeFormat);
 
-            // Note: Testing the actual overflow case where scale > int.MaxValue would require
-            // a denominator with billions of bits, which is impractical in a unit test
+            // Out of reach in either direction: f53e32's smallest subnormal would need 646 million characters
+            // of leading zeros, the largest finite f8e32 the same in trailing ones. The second matters because
+            // its scale is positive, which no earlier guard looked at, and clears int.MaxValue by only seven.
+            foreach (var (beyondReach, format) in new[]
+            {
+                (new BigFloat(false, 1, 0, 53, 32), "f53e32"),
+                (new BigFloat(false, 127, BigInteger.Pow(2, 32) - 2, 8, 32), "f8e32"),
+            })
+            {
+                var overflow = Assert.Throws<OverflowException>(() => beyondReach.ToDecimalString());
+                Assert.IsTrue(overflow.Message.Contains(format), "the message should name the format at fault");
+            }
+
+            // A scale inside the bound but past any real format stays workable rather than crawling.
+            Assert.AreEqual(157844, new BigFloat(false, 1, 0, 53, 20).ToDecimalString().Length);
+
+            // Precision needs its own bound: it drives the digit count, so the work grows with its square. A
+            // wide exponent size holds the scale at zero while the precision stays huge, which the scale missed.
+            var wideBias = BigInteger.Pow(2, 31) - 1;
+            var hugePrecision = new BigFloat(false, 1, wideBias + 199999, 200000, 32);
+            Assert.Throws<OverflowException>(() => hugePrecision.ToDecimalString());
+            Assert.Throws<OverflowException>(() => hugePrecision.ToScientificString());
+            Assert.AreEqual(3013, new BigFloat(false, BigInteger.Pow(2, 9999) - 1, wideBias + 9999, 10000, 32)
+                .ToDecimalString().Length);
         }
 
         [Test]
@@ -5339,10 +5590,10 @@ namespace BaseTypesTests
             BigFloat.FromRational(3, 1, sigSize, expSize, out var y);
 
             var sum = x + y;
-            Assert.AreEqual("5", sum.ToDecimalString());
+            Assert.AreEqual("5.0", sum.ToDecimalString());
 
             var product = x * y;
-            Assert.AreEqual("6", product.ToDecimalString());
+            Assert.AreEqual("6.0", product.ToDecimalString());
 
             var quotient = x / y;
             // With only 8 significand bits, we have limited precision
