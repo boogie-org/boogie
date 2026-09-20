@@ -899,10 +899,18 @@ namespace Microsoft.BaseTypes
 
     #region String Representation
 
+    /// <summary>The shortest decimal that rounds back to this value in this format, written without an
+    /// exponent and always with a point, so that it cannot read as an integer literal.</summary>
     [Pure]
-    public string ToDecimalString()
+    public string ToDecimalString() => Rendered(scientific: false);
+
+    /// <summary>As <see cref="ToDecimalString"/>, but with the digits placed by an exponent. Every finite value
+    /// gets one, zero included, so nothing this returns reads as an integer; the reach is unchanged.</summary>
+    [Pure]
+    public string ToScientificString() => Rendered(scientific: true);
+
+    private string Rendered(bool scientific)
     {
-      // Handle special values
       if (IsNaN) {
         return "NaN";
       }
@@ -910,40 +918,148 @@ namespace Microsoft.BaseTypes
         return signBit ? "-Infinity" : "Infinity";
       }
       if (IsZero) {
-        return signBit ? "-0" : "0";
+        // "-0" alone is an integer literal, and negating an integer zero gives a positive one.
+        return (signBit ? "-0" : "0") + (scientific ? "e0" : ".0");
       }
 
-      // Convert to rational number
-      var (significandValue, shift) = AsScaledInteger();
+      var (digits, placeValue) = ShortestDecimalMagnitude();
+      var magnitude = scientific
+        ? RenderScientific(digits, placeValue)
+        : RenderPlainDecimal(digits, placeValue);
 
-      // Calculate numerator and denominator
-      var (numerator, denominator) = shift >= 0
-        ? (BigIntegerMath.LeftShift(significandValue, shift), BigInteger.One)
-        : (significandValue, BigIntegerMath.LeftShift(BigInteger.One, -shift));
+      return signBit ? "-" + magnitude : magnitude;
+    }
 
-      if (signBit) {
-        numerator = -numerator;
+    // Both are where a render passes about a second: cost grows with the scale, and with precision squared.
+    private const int MaxRenderableScale = 3_500_000;
+    private const int MaxRenderablePrecision = 100_000;
+
+    /// <summary>This value's magnitude as the shortest decimal "digits * 10^placeValue" that rounds back to it,
+    /// by Steele and White / Burger and Dybvig: stop at the first digit where truncating or rounding up lands
+    /// in the span of reals rounding to this value. Those bracket the value, so stopping there is
+    /// shortest.</summary>
+    private (BigInteger Digits, int PlaceValue) ShortestDecimalMagnitude()
+    {
+      var (value, valueScale) = AsScaledInteger();
+
+      // The value above is always value + 1 at this scale; the one below is value - 1 unless a borrow crosses
+      // a binade, where the gap halves -- hence two bits down there, leaving the gap above twice the one below.
+      var step = significand.IsZero && exponent > BigInteger.One ? 2 : 1;
+      var here = value << step;
+      var endpointsIncluded = value.IsEven;
+      var scale = NarrowedScale(valueScale - step);
+
+      // Over a divisor of 10^(exponent + 1) the first digit taken off is the leading one. Splitting that ten
+      // into a two and a five cancels the powers of two across the ratio, a third of the bits at a wide scale.
+      var decimalExponent = (int)Math.Floor(BigInteger.Log10(here) + (scale * Math.Log10(2)));
+      var twos = scale - (decimalExponent + 1);
+      var fives = decimalExponent + 1;
+
+      // Each power goes on whichever side its sign puts it; the gap below measures one, so it comes to the
+      // numerator's own factor.
+      var gap = twos > 0 ? BigInteger.One << twos : BigInteger.One;
+      var divisor = twos < 0 ? BigInteger.One << -twos : BigInteger.One;
+      if (fives > 0) {
+        divisor *= BigInteger.Pow(5, fives);
+      } else if (fives < 0) {
+        gap *= BigInteger.Pow(5, -fives);
       }
 
-      // Convert to decimal with appropriate scale
-      var desiredScale = denominator.GetBitLength() * 0.31; // Approximate decimal digits needed
-      if (desiredScale > int.MaxValue - 1) {
-        throw new OverflowException($"Cannot convert to decimal string: required scale {desiredScale:E} exceeds maximum supported scale {int.MaxValue}");
+      var remainder = here * gap;
+
+      // Settle the estimate: the remainder belongs in [divisor/10, divisor).
+      while (remainder >= divisor) {
+        divisor *= 10;
+        decimalExponent += 1;
       }
-      var scale = (int)desiredScale;
-      var scaled = BigInteger.Abs(numerator) * BigInteger.Pow(10, scale) / denominator;
-      var str = scaled.ToString().PadLeft(scale + 1, '0');
-
-      // Format with decimal point
-      if (scale == 0) {
-        return signBit && !IsZero ? "-" + str : str;
+      while (remainder * 10 < divisor) {
+        remainder *= 10;
+        gap *= 10;
+        decimalExponent -= 1;
       }
 
-      var intPart = str[..^scale];
-      var fracPart = str[^scale..].TrimEnd('0');
-      var result = fracPart.Length > 0 ? $"{intPart}.{fracPart}" : intPart;
+      var digits = BigInteger.Zero;
+      var placeValue = decimalExponent + 1;
 
-      return signBit ? "-" + result : result;
+      // The gap grows tenfold a step while the divisor stands still, so it always overtakes the remainder.
+      while (true) {
+        remainder *= 10;
+        gap *= 10;
+        digits = digits * 10 + BigInteger.DivRem(remainder, divisor, out var next);
+        remainder = next;
+        placeValue -= 1;
+
+        var gapAbove = gap << (step - 1);
+        var truncatingFits = endpointsIncluded ? remainder <= gap : remainder < gap;
+        var roundingUpFits = endpointsIncluded
+          ? remainder + gapAbove >= divisor
+          : remainder + gapAbove > divisor;
+
+        if (!truncatingFits && !roundingUpFits) {
+          continue;
+        }
+
+        // Rounding up is just an increment, so a carry out of a run of nines takes care of itself.
+        var roundUp = !truncatingFits || (roundingUpFits && FartherBelow(remainder, divisor, digits));
+
+        return StripTrailingZeros(roundUp ? digits + 1 : digits, placeValue);
+      }
+    }
+
+    /// <summary>Whether the grid point above is nearer than the digits so far; a tie goes to the even string.</summary>
+    private static bool FartherBelow(BigInteger remainder, BigInteger divisor, BigInteger digits)
+    {
+      var doubled = remainder * 2;
+      return doubled > divisor || (doubled == divisor && !digits.IsEven);
+    }
+
+    /// <summary>The scale as an int, refusing a value too wide to render; the counting below then fits too.</summary>
+    private int NarrowedScale(BigInteger scale)
+    {
+      if (BigInteger.Abs(scale) > MaxRenderableScale || SignificandSize > MaxRenderablePrecision) {
+        // log10 2 as a ratio, since a scale that got here may be too large for a double.
+        var characters = (BigInteger.Abs(scale) + SignificandSize) * 30103 / 100000;
+        throw new OverflowException(
+          $"Cannot convert to decimal string: an f{SignificandSize}e{ExponentSize} value weighted by " +
+          $"2^{scale} would run to roughly {characters} characters, more than this rendering supports");
+      }
+
+      return (int)scale;
+    }
+
+    /// <summary>Moves trailing zeros of "digits" into "placeValue"; only a carry onto a power of ten makes any.</summary>
+    private static (BigInteger Digits, int PlaceValue) StripTrailingZeros(BigInteger digits, int placeValue)
+    {
+      while (!digits.IsZero && (digits % 10).IsZero) {
+        digits /= 10;
+        placeValue += 1;
+      }
+
+      return (digits, placeValue);
+    }
+
+    /// <summary>Writes "digits * 10^placeValue" without an exponent, always with a point so that the result
+    /// cannot read as an integer; the padding covers a value below one.</summary>
+    private static string RenderPlainDecimal(BigInteger digits, int placeValue)
+    {
+      if (placeValue >= 0) {
+        return digits + new string('0', placeValue) + ".0";
+      }
+
+      var fractionLength = -placeValue;
+      var text = digits.ToString().PadLeft(fractionLength + 1, '0');
+
+      return $"{text[..^fractionLength]}.{text[^fractionLength..]}";
+    }
+
+    /// <summary>Writes "digits * 10^placeValue" as one digit, the rest behind a point, and an exponent; the
+    /// digits arrive with a non-zero leader and no trailing zeros, so the mantissa is already normal.</summary>
+    private static string RenderScientific(BigInteger digits, int placeValue)
+    {
+      var text = digits.ToString();
+      var mantissa = text.Length == 1 ? text : $"{text[0]}.{text[1..]}";
+
+      return $"{mantissa}e{placeValue + text.Length - 1}";
     }
 
     public override string ToString()

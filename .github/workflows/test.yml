@@ -9,6 +9,9 @@ on:
     branches:
       - master
 
+permissions:
+  contents: read
+
 env:
   SOLUTION: Source/Boogie.sln
   Z3URL: https://github.com/Z3Prover/z3/releases/download/z3-4.11.2/z3-4.11.2-x64-glibc-2.31.zip
@@ -24,16 +27,13 @@ jobs:
         lit_param: ["batch_mode=True", "batch_mode=False"]
     steps:
       - name: Setup dotnet
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '8.0.x'
       - name: Checkout Boogie
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - name: Determine version
-        id: get_version
-        uses: battila7/get-version-action@v2
       - name: Install tools, build Boogie, test Boogie
         run: |
           # Download a Z3 release
@@ -63,20 +63,54 @@ jobs:
           dotnet test --blame-hang-timeout 300s --no-build -c ${{ matrix.configuration }} ${SOLUTION}
           # Run lit test suite
           lit --param ${{ matrix.lit_param }} -v --timeout=300 -D configuration=${{ matrix.configuration }} Test
-      - name: Deploy to nuget
-        # Note: if you change the build matrix, update the following
-        # line to ensure it matches only one element of the matrix.
-        if: matrix.configuration == 'Release' && matrix.lit_param == 'batch_mode=False' && startsWith(github.ref, 'refs/tags/v')
-        run: dotnet nuget push "Source/**/bin/${{ matrix.configuration }}/Boogie*.nupkg" -k ${{ secrets.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json
-      - name: Create draft GitHub release containing .nupkg file
-        # Note: if you change the conditional above, update the one below to match
-        if: matrix.configuration == 'Release' && matrix.lit_param == 'batch_mode=False' && startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v1
+      # One leg carries the packages forward to the publish job. If the matrix
+      # changes so that no leg matches, publishing fails on a missing artifact
+      # instead of silently skipping the release.
+      - name: Upload packages
+        if: matrix.configuration == 'Release' && matrix.lit_param == 'batch_mode=False'
+        uses: actions/upload-artifact@v7
         with:
-          name: Boogie ${{ steps.get_version.version }}
-          tag_name: ${{ steps.get_version.version }}
+          name: nuget-packages
+          path: Source/**/bin/Release/Boogie*.nupkg
+          if-no-files-found: error
+
+  publish:
+    name: Publish release
+    # Waits for every leg of the matrix above, so a failure in any
+    # configuration blocks publishing.
+    needs: job0
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-22.04
+    permissions:
+      id-token: write   # NuGet Trusted Publishing (NuGet/login below)
+      contents: write   # create the GitHub release
+    steps:
+      - name: Download packages
+        uses: actions/download-artifact@v8
+        with:
+          name: nuget-packages
+          path: packages
+      # The nuget.org Trusted Publishing policy must name THIS file: NuGet
+      # matches the OIDC job_workflow_ref claim, which is the file defining
+      # this job.
+      - name: NuGet login (OIDC -> short-lived API key)
+        uses: NuGet/login@v1
+        id: nuget-login
+        with:
+          # nuget.org profile name (not an email) of the policy owner.
+          user: ${{ secrets.NUGET_USER }}
+      - name: Deploy to nuget
+        # --skip-duplicate so that re-running after a partial push of the 14
+        # packages succeeds.
+        run: >
+          dotnet nuget push "packages/**/Boogie*.nupkg" --skip-duplicate
+          -k ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
+          -s https://api.nuget.org/v3/index.json
+      - name: Create GitHub release containing .nupkg files
+        uses: softprops/action-gh-release@v3
+        with:
+          name: Boogie ${{ github.ref_name }}
           draft: false
           prerelease: false
-          files: |
-            Source/**/bin/${{ matrix.configuration }}/Boogie*.nupkg
+          files: packages/**/Boogie*.nupkg
           fail_on_unmatched_files: true

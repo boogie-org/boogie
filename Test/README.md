@@ -156,9 +156,6 @@ The RUN lines may use several substitutions
   is quoted so that tests work correctly for users who use spaces in their file
   paths.
 
-- ``%T`` the path to the temporary directory for this test. You should make sure
-  this is quoted.
-
 - ``%t`` expands to the absolute path of a filename that can be used as a
   temporary file. This always expands to the same value in a single test so if
   you need multiple different temporary files append a unique value (e.g.
