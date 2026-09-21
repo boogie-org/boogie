@@ -213,9 +213,14 @@ public class Program : Absy
   }
 
   /// <summary>
-  /// Finishes negating the guards of "if" and "while". The parser negates them while building an
-  /// implementation's blocks, before anything has a type, so Expr.Not leaves an order relation alone --
+  /// Finishes negating the guards of "if" and "while". They are negated from the Implementation
+  /// constructor, while parsing, so nothing has a type yet and Expr.Not leaves an order relation alone --
   /// see there. Asking it again here reverses the ones it can, and still leaves a float's alone.
+  ///
+  /// This reaches the blocks, which is what gets verified. It cannot reach a -print taken of the program
+  /// as parsed: that happens before resolution (ExecutionEngine.ProcessProgram), while the blocks already
+  /// exist, because the Implementation constructor built them. So such a print shows the unreversed
+  /// guard, which is why Test/inline/test4.bpl expects one.
   /// </summary>
   private void ReverseGuardNegations()
   {

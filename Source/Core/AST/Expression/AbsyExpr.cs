@@ -306,9 +306,11 @@ namespace Microsoft.Boogie
           // while "b <= a" does not. Equality is different -- Boogie's == on floats is bit identity,
           // which is total -- so complementing Eq and Neq stays correct.
           //
-          // The type is not always known here: an "if" or "while" guard is negated while the parser
-          // builds the implementation's blocks (BigBlocksResolutionContext), well before typechecking.
-          // An unknown type is therefore treated as possibly float, leaving the negation to the prover.
+          // The type is not always known here, and cannot be made so: an "if" or "while" guard is negated
+          // from the Implementation constructor, which flattens the structured statements into blocks
+          // (BigBlocksResolutionContext) while parsing -- before any identifier has been resolved, let
+          // alone typechecked. An unknown type is therefore treated as possibly float, and
+          // Program.ReverseGuardNegations asks again once types exist.
           var knownTotalOrder = arg0.Type != null && !arg0.Type.IsFloat;
           if (op.Op == BinaryOperator.Opcode.Eq)
           {
@@ -358,10 +360,12 @@ namespace Microsoft.Boogie
       // BinaryOperator.ResolveOverloading, which types a node it builds in the same two steps. This is
       // also why callers must be past typechecking: setting TypeParameters is what tells
       // NAryExpr.Typecheck a node has been checked already, so doing it earlier would skip the check.
-      if (pushed is NAryExpr { Type: null } nary)
+      if (pushed is NAryExpr nary)
       {
-        nary.Type = Type.Bool;
-        nary.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
+        // Set independently: whoever built the node may have given it a type without marking it checked,
+        // and MonomorphizationDuplicator reads TypeParameters of every NAryExpr it visits.
+        nary.Type ??= Type.Bool;
+        nary.TypeParameters ??= SimpleTypeParamInstantiation.EMPTY;
       }
 
       return true;
