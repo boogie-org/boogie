@@ -46,7 +46,7 @@ MapType0Select -> {
   else -> false
 }
 MapType0Store -> {
-  else -> false
+  else -> 1
 }
 MapType0Type -> {
   T@T!val!0 T@T!val!0 -> T@T!val!2
@@ -89,12 +89,6 @@ U_2_int -> {
   2 -> 2
   4 -> 4
   else -> 4
-}
-UOrdering2 -> {
-  else -> false
-}
-UOrdering3 -> {
-  else -> false
 }
 *** STATE <initial>
   x -> 
@@ -155,7 +149,7 @@ MapType0Select -> {
   else -> false
 }
 MapType0Store -> {
-  else -> false
+  else -> 1
 }
 MapType0Type -> {
   T@T!val!0 T@T!val!0 -> T@T!val!2
@@ -198,12 +192,6 @@ U_2_int -> {
   2 -> 2
   4 -> 4
   else -> 4
-}
-UOrdering2 -> {
-  else -> false
-}
-UOrdering3 -> {
-  else -> false
 }
 *** STATE <initial>
   x -> 
