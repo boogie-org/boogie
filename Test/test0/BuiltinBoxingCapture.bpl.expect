@@ -1,0 +1,5 @@
+BuiltinBoxingCapture.bpl(11,30): Error: {:builtin "RefType"} names a symbol Boogie emits for its own encoding
+BuiltinBoxingCapture.bpl(13,32): Error: {:builtin "FieldType"} names a symbol Boogie emits for its own encoding
+BuiltinBoxingCapture.bpl(15,36): Error: {:builtin "FieldTypeInv0"} names a symbol Boogie emits for its own encoding
+BuiltinBoxingCapture.bpl(20,32): Error: {:builtin "GhostType"} names a symbol Boogie emits for its own encoding
+4 type checking errors detected in BuiltinBoxingCapture.bpl

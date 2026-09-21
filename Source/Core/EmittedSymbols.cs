@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace Microsoft.Boogie
 {
@@ -13,16 +14,16 @@ namespace Microsoft.Boogie
   ///
   /// Harvested with `boogie PROGRAM.bpl -typeEncoding:p -proverLog:out.smt2` over a program that
   /// exercises the type encoding, then reading out.smt2's declarations. A symbol missing below is one a
-  /// user can still capture, so re-harvest when the encoding changes. The list cannot be complete: the
-  /// boxing names are built from a type's own name (TypeErasure), so `type Ref` alone yields RefType.
+  /// user can still capture, so re-harvest when the encoding changes. The names built from a type's own
+  /// name are matched by shape instead of listed -- see IsBoxedTypeName.
   /// </summary>
   public static class EmittedSymbols
   {
     private static readonly string[] Names =
     {
-      "ControlFlow", "Ctor", "tickleBool", "intType", "boolType", "realType",
+      "ControlFlow", "Ctor", "tickleBool",
       "int_2_U", "U_2_int", "bool_2_U", "U_2_bool", "real_2_U", "U_2_real",
-      "real_pow", "UOrdering2", "UOrdering3",
+      "real_pow", "UOrdering2", "UOrdering3", "type",
     };
 
     // The map-type helpers and boxed type sorts have one member per arity or per type, and `q@` is the
@@ -31,7 +32,18 @@ namespace Microsoft.Boogie
 
     public static bool Contains(string name)
     {
-      return Names.Contains(name) || Prefixes.Any(name.StartsWith);
+      return Names.Contains(name) || Prefixes.Any(name.StartsWith) || IsBoxedTypeName(name);
+    }
+
+    /// <summary>
+    /// TypeErasure names the constructor of a boxed type after the type itself -- `NType`, plus one
+    /// `NTypeInv&lt;i&gt;` per argument -- so which names those are depends on the program. Matching the shape
+    /// rather than deriving the set keeps this answerable from one declaration, and costs nothing: no
+    /// solver names a function this way.
+    /// </summary>
+    private static bool IsBoxedTypeName(string name)
+    {
+      return name.EndsWith("Type") || Regex.IsMatch(name, "TypeInv[0-9]+$");
     }
   }
 }

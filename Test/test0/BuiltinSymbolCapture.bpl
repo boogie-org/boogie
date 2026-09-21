@@ -18,3 +18,5 @@ function {:builtin "int_2_U"} box(x: int): int;
 function {:builtin "MapType0Select"} mapSelect(m: int, i: int): int;
 
 function {:builtin "T@U"} boxedSort(x: int): int;
+
+function {:builtin "type"} typeOf(x: int): int;
