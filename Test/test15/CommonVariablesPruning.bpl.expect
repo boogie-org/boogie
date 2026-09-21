@@ -46,7 +46,7 @@ MapType0Select -> {
   else -> false
 }
 MapType0Store -> {
-  else -> false
+  else -> 4
 }
 MapType0Type -> {
   T@T!val!0 T@T!val!0 -> T@T!val!2
@@ -62,9 +62,6 @@ MapType0TypeInv1 -> {
   T@T!val!2 -> T@T!val!0
   T@T!val!3 -> T@T!val!1
   else -> T@T!val!0
-}
-real_pow -> {
-  else -> 0.0
 }
 tickleBool -> {
   false -> true
@@ -155,7 +152,7 @@ MapType0Select -> {
   else -> false
 }
 MapType0Store -> {
-  else -> false
+  else -> 4
 }
 MapType0Type -> {
   T@T!val!0 T@T!val!0 -> T@T!val!2
@@ -171,9 +168,6 @@ MapType0TypeInv1 -> {
   T@T!val!2 -> T@T!val!0
   T@T!val!3 -> T@T!val!1
   else -> T@T!val!0
-}
-real_pow -> {
-  else -> 0.0
 }
 tickleBool -> {
   false -> true
