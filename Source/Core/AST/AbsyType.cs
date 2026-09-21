@@ -1065,7 +1065,33 @@ namespace Microsoft.Boogie
 
   //=====================================================================
 
-  //Note that the functions in this class were directly copied from the BV class just below
+  /// <summary>
+  /// The SMT-LIB FloatingPoint sort, which approximates IEEE 754 binary floating point. The
+  /// approximation is where the surprises are: the sort has exactly one NaN, there are no signalling
+  /// NaNs and no exception flags, and a float has no bit-level access, so a payload cannot be observed.
+  /// Code that transforms Boogie programs has to respect what the operators mean:
+  ///
+  /// "==" and "!=" are SMT "=": identity on the sort -- not bit identity, there being one NaN to be
+  /// identical to. So it is total and reflexive even at NaN, where IEEE equality is false, and it keeps
+  /// -0.0 and +0.0 apart.
+  ///
+  /// "&lt;", "&lt;=", "&gt;" and "&gt;=" are fp.lt, fp.leq, fp.gt and fp.geq: partial, false whenever an operand
+  /// is NaN, and tying the two zeros. So "x &lt;= x" is not a tautology: it holds exactly when x is not a
+  /// NaN, and is how the core language says that, fp.isNaN having no syntax.
+  ///
+  /// Neither implies the other, so trichotomy does not hold. Hence a negated order relation is not the
+  /// reverse relation, the negation being true of a NaN where the reverse is false; and a pair of
+  /// numeric bounds does not describe a float, as bounds neither separate the zeros nor hold of NaN.
+  ///
+  /// Arithmetic rounds: "+", "-", "*" and "/" are the fp operations under round-to-nearest-even, so
+  /// results round, overflow to an infinity, and give NaN for 0/0. That mode is not a choice here -- the
+  /// operators are emitted with it fixed.
+  ///
+  /// What has no syntax is reachable only through a {:builtin} function: the IEEE predicates (fp.isNaN
+  /// and its siblings), IEEE numeric equality (fp.eq), and arithmetic in any other rounding mode, whose
+  /// operations take an extra argument of type rmode.
+  /// </summary>
+  // Note that the functions in this class were directly copied from the BV class just below
   public class FloatType : Type
   {
     public readonly int Significand; //Size of Significand in bits
