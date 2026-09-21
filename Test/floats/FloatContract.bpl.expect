@@ -1,5 +1,5 @@
-FloatContract.bpl(19,3): Error: this assertion could not be proved
+FloatContract.bpl(22,3): Error: this assertion could not be proved
 Execution trace:
-    FloatContract.bpl(19,3): anon0
+    FloatContract.bpl(22,3): anon0
 
-Boogie program verifier finished with 4 verified, 1 error
+Boogie program verifier finished with 5 verified, 1 error

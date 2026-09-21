@@ -1066,11 +1066,14 @@ namespace Microsoft.Boogie
   //=====================================================================
 
   /// <summary>
-  /// An IEEE 754 binary floating point type, modelling the SMT-LIB FloatingPoint sort. Code that
-  /// transforms Boogie programs has to respect what its operators mean:
+  /// The SMT-LIB FloatingPoint sort, which approximates IEEE 754 binary floating point. The
+  /// approximation is where the surprises are: the sort has exactly one NaN, there are no signalling
+  /// NaNs and no exception flags, and a float has no bit-level access, so a payload cannot be observed.
+  /// Code that transforms Boogie programs has to respect what the operators mean:
   ///
-  /// "==" and "!=" are SMT "=", i.e. bit identity: total, reflexive even at NaN (the sort has one NaN,
-  /// so "x == x" holds of everything), and keeping -0.0 and +0.0 apart.
+  /// "==" and "!=" are SMT "=": identity on the sort -- not bit identity, there being one NaN to be
+  /// identical to. So it is total and reflexive even at NaN, where IEEE equality is false, and it keeps
+  /// -0.0 and +0.0 apart.
   ///
   /// "&lt;", "&lt;=", "&gt;" and "&gt;=" are fp.lt, fp.leq, fp.gt and fp.geq: partial, false whenever an operand
   /// is NaN, and tying the two zeros. So "x &lt;= x" is not a tautology: it holds exactly when x is not a
