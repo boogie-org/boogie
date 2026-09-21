@@ -1629,9 +1629,11 @@ namespace Microsoft.Boogie.AbstractInterpretation
         Contract.Assert(node.Args.Count == 2);
         var arg0 = node.Args[0];
         var arg1 = node.Args[1];
-        // An untyped expression should not reach here, but a producer that leaves Type unset is a
-        // crash rather than a wrong answer, and the offset only picks a widening threshold, which is a
-        // weakening either way.
+        // Type is set where Expr builds these nodes, but not every producer goes through Expr: Civl's
+        // map desugaring synthesises FunctionCall applications -- MapImp, MapEq and the like -- after
+        // typechecking and leaves them untyped, and 54 of the civl/ test programs reach here with one.
+        // Those cannot be enumerated, so the reader is what guards. The offset only picks a widening
+        // threshold, a weakening either way, so a missing type costs precision and not soundness.
         var offset = arg0.Type != null && arg0.Type.IsReal ? 0 : 1;
         BigInteger? k;
         switch (op.Op)
