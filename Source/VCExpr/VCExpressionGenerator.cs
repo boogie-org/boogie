@@ -514,8 +514,6 @@ namespace Microsoft.Boogie
       LeOp,
       GtOp,
       GeOp,
-      SubtypeOp,
-      Subtype3Op,
       BvConcatOp,
       ToIntOp,
       ToRealOp,

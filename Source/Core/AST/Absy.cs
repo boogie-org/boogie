@@ -1319,30 +1319,6 @@ namespace Microsoft.Boogie
     }
   }
 
-  // class to specify the <:-parents of the values of constants
-  public class ConstantParent
-  {
-    public readonly IdentifierExpr
-      Parent;
-
-    [ContractInvariantMethod]
-    void ObjectInvariant()
-    {
-      Contract.Invariant(Parent != null);
-    }
-
-    // if true, the sub-dag underneath this constant-parent edge is
-    // disjoint from all other unique sub-dags
-    public readonly bool Unique;
-
-    public ConstantParent(IdentifierExpr parent, bool unique)
-    {
-      Contract.Requires(parent != null);
-      Parent = parent;
-      Unique = unique;
-    }
-  }
-
   public class Constant : Variable
   {
     // when true, the value of this constant is meant to be distinct

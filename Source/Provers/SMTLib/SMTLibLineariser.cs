@@ -985,18 +985,6 @@ namespace Microsoft.Boogie.SMTLib
         return true;
       }
 
-      public bool VisitSubtypeOp(VCExprNAry node, LineariserOptions options)
-      {
-        WriteApplication("UOrdering2", node, options);
-        return true;
-      }
-
-      public bool VisitSubtype3Op(VCExprNAry node, LineariserOptions options)
-      {
-        WriteApplication("UOrdering3", node, options);
-        return true;
-      }
-
       public bool VisitToIntOp(VCExprNAry node, LineariserOptions options)
       {
         WriteApplication("to_int", node, options);
