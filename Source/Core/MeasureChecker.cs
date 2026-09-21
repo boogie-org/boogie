@@ -353,30 +353,6 @@ namespace Microsoft.Boogie
       }
     }
 
-    // Expr.And and its siblings leave Type unset, and what this file builds goes into a program that has
-    // already been typechecked, where a visitor is entitled to read the type of what it finds --
-    // ThresholdFinder reads it of the first operand of every binary operator. So build with these.
-    //
-    // Only ever after typechecking: setting TypeParameters is what tells NAryExpr.Typecheck that a node
-    // has been checked already, so doing this any earlier would skip the check.
-    private static Expr Typed(Expr e)
-    {
-      // Expr.And folds a True operand away and hands back the other one, already typed.
-      if (e is NAryExpr { Type: null } nary)
-      {
-        nary.Type = Type.Bool;
-        nary.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
-      }
-
-      return e;
-    }
-
-    private static Expr Not(Expr e) => Typed(Expr.Not(e));
-    private static Expr And(Expr a, Expr b) => Typed(Expr.And(a, b));
-    private static Expr Or(Expr a, Expr b) => Typed(Expr.Or(a, b));
-    private static Expr Lt(Expr a, Expr b) => Typed(Expr.Lt(a, b));
-    private static Expr Eq(Expr a, Expr b) => Typed(Expr.Eq(a, b));
-
     private static Expr MeasureLessThanExpr(List<Expr> measure1, List<Expr> measure2)
     {
       Debug.Assert(measure1.Count == measure2.Count);
@@ -389,19 +365,24 @@ namespace Microsoft.Boogie
         Expr strictDecrease;
         if (measure1[i].Type.Equals(Type.Int))
         {
-          strictDecrease = Lt(measure1[i], measure2[i]);
+          strictDecrease = Expr.Lt(measure1[i], measure2[i]);
         }
         else if (measure1[i].Type.Equals(Type.Bool))
         {
-          strictDecrease = And(Not(measure1[i]), measure2[i]);
+          strictDecrease = Expr.And(Expr.Not(measure1[i]), measure2[i]);
         }
         else
         {
           throw new Cce.UnreachableException();
         }
 
-        lessThan = Or(lessThan, And(equalPrefix, strictDecrease));
-        equalPrefix = And(equalPrefix, Eq(measure1[i], measure2[i]));
+        lessThan = Expr.Or(
+          lessThan,
+          Expr.And(equalPrefix, strictDecrease));
+
+        equalPrefix = Expr.And(
+          equalPrefix,
+          Expr.Eq(measure1[i], measure2[i]));
       }
 
       return lessThan;
