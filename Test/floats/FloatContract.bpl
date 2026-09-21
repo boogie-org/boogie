@@ -22,10 +22,11 @@ procedure OrderIsPartial(x: float24e8)
   assert x <= x;
 }
 
-// It holds exactly off NaN, which is how the core language says "x is not a NaN".
+// It holds exactly off NaN. Note what that means for the core language, which has no isNaN of its own:
+// "x <= x" is how it says "x is not a NaN".
 procedure OrderIsReflexiveOffNaN(x: float24e8)
 {
-  if (!(x == 0NaN24e8)) { assert x <= x; }
+  if (!isNaN(x)) { assert x <= x; }
 }
 
 // The order ties the zeros where "==" separates them.
