@@ -1,0 +1,12 @@
+MulNegativeBounds.bpl(21,3): Error: this assertion could not be proved
+Execution trace:
+    MulNegativeBounds.bpl(18,5): anon0
+    MulNegativeBounds.bpl(20,3): anon3_LoopHead
+    MulNegativeBounds.bpl(20,3): anon3_LoopDone
+MulNegativeBounds.bpl(34,3): Error: this assertion could not be proved
+Execution trace:
+    MulNegativeBounds.bpl(31,5): anon0
+    MulNegativeBounds.bpl(33,3): anon3_LoopHead
+    MulNegativeBounds.bpl(33,3): anon3_LoopDone
+
+Boogie program verifier finished with 0 verified, 2 errors

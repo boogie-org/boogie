@@ -1285,24 +1285,22 @@ namespace Microsoft.Boogie.AbstractInterpretation
               break;
             case BinaryOperator.Opcode.Mul:
               // this uses an incomplete approximation that could be tightened up
-              if (lo0 != null && lo1 != null)
+              // Nonnegative operands only. A negative operand needs all four corner products, so it
+              // needs an upper bound on both operands, and neither of those is always known.
+              if (lo0 != null && lo1 != null && 0 <= (BigInteger) lo0 && 0 <= (BigInteger) lo1)
               {
-                if (0 <= (BigInteger) lo0 && 0 <= (BigInteger) lo1)
-                {
-                  Lo = lo0 * lo1;
-                  Hi = hi0 == null || hi1 == null ? null : isReal ? hi0 * hi1 : (hi0 - 1) * (hi1 - 1) + 1;
-                }
-                else if ((BigInteger) lo0 < 0 && (BigInteger) lo1 < 0)
-                {
-                  Lo = null; // approximation
-                  Hi = isReal ? lo0 * lo1 : lo0 * lo1 + 1;
-                }
+                Lo = lo0 * lo1;
+                Hi = hi0 == null || hi1 == null ? null : isReal ? hi0 * hi1 : (hi0 - 1) * (hi1 - 1) + 1;
               }
 
               break;
             case BinaryOperator.Opcode.Div:
+            case BinaryOperator.Opcode.RealDiv:
               // this uses an incomplete approximation that could be tightened up
-              if (lo0 != null && lo1 != null && 0 <= (BigInteger) lo0 && 0 <= (BigInteger) lo1)
+              // Division by zero is underspecified, so the divisor must be known nonzero. An integer
+              // bound cannot say "positive but below one", so a real divisor in that range yields
+              // nothing rather than a bound the quotient can exceed.
+              if (lo0 != null && lo1 != null && 0 <= (BigInteger) lo0 && 1 <= (BigInteger) lo1)
               {
                 Lo = BigInteger.Zero;
                 Hi = hi0;
@@ -1311,7 +1309,8 @@ namespace Microsoft.Boogie.AbstractInterpretation
               break;
             case BinaryOperator.Opcode.Mod:
               // this uses an incomplete approximation that could be tightened up
-              if (lo0 != null && lo1 != null && 0 <= (BigInteger) lo0 && 0 <= (BigInteger) lo1)
+              // As for Div, the divisor must be known nonzero.
+              if (lo0 != null && lo1 != null && 0 <= (BigInteger) lo0 && 1 <= (BigInteger) lo1)
               {
                 Lo = BigInteger.Zero;
                 Hi = hi1;
@@ -1320,24 +1319,6 @@ namespace Microsoft.Boogie.AbstractInterpretation
                   Lo = lo0;
                   Hi = hi0;
                 }
-              }
-
-              break;
-            case BinaryOperator.Opcode.RealDiv:
-              // this uses an incomplete approximation that could be tightened up
-              if (lo0 != null && lo1 != null && 0 <= (BigInteger) lo0 && 0 <= (BigInteger) lo1)
-              {
-                Lo = BigInteger.Zero;
-                Hi = 1 <= (BigInteger) lo1 ? hi0 : null;
-              }
-
-              break;
-            case BinaryOperator.Opcode.Pow:
-              // this uses an incomplete approximation that could be tightened up
-              if (lo0 != null && lo1 != null && 0 <= (BigInteger) lo0 && 0 <= (BigInteger) lo1)
-              {
-                Lo = 1 <= (BigInteger) lo1 ? BigInteger.One : BigInteger.Zero;
-                Hi = hi1;
               }
 
               break;

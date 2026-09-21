@@ -1,0 +1,17 @@
+DivisionByZeroBounds.bpl(19,3): Error: this assertion could not be proved
+Execution trace:
+    DivisionByZeroBounds.bpl(16,5): anon0
+    DivisionByZeroBounds.bpl(18,3): anon3_LoopHead
+    DivisionByZeroBounds.bpl(18,3): anon3_LoopDone
+DivisionByZeroBounds.bpl(31,3): Error: this assertion could not be proved
+Execution trace:
+    DivisionByZeroBounds.bpl(28,5): anon0
+    DivisionByZeroBounds.bpl(30,3): anon3_LoopHead
+    DivisionByZeroBounds.bpl(30,3): anon3_LoopDone
+DivisionByZeroBounds.bpl(43,3): Error: this assertion could not be proved
+Execution trace:
+    DivisionByZeroBounds.bpl(40,5): anon0
+    DivisionByZeroBounds.bpl(42,3): anon3_LoopHead
+    DivisionByZeroBounds.bpl(42,3): anon3_LoopDone
+
+Boogie program verifier finished with 0 verified, 3 errors
