@@ -73,6 +73,11 @@ namespace Microsoft.Boogie.SMTLib
       get { return _KnownSelectFunctions.Peek(); }
     }
 
+    private HashSet<string> KnownOperatorDecls
+    {
+      get { return _KnownOperatorDecls.Peek(); }
+    }
+
     // ------
     private readonly Stack<HashSet<Function>> _KnownFunctions = new();
     private readonly Stack<HashSet<VCExprVar>> _KnownVariables = new();
@@ -80,6 +85,7 @@ namespace Microsoft.Boogie.SMTLib
     private readonly Stack<HashSet<Type>> _KnownTypes = new();
     private readonly Stack<HashSet<string>> _KnownStoreFunctions = new();
     private readonly Stack<HashSet<string>> _KnownSelectFunctions = new();
+    private readonly Stack<HashSet<string>> _KnownOperatorDecls = new();
 
     private void InitializeKnownDecls()
     {
@@ -88,6 +94,7 @@ namespace Microsoft.Boogie.SMTLib
       _KnownTypes.Push(new HashSet<Type>());
       _KnownStoreFunctions.Push(new HashSet<string>());
       _KnownSelectFunctions.Push(new HashSet<string>());
+      _KnownOperatorDecls.Push(new HashSet<string>());
     }
 
     public void Reset()
@@ -97,6 +104,7 @@ namespace Microsoft.Boogie.SMTLib
       _KnownTypes.Clear();
       _KnownStoreFunctions.Clear();
       _KnownSelectFunctions.Clear();
+      _KnownOperatorDecls.Clear();
       AllDecls.Clear();
       IncDecls.Clear();
       InitializeKnownDecls();
@@ -110,6 +118,7 @@ namespace Microsoft.Boogie.SMTLib
       _KnownTypes.Push(new HashSet<Type>(_KnownTypes.Peek()));
       _KnownStoreFunctions.Push(new HashSet<string>(_KnownStoreFunctions.Peek()));
       _KnownSelectFunctions.Push(new HashSet<string>(_KnownSelectFunctions.Peek()));
+      _KnownOperatorDecls.Push(new HashSet<string>(_KnownOperatorDecls.Peek()));
     }
 
     public void Pop()
@@ -120,6 +129,7 @@ namespace Microsoft.Boogie.SMTLib
       _KnownTypes.Pop();
       _KnownStoreFunctions.Pop();
       _KnownSelectFunctions.Pop();
+      _KnownOperatorDecls.Pop();
     }
 
     public List<string /*!>!*/> AllDeclarations
@@ -205,6 +215,13 @@ namespace Microsoft.Boogie.SMTLib
       else if (node.Op is VCExprSelectOp)
       {
         RegisterSelect(node);
+      }
+      else if (node.Op.Equals(VCExpressionGenerator.PowOp) && KnownOperatorDecls.Add("real_pow"))
+      {
+        // "**" lowers to real_pow, which nothing else declares: the background predicates did, but those
+        // are empty under the monomorphic encoding, so a program using "**" reached the solver with an
+        // undeclared symbol. Declaring it here is also what keeps it out of every other query's model.
+        AddDeclaration("(declare-fun real_pow (Real Real) Real)");
       }
       else if (node.Op is VCExprSoftOp)
       {
