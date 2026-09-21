@@ -1,0 +1,76 @@
+procedure NegatedComparisons();
+
+
+
+implementation NegatedComparisons()
+{
+  var i: int;
+  var j: int;
+
+  anon0:
+    assume {:inferred} true;
+    havoc i, j;
+    assume !(i < 3);
+    assume !(7 <= j);
+    assume {:inferred} 3 <= i && j < 7;
+    return;
+}
+
+
+
+procedure NegatedEquality();
+
+
+
+implementation NegatedEquality()
+{
+  var x: int;
+
+  anon0:
+    assume {:inferred} true;
+    havoc x;
+    assume 5 <= x;
+    assume !(x == 5);
+    assume {:inferred} 6 <= x;
+    return;
+}
+
+
+
+procedure DoubleNegation();
+
+
+
+implementation DoubleNegation()
+{
+  var y: int;
+
+  anon0:
+    assume {:inferred} true;
+    havoc y;
+    assume !!(3 <= y);
+    assume {:inferred} 3 <= y;
+    return;
+}
+
+
+
+procedure FloatRefused(f: float24e8);
+
+
+
+implementation FloatRefused(f: float24e8)
+{
+  var k: int;
+
+  anon0:
+    assume {:inferred} true;
+    k := 0;
+    assume !(f < 0x1.0e0f24e8);
+    assume {:inferred} k == 0;
+    return;
+}
+
+
+
+Boogie program verifier finished with 0 verified, 0 errors
