@@ -48,8 +48,8 @@ namespace Microsoft.Boogie.AbstractInterpretation
 
     public class Node
     {
-      // Never of float type: see PEVisitor.VisitLiteralExpr for why, and the constructors, which say so
-      // where it gets checked. Otherwise bool, int or real, as ToExpr below assumes.
+      // Of bool, int or real type, which is what ToExpr below renders. Never of float type -- the
+      // constructors assert it, and PEVisitor.VisitLiteralExpr says why.
       public readonly Variable V;
 
       // For an integer variable (Lo,Hi) indicates Lo <= V < Hi, where Lo==null means no lower bound and Hi==null means no upper bound.
@@ -265,9 +265,8 @@ namespace Microsoft.Boogie.AbstractInterpretation
 
           return e;
         }
-        else
+        else if (V.TypedIdent.Type.IsReal)
         {
-          Contract.Assert(V.TypedIdent.Type.IsReal);
           Expr e = Expr.True;
           if (Lo != null && Hi != null && Lo == Hi)
           {
@@ -292,6 +291,12 @@ namespace Microsoft.Boogie.AbstractInterpretation
           }
 
           return e;
+        }
+        else
+        {
+          // Only bool, int and real reach a Node: PEVisitor gives a float no bounds and
+          // VisitIdentifierExpr looks none up, so there is nothing here to render.
+          throw new Cce.UnreachableException();
         }
       }
     }
@@ -946,11 +951,12 @@ namespace Microsoft.Boogie.AbstractInterpretation
           }
         }
 
-        // No case for BigFloat: a float literal is deliberately left unbounded, which is what keeps
-        // floats out of the domain. VisitIdentifierExpr does not look one up either, so no float
-        // expression has bounds, and hence no float variable is ever constrained (Constrain) or assigned
-        // bounds (Update). A pair of integer bounds cannot describe a float at all, for the reasons set
-        // out on FloatType.
+        // No case for BigFloat, which is what keeps floats out of the domain: a pair of integer bounds
+        // cannot describe one, for the reasons set out on FloatType. VisitIdentifierExpr looks none up
+        // either, so no float expression has bounds, and hence no float variable is ever constrained
+        // (Constrain) or assigned bounds (Update).
+        Debug.Assert(node.Val is not BigFloat || (Lo == null && Hi == null),
+          "a float literal must leave the bounds VisitExpr cleared");
 
         return node;
       }
