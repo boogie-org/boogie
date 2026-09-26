@@ -1,0 +1,5 @@
+issue-1168-redo.bpl(35,3): Error: this assertion could not be proved
+Execution trace:
+    issue-1168-redo.bpl(34,3): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
