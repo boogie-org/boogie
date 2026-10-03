@@ -120,22 +120,50 @@ namespace VC
     {
       var checker = await split.parent.CheckerPool.FindCheckerFor(split.parent.program, split, cancellationToken);
 
+      Task beginCheckTask = null;
+      // Results are processed, and further splits verified, after the checker is given back,
+      // so a failure that comes later must not give it back again.
+      var released = false;
+      Task ReleaseChecker()
+      {
+        released = true;
+        return checker.GoBackToIdle(beginCheckTask);
+      }
+
       try
       {
         cancellationToken.ThrowIfCancellationRequested();
-        await StartCheck(iteration, split, checker, cancellationToken);
+        var timeout = KeepGoing && split.LastChance ? options.VcsFinalAssertTimeout :
+          KeepGoing ? options.VcsKeepGoingTimeout :
+          run.Implementation.GetTimeLimit(options);
+        beginCheckTask = await StartCheck(iteration, split, checker, timeout, cancellationToken);
+        if (timeout != 0)
+        {
+          await beginCheckTask.WaitAsync(TimeSpan.FromSeconds(timeout), cancellationToken);
+        }
+        else
+        {
+          await beginCheckTask;
+        }
         await checker.ProverTask;
-        await ProcessResultAndReleaseChecker(iteration, split, checker, cancellationToken);
-        TotalProverElapsedTime += checker.ProverRunTime;
+        var proverRunTime = checker.ProverRunTime;
+        await ProcessResultAndReleaseChecker(iteration, split, checker, ReleaseChecker, cancellationToken);
+        TotalProverElapsedTime += proverRunTime;
       }
       catch
       {
-        await checker.GoBackToIdle();
+        if (!released)
+        {
+          await ReleaseChecker();
+        }
         throw;
       }
     }
 
-    private async Task StartCheck(int iteration, Split split, Checker checker, CancellationToken cancellationToken)
+    /// <summary>
+    /// Returns the task of the check it begins.
+    /// </summary>
+    private async Task<Task> StartCheck(int iteration, Split split, Checker checker, uint timeout, CancellationToken cancellationToken)
     {
       if (options.Trace && DoSplitting)
       {
@@ -151,22 +179,14 @@ namespace VC
       callback.OnProgress?.Invoke("VCprove", split.SplitIndex, total,
         provenCost / (remainingCost + provenCost));
 
-      var timeout = KeepGoing && split.LastChance ? options.VcsFinalAssertTimeout :
-        KeepGoing ? options.VcsKeepGoingTimeout :
-        run.Implementation.GetTimeLimit(options);
-      var beginCheckTask = split.BeginCheck(run.OutputWriter, checker, callback, mvInfo, timeout,
+      return split.BeginCheck(run.OutputWriter, checker, callback, mvInfo, timeout,
         Implementation.GetResourceLimit(options), cancellationToken);
-      if (timeout != 0)
-      {
-        beginCheckTask = beginCheckTask.WaitAsync(TimeSpan.FromSeconds(timeout), cancellationToken);
-      }
-      await beginCheckTask;
     }
 
     private Implementation Implementation => run.Implementation;
 
     private async Task ProcessResultAndReleaseChecker(int iteration, Split split, Checker checker,
-      CancellationToken cancellationToken)
+      Func<Task> releaseChecker, CancellationToken cancellationToken)
     {
       if (TrackingProgress)
       {
@@ -207,11 +227,11 @@ namespace VC
 
       if (proverFailed)
       {
-        await HandleProverFailure(split, checker, callback, result, cancellationToken);
+        await HandleProverFailure(split, checker, callback, result, releaseChecker, cancellationToken);
       }
       else
       {
-        await checker.GoBackToIdle();
+        await releaseChecker();
       }
     }
 
@@ -276,7 +296,7 @@ namespace VC
     }
 
     private async Task HandleProverFailure(Split split, Checker checker, VerifierCallback callback,
-      VerificationRunResult verificationRunResult, CancellationToken cancellationToken)
+      VerificationRunResult verificationRunResult, Func<Task> releaseChecker, CancellationToken cancellationToken)
     {
       if (split.LastChance)
       {
@@ -295,11 +315,11 @@ namespace VC
           CounterExamples = split.Counterexamples
         };
         vcOutcome = VcOutcome.Errors;
-        await checker.GoBackToIdle();
+        await releaseChecker();
         return;
       }
 
-      await checker.GoBackToIdle();
+      await releaseChecker();
 
       if (maxKeepGoingSplits > 1)
       {
