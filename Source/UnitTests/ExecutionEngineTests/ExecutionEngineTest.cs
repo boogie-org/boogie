@@ -354,6 +354,303 @@ procedure Foo(x: int) {
   }
 
   [Test]
+  public async Task CancelledCheckDoesNotShareItsSolverWithTheNextCheck() {
+    var harness = new BlockedSendHarness("(assert (not");
+    var task = (await harness.Engine.GetVerificationTasks(harness.Parse()))[0];
+    try {
+      var firstStatuses = task.TryRun()!;
+      await harness.Blocked.WaitAsync();
+      task.Cancel();
+      Assert.IsTrue(await firstStatuses.ToTask() is Stale);
+
+      // The first check is still sending its VC.
+      Assert.IsTrue(await task.TryRun()!.ToTask() is Completed);
+    } finally {
+      harness.Unblock();
+    }
+    Assert.AreEqual(0, harness.OverlappingSends);
+  }
+
+  [Test]
+  public async Task TimedOutCheckDoesNotShareItsSolverWithTheNextCheck() {
+    var harness = new BlockedSendHarness("(assert (not", timeLimit: 1);
+    var task = (await harness.Engine.GetVerificationTasks(harness.Parse()))[0];
+    try {
+      // The time limit passes while the check is still sending its VC.
+      Assert.ThrowsAsync<TimeoutException>(() => task.TryRun()!.ToTask());
+
+      Assert.IsTrue(await task.TryRun()!.ToTask() is Completed);
+    } finally {
+      harness.Unblock();
+    }
+    Assert.AreEqual(0, harness.OverlappingSends);
+  }
+
+  [Test]
+  public async Task CancelledCheckDoesNotShareItsSolverWhileItsProverTaskRuns() {
+    // The solver has answered, but the check is still sending the commands that follow.
+    var harness = new BlockedSendHarness("(pop 1)");
+    var task = (await harness.Engine.GetVerificationTasks(harness.Parse()))[0];
+    try {
+      var firstStatuses = task.TryRun()!;
+      await harness.Blocked.WaitAsync();
+      task.Cancel();
+      Assert.IsTrue(await firstStatuses.ToTask() is Stale);
+
+      Assert.IsTrue(await task.TryRun()!.ToTask() is Completed);
+    } finally {
+      harness.Unblock();
+    }
+    Assert.AreEqual(0, harness.OverlappingSends);
+  }
+
+  [Test]
+  public async Task CancelledCommandLineCheckDoesNotShareItsSolverWithTheNextRun() {
+    var harness = new BlockedSendHarness("(assert (not");
+    var cancellationSource = new CancellationTokenSource();
+    try {
+      var firstRun = harness.Verify(cancellationSource.Token);
+      await harness.Blocked.WaitAsync();
+      cancellationSource.Cancel();
+      try {
+        await firstRun;
+      } catch (OperationCanceledException) {
+      }
+
+      // The first check is still sending its VC.
+      Assert.AreEqual(PipelineOutcome.VerificationCompleted, await harness.Verify(CancellationToken.None));
+    } finally {
+      harness.Unblock();
+    }
+    Assert.AreEqual(0, harness.OverlappingSends);
+  }
+
+  [Test]
+  public async Task CheckerWhoseSolverFailsIsDiscarded() {
+    var harness = new BlockedSendHarness(breakFirstSolverAfter: "(pop 1)");
+    var tasks = await harness.Engine.GetVerificationTasks(harness.Parse(@"
+procedure Foo(x: int) {
+  assert true;
+}
+procedure Bar(x: int) {
+  assert true;
+}"));
+    // The first solver fails when it is tested for reuse, after its check is done.
+    Assert.IsTrue(await tasks[0].TryRun()!.ToTask() is Completed);
+    // If that failure left the checker's slot in the pool taken, this run would be queued forever.
+    Assert.IsTrue(await tasks[1].TryRun()!.ToTask().WaitAsync(TimeSpan.FromSeconds(10)) is Completed);
+  }
+
+  [Test]
+  public async Task FailedKeepGoingSplitReleasesTheCheckerOfItsParentOnce() {
+    // The first check times out, so its split is split in two, whose checks run at the same time. The one that
+    // gets the checker of the first check succeeds. The one that gets a new solver is blocked until its time limit
+    // passes, which fails the run.
+    var harness = new BlockedSendHarness("(assert (not", blockedSolver: 2, timeOutFirstCheck: true, threads: 4,
+      configure: options => {
+        options.VcsCores = 2;
+        options.VcsMaxKeepGoingSplits = 2;
+        options.VcsKeepGoingTimeout = 1;
+        options.VcsFinalAssertTimeout = 1;
+      });
+    try {
+      Assert.CatchAsync<TimeoutException>(() => harness.Verify(CancellationToken.None, @"
+procedure Foo(x: int) {
+  if (x > 0) {
+    assert x > 1;
+  } else {
+    assert x < 1;
+  }
+}"));
+      // Had that run given the checker of its first check back twice, both checks of this run could take it.
+      Assert.AreEqual(PipelineOutcome.VerificationCompleted, await harness.Verify(CancellationToken.None, @"
+procedure Foo(x: int) {
+  assert true;
+}
+procedure Bar(x: int) {
+  assert true;
+}"));
+    } finally {
+      harness.Unblock();
+    }
+    Assert.AreEqual(0, harness.OverlappingSends);
+  }
+
+  [Test]
+  public async Task CheckerDiscardedAfterItsEngineIsDisposedIsClosed() {
+    // As in Dafny's language server, which disposes the engine of a document's previous version while the checks of
+    // that version are still being cancelled, the engine does not own its scheduler.
+    var harness = new BlockedSendHarness("(assert (not", disposeScheduler: false);
+    var task = (await harness.Engine.GetVerificationTasks(harness.Parse()))[0];
+    try {
+      var statuses = task.TryRun()!;
+      await harness.Blocked.WaitAsync();
+      harness.Engine.Dispose();
+      task.Cancel();
+      Assert.IsTrue(await statuses.ToTask() is Stale);
+    } finally {
+      harness.Unblock();
+    }
+    Assert.IsTrue(harness.SolversAreClosed);
+  }
+
+  [Test]
+  public async Task TimedOutCheckOfADisposedEngineReportsTheTimeout() {
+    var harness = new BlockedSendHarness("(assert (not", timeLimit: 1, disposeScheduler: false);
+    var task = (await harness.Engine.GetVerificationTasks(harness.Parse()))[0];
+    try {
+      var statuses = task.TryRun()!;
+      await harness.Blocked.WaitAsync();
+      harness.Engine.Dispose();
+      // Giving the checker back to the disposed pool must not replace the timeout with another failure.
+      Assert.ThrowsAsync<TimeoutException>(() => statuses.ToTask());
+    } finally {
+      harness.Unblock();
+    }
+    Assert.IsTrue(harness.SolversAreClosed);
+  }
+
+  /// <summary>
+  /// An engine whose solvers count overlapping Sends, and block the first Send that starts with a given prefix
+  /// until <see cref="Unblock"/> is called.
+  /// </summary>
+  private class BlockedSendHarness {
+    private readonly SemaphoreSlim unblock = new(0);
+    private readonly List<SendCountingSolver> solvers = new();
+    private int matchingSends;
+
+    public ExecutionEngine Engine { get; }
+    public SemaphoreSlim Blocked { get; } = new(0);
+
+    /// <param name="blockedSolver">If not 0, only the solver created as this one, counting from 1, blocks.</param>
+    /// <param name="breakFirstSolverAfter">After the first solver is sent a command that starts with this,
+    /// its pipe breaks.</param>
+    /// <param name="timeOutFirstCheck">Whether the first check of the first solver times out.</param>
+    public BlockedSendHarness(string blockedPrefix = null, uint timeLimit = 10, string breakFirstSolverAfter = null,
+      int blockedSolver = 0, bool timeOutFirstCheck = false, int threads = 2, Action<CommandLineOptions> configure = null,
+      bool disposeScheduler = true) {
+      var options = CommandLineOptions.FromArguments(TextWriter.Null);
+      options.VcsCores = 1;
+      // With a time limit, a run stops waiting for its check as soon as it is cancelled or the limit passes.
+      options.TimeLimit = timeLimit;
+      configure?.Invoke(options);
+      options.CreateSolver = (_, _) => {
+        lock (solvers) {
+          var solverNumber = solvers.Count + 1;
+          var solver = new SendCountingSolver(request => {
+            if (blockedPrefix != null && request.StartsWith(blockedPrefix) &&
+                (blockedSolver == 0 || blockedSolver == solverNumber) && Interlocked.Increment(ref matchingSends) == 1) {
+              Blocked.Release();
+              unblock.Wait();
+            }
+          });
+          if (solverNumber == 1) {
+            solver.BreakAfter = breakFirstSolverAfter;
+            solver.TimeOutFirstCheck = timeOutFirstCheck;
+          }
+          solvers.Add(solver);
+          return solver;
+        }
+      };
+      // More than one thread, so the next check can begin while a blocked one still occupies the thread it began on.
+      Engine = new ExecutionEngine(options, new VerificationResultCache(),
+        CustomStackSizePoolTaskScheduler.Create(ExecutionEngine.StackSize, threads), disposeScheduler);
+    }
+
+    public Program Parse(string source = @"
+procedure Foo(x: int) {
+  assert true;
+}") {
+      Assert.AreEqual(0, Parser.Parse(source.TrimStart(), "fakeFilename1", out var program));
+      return program;
+    }
+
+    /// <summary>
+    /// Verify a fresh copy of the program as the command line does, by splitting it into VCs and verifying those.
+    /// </summary>
+    public Task<PipelineOutcome> Verify(CancellationToken cancellationToken, string source = null) {
+      var program = source == null ? Parse() : Parse(source);
+      Assert.AreEqual(PipelineOutcome.ResolvedAndTypeChecked, Engine.ResolveAndTypecheck(program, "fakeFilename1", out _));
+      return Engine.InferAndVerify(TextWriter.Null, program, new PipelineStatistics(), cancellationToken: cancellationToken);
+    }
+
+    public void Unblock() => unblock.Release();
+
+    public int OverlappingSends {
+      get {
+        lock (solvers) {
+          return solvers.Sum(solver => solver.OverlappingSends);
+        }
+      }
+    }
+
+    public bool SolversAreClosed {
+      get {
+        lock (solvers) {
+          return solvers.All(solver => solver.Closed);
+        }
+      }
+    }
+  }
+
+  private class SendCountingSolver : UnsatSolver {
+    private readonly Action<string> beforeSend;
+    private int activeSends;
+    private int overlappingSends;
+
+    public SendCountingSolver(Action<string> beforeSend) {
+      this.beforeSend = beforeSend;
+    }
+
+    public int OverlappingSends => overlappingSends;
+
+    public bool Closed { get; private set; }
+
+    public override void Close() {
+      Closed = true;
+      base.Close();
+    }
+
+    public string BreakAfter { get; set; }
+    private volatile bool broken;
+
+    public bool TimeOutFirstCheck { get; set; }
+    private bool answeredFirstCheck;
+
+    public override void Send(string request) {
+      if (Interlocked.Increment(ref activeSends) > 1) {
+        Interlocked.Increment(ref overlappingSends);
+      }
+      try {
+        beforeSend(request);
+        if (TimeOutFirstCheck && !answeredFirstCheck && request == "(check-sat)") {
+          responses.Enqueue(new SExpr("unknown"));
+          return;
+        }
+        if (TimeOutFirstCheck && !answeredFirstCheck && request == "(get-info :reason-unknown)") {
+          answeredFirstCheck = true;
+          responses.Enqueue(new SExpr(":reason-unknown", new SExpr("timeout")));
+          return;
+        }
+        base.Send(request);
+        if (BreakAfter != null && request.StartsWith(BreakAfter)) {
+          broken = true;
+        }
+      } finally {
+        Interlocked.Decrement(ref activeSends);
+      }
+    }
+
+    // Answer asynchronously, as a solver process does, so a check that waits for an answer returns to its caller.
+    public override async Task PingPong() {
+      await Task.Yield();
+      if (broken) {
+        throw new IOException("Broken pipe");
+      }
+    }
+  }
+
+  [Test]
   public async Task FromSeedResetsState() {
     var options = CommandLineOptions.FromArguments(TextWriter.Null);
     options.VcsCores = 1;
