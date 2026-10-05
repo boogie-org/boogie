@@ -885,6 +885,36 @@ namespace VC
         return result;
       }
 
+      /// <summary>
+      /// The result of a check that ran out of time before the solver started on it.
+      /// </summary>
+      public VerificationRunResult TimedOutBeforeSolving(int iteration, DateTime start, TimeSpan runTime,
+        VerifierCallback callback)
+      {
+        var result = Result(iteration, start, SolverOutcome.TimeOut, runTime, Options.ErrorLimit, 0);
+        callback.OnVCResult(result);
+        return result;
+      }
+
+      private VerificationRunResult Result(int iteration, DateTime start, SolverOutcome outcome, TimeSpan runTime,
+        int maxCounterExamples, int resourceCount)
+      {
+        return new VerificationRunResult(
+          VcNum: SplitIndex + 1,
+          Iteration: iteration,
+          StartTime: start,
+          Outcome: outcome,
+          RunTime: runTime,
+          MaxCounterExamples: maxCounterExamples,
+          CounterExamples: Counterexamples,
+          Asserts: Asserts,
+          CoveredElements: CoveredElements,
+          ResourceCount: resourceCount,
+          SolverUsed: (Options as SMTLibSolverOptions)?.Solver,
+          DeclarationsAfterPruning: PrunedDeclarations
+          );
+      }
+
       public VerificationRunResult ReadOutcome(int iteration, Checker checker, VerifierCallback callback)
       {
         Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
@@ -902,21 +932,8 @@ namespace VC
             string.Join("\n  ", CoveredElements.Select(s => s.Description).OrderBy(s => s)));
         }
 
-        var resourceCount = checker.GetProverResourceCount();
-        var result = new VerificationRunResult(
-          VcNum: SplitIndex + 1,
-          Iteration: iteration,
-          StartTime: checker.ProverStart,
-          Outcome: outcome,
-          RunTime: checker.ProverRunTime,
-          MaxCounterExamples: checker.Options.ErrorLimit,
-          CounterExamples: Counterexamples,
-          Asserts: Asserts,
-          CoveredElements: CoveredElements,
-          ResourceCount: resourceCount,
-          SolverUsed: (Options as SMTLibSolverOptions)?.Solver,
-          DeclarationsAfterPruning: PrunedDeclarations
-          );
+        var result = Result(iteration, checker.ProverStart, outcome, checker.ProverRunTime,
+          checker.Options.ErrorLimit, checker.GetProverResourceCount());
         callback.OnVCResult(result);
 
         if (Options.VcsDumpSplits)

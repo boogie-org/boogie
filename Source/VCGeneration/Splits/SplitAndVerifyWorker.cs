@@ -126,6 +126,10 @@ namespace VC
       var released = false;
       Task ReleaseChecker()
       {
+        if (released)
+        {
+          return Task.CompletedTask;
+        }
         released = true;
         return checker.GoBackToIdle(beginCheckTask);
       }
@@ -136,10 +140,21 @@ namespace VC
         var timeout = KeepGoing && split.LastChance ? options.VcsFinalAssertTimeout :
           KeepGoing ? options.VcsKeepGoingTimeout :
           run.Implementation.GetTimeLimit(options);
+        var start = DateTime.UtcNow;
         beginCheckTask = await StartCheck(iteration, split, checker, timeout, cancellationToken);
         if (timeout != 0)
         {
-          await beginCheckTask.WaitAsync(TimeSpan.FromSeconds(timeout), cancellationToken);
+          try
+          {
+            await beginCheckTask.WaitAsync(TimeSpan.FromSeconds(timeout), cancellationToken);
+          }
+          catch (TimeoutException)
+          {
+            // Beginning the check took all its time, so it timed out.
+            await ProcessResultAndReleaseChecker(iteration, split, checker, ReleaseChecker, cancellationToken,
+              split.TimedOutBeforeSolving(iteration, start, TimeSpan.FromSeconds(timeout), callback));
+            return;
+          }
         }
         else
         {
@@ -152,10 +167,7 @@ namespace VC
       }
       catch
       {
-        if (!released)
-        {
-          await ReleaseChecker();
-        }
+        await ReleaseChecker();
         throw;
       }
     }
@@ -185,8 +197,9 @@ namespace VC
 
     private Implementation Implementation => run.Implementation;
 
+    /// <param name="result">The result of the check, if it is not to be read from the checker.</param>
     private async Task ProcessResultAndReleaseChecker(int iteration, Split split, Checker checker,
-      Func<Task> releaseChecker, CancellationToken cancellationToken)
+      Func<Task> releaseChecker, CancellationToken cancellationToken, VerificationRunResult result = null)
     {
       if (TrackingProgress)
       {
@@ -196,7 +209,7 @@ namespace VC
         }
       }
 
-      var result = split.ReadOutcome(iteration, checker, callback);
+      result ??= split.ReadOutcome(iteration, checker, callback);
       lock (this)
       {
         vcOutcome = MergeOutcomes(vcOutcome, result.Outcome);
