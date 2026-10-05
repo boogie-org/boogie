@@ -197,6 +197,7 @@ namespace Microsoft.Boogie
           Options.Printer.WriteTrailer(output, stats);
           return true;
         case PipelineOutcome.FatalError:
+        case PipelineOutcome.Cancelled:
           return false;
         default:
           Debug.Assert(false, "Unreachable code");
