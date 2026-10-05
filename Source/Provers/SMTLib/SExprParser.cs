@@ -16,14 +16,31 @@ public class SExprParser
 
   public event Action<string> ErrorHandler;
 
+  /// <summary>
+  /// Whether the input has ended, after which no more lines will come.
+  /// </summary>
+  public bool EndOfInput { get; private set; }
+
+  /// <param name="line">A line of input, or null to end the input.</param>
   public void AddLine(string line)
   {
     sexpLines.Enqueue(line);
   }
 
-  Task<string> ReadLine()
+  async Task<string> ReadLine()
   {
-    return sexpLines.Dequeue();
+    if (EndOfInput)
+    {
+      return null;
+    }
+
+    var line = await sexpLines.Dequeue();
+    if (line == null)
+    {
+      EndOfInput = true;
+    }
+
+    return line;
   }
   
   async Task<char> SkipWs()

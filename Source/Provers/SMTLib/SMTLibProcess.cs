@@ -148,6 +148,9 @@ namespace Microsoft.Boogie.SMTLib
         Send(PingRequest);
         while (true) {
           var response = await GetProverResponse();
+          if (response == null && sexpParser.EndOfInput) {
+            throw new ProverDiedException();
+          }
           if (IsPong(response)) {
             if (previousResponse == null) {
               throw new Exception("Request returned no response");
@@ -354,6 +357,8 @@ namespace Microsoft.Boogie.SMTLib
     {
         if (e.Data == null)
         {
+          // The solver closed its output, so a request still waiting for a response would wait forever.
+          sexpParser.AddLine(null);
           return;
         }
 
