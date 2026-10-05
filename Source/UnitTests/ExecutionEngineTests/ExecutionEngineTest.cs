@@ -444,35 +444,52 @@ procedure Bar(x: int) {
   [Test]
   public async Task FailedKeepGoingSplitReleasesTheCheckerOfItsParentOnce() {
     // The first check times out, so its split is split in two, whose checks run at the same time. The one that
-    // gets the checker of the first check succeeds. The one that gets a new solver is blocked until its time limit
-    // passes, which fails the run.
-    var harness = new BlockedSendHarness("(assert (not", blockedSolver: 2, timeOutFirstCheck: true, threads: 4,
+    // gets the checker of the first check succeeds. The one that gets a new solver fails, and that solver breaks.
+    var harness = new BlockedSendHarness(failingSolver: 2, timeOutFirstCheck: true, threads: 4,
       configure: options => {
         options.VcsCores = 2;
         options.VcsMaxKeepGoingSplits = 2;
-        options.VcsKeepGoingTimeout = 1;
-        options.VcsFinalAssertTimeout = 1;
       });
-    try {
-      Assert.CatchAsync<TimeoutException>(() => harness.Verify(CancellationToken.None, @"
+    await harness.Verify(CancellationToken.None, @"
 procedure Foo(x: int) {
   if (x > 0) {
     assert x > 1;
   } else {
     assert x < 1;
   }
-}"));
-      // Had that run given the checker of its first check back twice, both checks of this run could take it.
-      Assert.AreEqual(PipelineOutcome.VerificationCompleted, await harness.Verify(CancellationToken.None, @"
+}");
+    // Had that run given the checker of its first check back twice, both checks of this run could take it.
+    Assert.AreEqual(PipelineOutcome.VerificationCompleted, await harness.Verify(CancellationToken.None, @"
 procedure Foo(x: int) {
   assert true;
 }
 procedure Bar(x: int) {
   assert true;
 }"));
+    Assert.AreEqual(0, harness.OverlappingSends);
+  }
+
+  [Test]
+  public async Task CommandLineCheckThatTakesItsTimeLimitToBeginTimesOut() {
+    var harness = new BlockedSendHarness("(assert (not", timeLimit: 1);
+    var stats = new PipelineStatistics();
+    try {
+      // Sending the VC of Foo takes longer than the time limit of its check. With two assertions, the split is not its
+      // own last chance, whose time out would be reported as a failure of its assertion instead. Bar is checked while
+      // the abandoned check of Foo still sends to its solver.
+      Assert.AreEqual(PipelineOutcome.VerificationCompleted, await harness.Verify(CancellationToken.None, @"
+procedure Foo(x: int) {
+  assert x > 0 || x <= 0;
+  assert true;
+}
+procedure Bar(x: int) {
+  assert true;
+}", stats));
     } finally {
       harness.Unblock();
     }
+    Assert.AreEqual(1, stats.TimeoutCount);
+    Assert.AreEqual(1, stats.VerifiedCount);
     Assert.AreEqual(0, harness.OverlappingSends);
   }
 
@@ -526,9 +543,11 @@ procedure Bar(x: int) {
     /// <param name="breakFirstSolverAfter">After the first solver is sent a command that starts with this,
     /// its pipe breaks.</param>
     /// <param name="timeOutFirstCheck">Whether the first check of the first solver times out.</param>
+    /// <param name="failingSolver">If not 0, sending its first VC to the solver created as this one fails,
+    /// and breaks it.</param>
     public BlockedSendHarness(string blockedPrefix = null, uint timeLimit = 10, string breakFirstSolverAfter = null,
       int blockedSolver = 0, bool timeOutFirstCheck = false, int threads = 2, Action<CommandLineOptions> configure = null,
-      bool disposeScheduler = true) {
+      bool disposeScheduler = true, int failingSolver = 0) {
       var options = CommandLineOptions.FromArguments(TextWriter.Null);
       options.VcsCores = 1;
       // With a time limit, a run stops waiting for its check as soon as it is cancelled or the limit passes.
@@ -548,6 +567,7 @@ procedure Bar(x: int) {
             solver.BreakAfter = breakFirstSolverAfter;
             solver.TimeOutFirstCheck = timeOutFirstCheck;
           }
+          solver.FailsItsFirstVC = solverNumber == failingSolver;
           solvers.Add(solver);
           return solver;
         }
@@ -568,11 +588,15 @@ procedure Foo(x: int) {
     /// <summary>
     /// Verify a fresh copy of the program as the command line does, by splitting it into VCs and verifying those.
     /// </summary>
-    public Task<PipelineOutcome> Verify(CancellationToken cancellationToken, string source = null) {
+    public Task<PipelineOutcome> Verify(CancellationToken cancellationToken, string source = null,
+      PipelineStatistics stats = null) {
       var program = source == null ? Parse() : Parse(source);
       Assert.AreEqual(PipelineOutcome.ResolvedAndTypeChecked, Engine.ResolveAndTypecheck(program, "fakeFilename1", out _));
-      return Engine.InferAndVerify(TextWriter.Null, program, new PipelineStatistics(), cancellationToken: cancellationToken);
+      return Engine.InferAndVerify(Output, program, stats ?? new PipelineStatistics(),
+        cancellationToken: cancellationToken);
     }
+
+    public StringWriter Output { get; } = new();
 
     public void Unblock() => unblock.Release();
 
@@ -615,6 +639,8 @@ procedure Foo(x: int) {
     private volatile bool broken;
 
     public bool TimeOutFirstCheck { get; set; }
+
+    public bool FailsItsFirstVC { get; set; }
     private bool answeredFirstCheck;
 
     public override void Send(string request) {
@@ -623,6 +649,10 @@ procedure Foo(x: int) {
       }
       try {
         beforeSend(request);
+        if (FailsItsFirstVC && !broken && request.StartsWith("(assert (not")) {
+          broken = true;
+          throw new IOException("Broken pipe");
+        }
         if (TimeOutFirstCheck && !answeredFirstCheck && request == "(check-sat)") {
           responses.Enqueue(new SExpr("unknown"));
           return;
