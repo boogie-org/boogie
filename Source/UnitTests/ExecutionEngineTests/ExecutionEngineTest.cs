@@ -451,7 +451,7 @@ procedure Bar(x: int) {
   public async Task FailedKeepGoingSplitReleasesTheCheckerOfItsParentOnce() {
     // The first check times out, so its split is split in two, whose checks run at the same time. The one that
     // gets the checker of the first check succeeds. The one that gets a new solver fails, and that solver breaks.
-    var harness = new BlockedSendHarness(failingSolver: 2, timeOutFirstCheck: true, threads: 4,
+    var harness = new BlockedSendHarness(failingSolver: 2, timeOutFirstCheck: true,
       configure: options => {
         options.VcsCores = 2;
         options.VcsMaxKeepGoingSplits = 2;
@@ -464,15 +464,12 @@ procedure Foo(x: int) {
     assert x < 1;
   }
 }");
-    // Had that run given the checker of its first check back twice, both checks of this run could take it.
-    Assert.AreEqual(PipelineOutcome.VerificationCompleted, await harness.Verify(CancellationToken.None, @"
-procedure Foo(x: int) {
-  assert true;
-}
-procedure Bar(x: int) {
-  assert true;
-}"));
-    Assert.AreEqual(0, harness.OverlappingSends);
+    // Had the checker of the first check been given back twice, the pool would hand it out twice.
+    var program = harness.Parse();
+    var split = (await harness.Engine.GetVerificationTasks(program))[0].Split;
+    var pool = harness.Engine.CheckerPool;
+    Assert.AreNotSame(await pool.FindCheckerFor(program, split, CancellationToken.None),
+      await pool.FindCheckerFor(program, split, CancellationToken.None));
   }
 
   [Test]
@@ -545,14 +542,13 @@ procedure Bar(x: int) {
     public ExecutionEngine Engine { get; }
     public SemaphoreSlim Blocked { get; } = new(0);
 
-    /// <param name="blockedSolver">If not 0, only the solver created as this one, counting from 1, blocks.</param>
     /// <param name="breakFirstSolverAfter">After the first solver is sent a command that starts with this,
     /// its pipe breaks.</param>
     /// <param name="timeOutFirstCheck">Whether the first check of the first solver times out.</param>
     /// <param name="failingSolver">If not 0, sending its first VC to the solver created as this one fails,
     /// and breaks it.</param>
     public BlockedSendHarness(string blockedPrefix = null, uint timeLimit = 10, string breakFirstSolverAfter = null,
-      int blockedSolver = 0, bool timeOutFirstCheck = false, int threads = 2, Action<CommandLineOptions> configure = null,
+      bool timeOutFirstCheck = false, Action<CommandLineOptions> configure = null,
       bool disposeScheduler = true, int failingSolver = 0) {
       var options = CommandLineOptions.FromArguments(TextWriter.Null);
       options.VcsCores = 1;
@@ -564,7 +560,7 @@ procedure Bar(x: int) {
           var solverNumber = solvers.Count + 1;
           var solver = new SendCountingSolver(request => {
             if (blockedPrefix != null && request.StartsWith(blockedPrefix) &&
-                (blockedSolver == 0 || blockedSolver == solverNumber) && Interlocked.Increment(ref matchingSends) == 1) {
+                Interlocked.Increment(ref matchingSends) == 1) {
               Blocked.Release();
               unblock.Wait();
             }
@@ -580,7 +576,7 @@ procedure Bar(x: int) {
       };
       // More than one thread, so the next check can begin while a blocked one still occupies the thread it began on.
       Engine = new ExecutionEngine(options, new VerificationResultCache(),
-        CustomStackSizePoolTaskScheduler.Create(ExecutionEngine.StackSize, threads), disposeScheduler);
+        CustomStackSizePoolTaskScheduler.Create(ExecutionEngine.StackSize, 2), disposeScheduler);
     }
 
     public Program Parse(string source = @"
@@ -598,11 +594,9 @@ procedure Foo(x: int) {
       PipelineStatistics stats = null) {
       var program = source == null ? Parse() : Parse(source);
       Assert.AreEqual(PipelineOutcome.ResolvedAndTypeChecked, Engine.ResolveAndTypecheck(program, "fakeFilename1", out _));
-      return Engine.InferAndVerify(Output, program, stats ?? new PipelineStatistics(),
+      return Engine.InferAndVerify(TextWriter.Null, program, stats ?? new PipelineStatistics(),
         cancellationToken: cancellationToken);
     }
-
-    public StringWriter Output { get; } = new();
 
     public void Unblock() => unblock.Release();
 
