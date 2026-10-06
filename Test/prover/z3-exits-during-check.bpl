@@ -2,7 +2,7 @@
 // nor the next one waiting forever.
 // RUN: %boogie /proverOpt:C:"-T:1" "%s" > "%t"
 // RUN: %OutputCheck --file-to-check "%t" "%s"
-// Batch mode reports such a check as failing its assertion instead, as z3-hard-timeout.bpl expects.
+// Batch mode reads z3's `timeout` as a timeout instead, as z3-hard-timeout.bpl expects.
 // UNSUPPORTED: batch_mode
 // CHECK-L: Verification encountered solver exception (Cubes1)
 // CHECK-L: Verification encountered solver exception (Cubes2)

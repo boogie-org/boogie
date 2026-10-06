@@ -16,9 +16,6 @@ public class SExprParser
 
   public event Action<string> ErrorHandler;
 
-  /// <summary>
-  /// Whether the input has ended, after which no more lines will come.
-  /// </summary>
   public bool EndOfInput { get; private set; }
 
   /// <param name="line">A line of input, or null to end the input.</param>

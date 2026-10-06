@@ -14,8 +14,6 @@ namespace Microsoft.Boogie.SMTLib
   public class SMTLibProcess : SMTLibSolver {
     private readonly Process solver;
     private readonly SMTLibSolverOptions options;
-    // Used to synchronise between solver output and the request currently being processed.
-    private readonly AsyncQueue<string> solverOutput = new();
     // Used to synchronise between requests into this class.
     private readonly SemaphoreSlim asyncLock = new(1);
     private TextWriter toProver;
@@ -77,12 +75,6 @@ namespace Microsoft.Boogie.SMTLib
     {
       if (options.Verbosity >= 2) {
         Console.WriteLine($"[SMT-ERR-{{0}}] Solver exited with code {solver.ExitCode}.");
-      }
-
-      lock (this) {
-        while (outputReceivers.TryDequeue(out var source)) {
-          source.SetResult(null);
-        }
       }
 
       DisposeProver();
@@ -333,17 +325,6 @@ namespace Microsoft.Boogie.SMTLib
 
     #region handling input from the prover
 
-    private readonly Queue<TaskCompletionSource<string>> outputReceivers = new();
-
-    /// <summary>
-    /// This asynchronous method can not be cancelled because prover output is not reusable
-    /// so once it is expected to arrive it has to be consumed to keep the output queue free of garbage.
-    /// </summary>
-    Task<string> ReadProver()
-    {
-      return solverOutput.Dequeue();
-    }
-
     void DisposeProver()
     {
       if (cancelEvent != null)
@@ -357,7 +338,6 @@ namespace Microsoft.Boogie.SMTLib
     {
         if (e.Data == null)
         {
-          // The solver closed its output, so a request still waiting for a response would wait forever.
           sexpParser.AddLine(null);
           return;
         }
