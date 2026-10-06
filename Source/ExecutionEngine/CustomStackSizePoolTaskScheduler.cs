@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,7 +12,7 @@ namespace Microsoft.Boogie;
 /// </summary>
 public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
 {
-  private readonly AsyncQueue<Task> queue = new();
+  private readonly BlockingCollection<Task> queue = new();
   private readonly HashSet<Thread> threads;
   private readonly CancellationTokenSource disposeTokenSource = new();
 
@@ -39,7 +40,7 @@ public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
 
   protected override void QueueTask(Task task)
   {
-    queue.Enqueue(task);
+    queue.Add(task);
   }
 
   protected override bool TryExecuteTaskInline(Task task, bool taskWasPreviouslyQueued)
@@ -55,7 +56,7 @@ public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
 
   protected override IEnumerable<Task> GetScheduledTasks()
   {
-    return queue.Items;
+    return queue.ToArray();
   }
   
   private void WorkLoop()
@@ -80,32 +81,21 @@ public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
   {
     try
     {
-      var task = queue.Dequeue().Result;
+      var task = queue.Take(disposeTokenSource.Token);
       TryExecuteTask(task);
     }
-    catch (ThreadInterruptedException)
+    catch (OperationCanceledException)
     {
-    }
-    catch (Exception e)
-    {
-      if (e.GetBaseException() is OperationCanceledException)
-      {
-        // Async queue cancels tasks when it is disposed, which happens when this scheduler is disposed
-      }
-      else
-      {
-        throw;
-      }
+      // Disposing this scheduler cancels the wait for the next task
     }
   }
 
+  /// <summary>
+  /// Stops the threads from taking tasks: an idle thread ends at once, and a busy one once its task is done.
+  /// A task that is still queued is not run.
+  /// </summary>
   public void Dispose()
   {
     disposeTokenSource.Cancel();
-    queue.CancelWaitsAndClear();
-    foreach (var thread in threads)
-    {
-      thread.Interrupt();
-    }
   }
 }

@@ -47,12 +47,6 @@ public class AsyncQueue<T>
     }
   }
 
-  public void CancelWaitsAndClear() {
-    while (customers.TryDequeue(out var customer)) {
-      customer.TrySetCanceled();
-    }
-  }
-
   public int Size => items.Count;
 
   public Task<T> Dequeue()
