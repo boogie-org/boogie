@@ -26,33 +26,21 @@ yield procedure {:layer 1} main()
     }
 }
 
-atomic action {:layer 1} AtomicLock(tid: X)
-modifies l;
+yield procedure {:layer 0} Lock(tid: X);
+refines atomic action {:layer 1} AtomicLock
 { assume l == nil; l := tid; }
 
-yield procedure {:layer 0} Lock(tid: X);
-refines AtomicLock;
-
-atomic action {:layer 1} AtomicUnlock()
-modifies l;
+yield procedure {:layer 0} Unlock();
+refines atomic action {:layer 1} AtomicUnlock
 { l := nil; }
 
-yield procedure {:layer 0} Unlock();
-refines AtomicUnlock;
-
-atomic action {:layer 1} AtomicSet(val: int)
-modifies x;
+yield procedure {:layer 0} Set(val: int);
+refines atomic action {:layer 1} AtomicSet
 { x := val; }
 
-yield procedure {:layer 0} Set(val: int);
-refines AtomicSet;
-
-atomic action {:layer 1} AtomicAllocateLow() returns ({:linear} xl: One X)
-modifies unallocated;
-{ assume xl->val != nil; assume Map_Contains(unallocated, xl); call One_Get(unallocated, xl); }
-
 yield procedure {:layer 0} AllocateLow() returns ({:linear} xl: One X);
-refines AtomicAllocateLow;
+refines atomic action {:layer 1} AtomicAllocateLow
+{ assume xl->val != nil; assume Map_Contains(unallocated, xl); call One_Get(unallocated, xl); }
 
 yield procedure {:layer 1} foo({:linear_in} tid: One X, val: int)
 requires {:layer 1} tid->val != nil;

@@ -28,16 +28,10 @@ refines skip;
 // ###########################################################################
 // Low level atomic actions
 
-left action {:layer 1} inc_atomic ()
-modifies x;
+yield procedure {:layer 0} inc ();
+refines left action {:layer 1} inc_atomic
 { x := x + 1; }
 
-left action {:layer 1} dec_atomic ()
-modifies x;
-{ x := x - 1; }
-
-yield procedure {:layer 0} inc ();
-refines inc_atomic;
-
 yield procedure {:layer 0} dec ();
-refines dec_atomic;
+refines left action {:layer 1} dec_atomic
+{ x := x - 1; }

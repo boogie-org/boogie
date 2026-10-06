@@ -87,7 +87,8 @@ requires call YieldConsumer(x, receive_handle);
 ////////////////////////////////////////////////////////////////////////////////
 
 yield procedure {:layer 0} send (m: int, {:linear} send_handle: One ChannelHandle);
-refines atomic action {:layer 1} _ {
+refines atomic action {:layer 1} _
+{
   var channel: Channel;
   var C: [int]int;
   var head, tail: int;
@@ -103,7 +104,8 @@ refines atomic action {:layer 1} _ {
 }
 
 yield procedure {:layer 0} receive ({:linear} receive_handle: One ChannelHandle) returns (m: int);
-refines atomic action {:layer 1} _ {
+refines atomic action {:layer 1} _
+{
   var channel: Channel;
   var C: [int]int;
   var head, tail: int;

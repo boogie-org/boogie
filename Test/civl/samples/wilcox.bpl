@@ -4,10 +4,7 @@
 var {:layer 0,2} x: int;
 
 yield procedure {:layer 0} IncX();
-refines AtomicIncX;
-
-both action {:layer 1} AtomicIncX()
-modifies x;
+refines both action {:layer 1} AtomicIncX
 { x := x + 1; }
 
 yield procedure {:layer 1} SlowAdd(n: int)

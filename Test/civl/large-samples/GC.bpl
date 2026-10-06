@@ -1995,99 +1995,73 @@ pure action TidCombine({:linear_in} tid_left:Tid, {:linear_in} tid_right:Tid) re
     call One_Put(tid->ps, p);
 }
 
-atomic action {:layer 1,95} AtomicPrimitiveReadField(x: int, f: fld) returns (y: int)
-{ assert memAddr(x) && fieldAddr(f); y := mem[x][f]; }
 yield procedure {:layer 0} PrimitiveReadField(x: int, f: fld) returns (y: int);
-refines AtomicPrimitiveReadField;
+refines atomic action {:layer 1,95} AtomicPrimitiveReadField
+{ assert memAddr(x) && fieldAddr(f); y := mem[x][f]; }
 
-atomic action {:layer 1,95} AtomicPrimitiveWriteField(x: int, f: fld, y: int)
-modifies mem;
-{ assert memAddr(x) && fieldAddr(f); mem[x][f] := y; }
 yield procedure {:layer 0} PrimitiveWriteField(x: int, f: fld, y: int);
-refines AtomicPrimitiveWriteField;
+refines atomic action {:layer 1,95} AtomicPrimitiveWriteField
+{ assert memAddr(x) && fieldAddr(f); mem[x][f] := y; }
 
-atomic action {:layer 1,95} AtomicPrimitiveReadMarkStackPtr() returns (val: int)
-{ val := MarkStackPtr; }
 yield procedure {:layer 0} PrimitiveReadMarkStackPtr() returns (val: int);
-refines AtomicPrimitiveReadMarkStackPtr;
+refines atomic action {:layer 1,95} AtomicPrimitiveReadMarkStackPtr
+{ val := MarkStackPtr; }
 
-atomic action {:layer 1,95} AtomicPrimitiveSetMarkStackPtr(val: int)
-modifies MarkStackPtr;
-{ MarkStackPtr := val; }
 yield procedure {:layer 0} PrimitiveSetMarkStackPtr(val: int);
-refines AtomicPrimitiveSetMarkStackPtr;
+refines atomic action {:layer 1,95} AtomicPrimitiveSetMarkStackPtr
+{ MarkStackPtr := val; }
 
-atomic action {:layer 1,95} AtomicPrimitiveReadMarkStack(ptr: int) returns (val: int)
-{ val := MarkStack[ptr]; }
 yield procedure {:layer 0} PrimitiveReadMarkStack(ptr: int) returns (val: int);
-refines AtomicPrimitiveReadMarkStack;
+refines atomic action {:layer 1,95} AtomicPrimitiveReadMarkStack
+{ val := MarkStack[ptr]; }
 
-atomic action {:layer 1,95} AtomicPrimitiveWriteMarkStack(ptr: int, val: int)
-modifies MarkStack;
-{ MarkStack[ptr] := val; }
 yield procedure {:layer 0} PrimitiveWriteMarkStack(ptr: int, val: int);
-refines AtomicPrimitiveWriteMarkStack;
+refines atomic action {:layer 1,95} AtomicPrimitiveWriteMarkStack
+{ MarkStack[ptr] := val; }
 
-atomic action {:layer 1,95} AtomicPrimitiveReadCollectorPhase() returns (phase: int)
-{ phase := collectorPhase; }
 yield procedure {:layer 0} PrimitiveReadCollectorPhase() returns (phase: int);
-refines AtomicPrimitiveReadCollectorPhase;
+refines atomic action {:layer 1,95} AtomicPrimitiveReadCollectorPhase
+{ phase := collectorPhase; }
 
-atomic action {:layer 1,95} AtomicPrimitiveSetCollectorPhase(phase:int)
-modifies collectorPhase;
-{ collectorPhase := phase; }
 yield procedure {:layer 0} PrimitiveSetCollectorPhase(phase: int);
-refines AtomicPrimitiveSetCollectorPhase;
+refines atomic action {:layer 1,95} AtomicPrimitiveSetCollectorPhase
+{ collectorPhase := phase; }
 
-atomic action {:layer 1,95} AtomicPrimitiveReadMutatorPhase(i: int) returns (phase: int)
-{ phase := mutatorPhase[i]; }
 yield procedure {:layer 0} PrimitiveReadMutatorPhase(i: int) returns (phase: int);
-refines AtomicPrimitiveReadMutatorPhase;
+refines atomic action {:layer 1,95} AtomicPrimitiveReadMutatorPhase
+{ phase := mutatorPhase[i]; }
 
-atomic action {:layer 1,95} AtomicPrimitiveSetMutatorPhase(i: int, phase: int)
-modifies mutatorPhase;
-{ mutatorPhase[i] := phase; }
 yield procedure {:layer 0} PrimitiveSetMutatorPhase(i: int, phase: int);
-refines AtomicPrimitiveSetMutatorPhase;
+refines atomic action {:layer 1,95} AtomicPrimitiveSetMutatorPhase
+{ mutatorPhase[i] := phase; }
 
-atomic action {:layer 1,95} AtomicPrimitiveReadSweepPtr() returns(val: int)
-{ val := sweepPtr; }
 yield procedure {:layer 0} PrimitiveReadSweepPtr() returns(val: int);
-refines AtomicPrimitiveReadSweepPtr;
+refines atomic action {:layer 1,95} AtomicPrimitiveReadSweepPtr
+{ val := sweepPtr; }
 
-atomic action {:layer 1,95} AtomicPrimitiveSetSweepPtr(val: int)
-modifies sweepPtr;
-{ sweepPtr := val; }
 yield procedure {:layer 0} PrimitiveSetSweepPtr(val: int);
-refines AtomicPrimitiveSetSweepPtr;
+refines atomic action {:layer 1,95} AtomicPrimitiveSetSweepPtr
+{ sweepPtr := val; }
 
-atomic action {:layer 1,95} AtomicPrimitiveReadRootScanOn() returns(val: bool)
-{ val := rootScanOn; }
 yield procedure {:layer 0} PrimitiveReadRootScanOn() returns(val: bool);
-refines AtomicPrimitiveReadRootScanOn;
+refines atomic action {:layer 1,95} AtomicPrimitiveReadRootScanOn
+{ val := rootScanOn; }
 
-atomic action {:layer 1,95} AtomicPrimitiveSetRootScanOn(val: bool)
-modifies rootScanOn;
-{ rootScanOn := val; }
 yield procedure {:layer 0} PrimitiveSetRootScanOn(val: bool);
-refines AtomicPrimitiveSetRootScanOn;
+refines atomic action {:layer 1,95} AtomicPrimitiveSetRootScanOn
+{ rootScanOn := val; }
 
-atomic action {:layer 1,95} AtomicPrimitiveReadRootScanBarrier() returns(val: int)
-{ val := rootScanBarrier; }
 yield procedure {:layer 0} PrimitiveReadRootScanBarrier() returns(val: int);
-refines AtomicPrimitiveReadRootScanBarrier;
+refines atomic action {:layer 1,95} AtomicPrimitiveReadRootScanBarrier
+{ val := rootScanBarrier; }
 
-atomic action {:layer 1,95} AtomicPrimitiveSetRootScanBarrier(val: int)
-modifies rootScanBarrier;
-{ rootScanBarrier := val; }
 yield procedure {:layer 0} PrimitiveSetRootScanBarrier(val: int);
-refines AtomicPrimitiveSetRootScanBarrier;
+refines atomic action {:layer 1,95} AtomicPrimitiveSetRootScanBarrier
+{ rootScanBarrier := val; }
 
-atomic action {:layer 1,95} AtomicPrimitiveAddRootScanBarrier(val: int)
-modifies rootScanBarrier;
-{ rootScanBarrier := rootScanBarrier + val; }
 yield procedure {:layer 0} PrimitiveAddRootScanBarrier(val: int);
-refines AtomicPrimitiveAddRootScanBarrier;
+refines atomic action {:layer 1,95} AtomicPrimitiveAddRootScanBarrier
+{ rootScanBarrier := rootScanBarrier + val; }
 
 pure action PrimitiveMutatorsInRootScanBarrierAdd({:linear_in} tid_right: Tid, {:linear_in} mutatorsInRootScanBarrier: UnitMap (One Piece))
     returns ({:linear} mutatorsInRootScanBarrier': UnitMap (One Piece))
@@ -2113,30 +2087,24 @@ pure action PrimitiveMutatorsInRootScanBarrierRemove({:linear} tid_left: Tid, {:
     tid_right := Tid(tid_left->i, ps);
 }
 
-atomic action {:layer 1,95} AtomicPrimitiveWriteRoot(i: idx, val: int)
-modifies root;
-{ assert rootAddr(i); root[i] := val; }
 yield procedure {:layer 0} PrimitiveWriteRoot(i: idx, val: int);
-refines AtomicPrimitiveWriteRoot;
+refines atomic action {:layer 1,95} AtomicPrimitiveWriteRoot
+{ assert rootAddr(i); root[i] := val; }
 
-atomic action {:layer 1,95} AtomicPrimitiveReadRoot(i: idx) returns (val: int)
-{ assert rootAddr(i); val := root[i]; }
 yield procedure {:layer 0} PrimitiveReadRoot(i: idx) returns (val: int);
-refines AtomicPrimitiveReadRoot;
+refines atomic action {:layer 1,95} AtomicPrimitiveReadRoot
+{ assert rootAddr(i); val := root[i]; }
 
-atomic action {:layer 1,95} AtomicPrimitiveReadColor(i: int) returns (val: int)
-{ assert memAddr(i); val := Color[i]; }
 yield procedure {:layer 0} PrimitiveReadColor(i: int) returns (val: int);
-refines AtomicPrimitiveReadColor;
+refines atomic action {:layer 1,95} AtomicPrimitiveReadColor
+{ assert memAddr(i); val := Color[i]; }
 
-atomic action {:layer 1,95} AtomicPrimitiveSetColor(i: int, val: int)
-modifies Color;
-{ assert memAddr(i); Color[i] := val; }
 yield procedure {:layer 0} PrimitiveSetColor(i: int, val: int);
-refines AtomicPrimitiveSetColor;
+refines atomic action {:layer 1,95} AtomicPrimitiveSetColor
+{ assert memAddr(i); Color[i] := val; }
 
-atomic action {:layer 1,95} AtomicPrimitiveLockCAS() returns (status: bool)
-modifies lock;
+yield procedure {:layer 0} PrimitiveLockCAS() returns (status: bool);
+refines atomic action {:layer 1,95} AtomicPrimitiveLockCAS
 {
     if (*) {
         assume !lock; lock := true; status := true;
@@ -2144,11 +2112,7 @@ modifies lock;
         status := false;
     }
 }
-yield procedure {:layer 0} PrimitiveLockCAS() returns (status: bool);
-refines AtomicPrimitiveLockCAS;
 
-atomic action {:layer 1,95} AtomicPrimitiveLockClear()
-modifies lock;
-{ lock := false; }
 yield procedure {:layer 0} PrimitiveLockClear();
-refines AtomicPrimitiveLockClear;
+refines atomic action {:layer 1,95} AtomicPrimitiveLockClear
+{ lock := false; }

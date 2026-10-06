@@ -25,22 +25,16 @@ preserves call Inv();
   call inc_s();
 }
 
-right action {:layer 1} INC_T ()
-modifies t;
+yield procedure {:layer 0} inc_t ();
+refines right action {:layer 1} INC_T
 {
   assert s <= t;
   t := t + 1;
 }
 
-atomic action {:layer 1} INC_S ()
-modifies s;
+yield procedure {:layer 0} inc_s ();
+refines atomic action {:layer 1} INC_S
 {
   assert s < t;
   s := s + 1;
 }
-
-yield procedure {:layer 0} inc_t ();
-refines INC_T;
-
-yield procedure {:layer 0} inc_s ();
-refines INC_S;

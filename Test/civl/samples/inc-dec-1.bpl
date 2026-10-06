@@ -51,16 +51,10 @@ ensures {:layer 1} x == old(x) - N;
 // ###########################################################################
 // Low level atomic actions
 
-both action {:layer 1} atomic_inc ()
-modifies x;
+yield procedure {:layer 0} inc ();
+refines both action {:layer 1} atomic_inc
 { x := x + 1; }
 
-both action {:layer 1} atomic_dec ()
-modifies x;
-{ x := x - 1; }
-
-yield procedure {:layer 0} inc ();
-refines atomic_inc;
-
 yield procedure {:layer 0} dec ();
-refines atomic_dec;
+refines both action {:layer 1} atomic_dec
+{ x := x - 1; }

@@ -20,12 +20,14 @@ function {:inline} LeftTicket(right: One (Tag Role)): One (Tag Role)
 }
 
 yield procedure {:layer 0} IsBarrierOn() returns (b: bool);
-refines atomic action {:layer 1} _ {
+refines atomic action {:layer 1} _
+{
     b := barrier_on->val;
 }
 
 yield procedure {:layer 0} EnterBarrier({:linear_in} left: One (Tag Role));
-refines atomic action {:layer 1} _ {
+refines atomic action {:layer 1} _
+{
     assert left->val->val == Left();
     call One_Put(parked, left);
     unparked := unparked - 1;
@@ -33,7 +35,8 @@ refines atomic action {:layer 1} _ {
 
 yield procedure {:layer 0} TryLeaveBarrier({:linear} right: One (Tag Role))
     returns ({:linear} attempt: Option (One (Tag Role)));
-refines atomic action {:layer 1} _ {
+refines atomic action {:layer 1} _
+{
     var {:linear} left: One (Tag Role);
 
     assert right->val->val == Right();
@@ -49,12 +52,14 @@ refines atomic action {:layer 1} _ {
 }
 
 yield procedure {:layer 0} SetBarrier(b: bool);
-refines atomic action {:layer 1} _ {
+refines atomic action {:layer 1} _
+{
     barrier_on->val := b;
 }
 
 yield procedure {:layer 0} AllParked() returns (b: bool);
-refines atomic action {:layer 1} _ {
+refines atomic action {:layer 1} _
+{
     b := unparked == 0;
 }
 

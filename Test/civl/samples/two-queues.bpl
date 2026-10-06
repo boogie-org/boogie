@@ -84,12 +84,14 @@ preserves call NegInv();
 // Primitives
 
 yield procedure {:layer 0} ReadPos() returns (loc: Loc);
-refines both action {:layer 1} _ {
+refines both action {:layer 1} _
+{
     loc := pos->val->loc;
 }
 
 yield procedure {:layer 0} ReadNeg() returns (loc: Loc);
-refines both action {:layer 1} _ {
+refines both action {:layer 1} _
+{
     loc := neg->val->loc;
 }
 

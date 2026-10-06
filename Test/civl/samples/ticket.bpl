@@ -73,11 +73,9 @@ preserves call Yield1();
   call {:layer 1} T := Copy(T[m := true]);
 }
 
-atomic action {:layer 1} AtomicGetTicket#0 () returns (m: int)
-modifies t;
-{ m := t; t := t + 1; }
 yield procedure {:layer 0} GetTicket#0 () returns (m: int);
-refines AtomicGetTicket#0;
+refines atomic action {:layer 1} AtomicGetTicket#0
+{ m := t; t := t + 1; }
 
 atomic action {:layer 2} AtomicWaitAndEnter ({:linear} tid: One Tid, m:int)
 modifies cs;
@@ -90,10 +88,9 @@ preserves call Yield1();
   call {:layer 1} cs := Copy(Some(tid->val));
 }
 
-atomic action {:layer 1} AtomicWaitAndEnter#0 (m:int)
-{ assume m == s; }
 yield procedure {:layer 0} WaitAndEnter#0 (m:int);
-refines AtomicWaitAndEnter#0;
+refines atomic action {:layer 1} AtomicWaitAndEnter#0
+{ assume m == s; }
 
 atomic action {:layer 2} AtomicLeave ({:linear} tid: One Tid)
 modifies cs, s;
@@ -106,8 +103,6 @@ preserves call Yield1();
   call {:layer 1} cs := Copy(None());
 }
 
-atomic action {:layer 1} AtomicLeave#0 ()
-modifies s;
-{ s := s + 1; }
 yield procedure {:layer 0} Leave#0 ();
-refines AtomicLeave#0;
+refines atomic action {:layer 1} AtomicLeave#0
+{ s := s + 1; }

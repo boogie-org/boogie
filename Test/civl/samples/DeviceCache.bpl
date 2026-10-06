@@ -125,68 +125,42 @@ preserves call YieldToReadCache(tid, old(currsize));
     }
 }
 
-atomic action {:layer 1} AtomicInit({:linear_in} xls: UnitMap (One X))
-modifies currsize, newsize, lock, ghostLock;
+yield procedure {:layer 0} Init({:linear_in} xls: UnitMap (One X));
+refines atomic action {:layer 1} AtomicInit
 { assert xls->dom == MapConst(true); currsize := 0; newsize := 0; lock := nil; ghostLock := nil; }
 
-yield procedure {:layer 0} Init({:linear_in} xls: UnitMap (One X));
-refines AtomicInit;
-
-right action {:layer 1} AtomicReadCurrsize({:linear} tid: One X) returns (val: int)
+yield procedure {:layer 0} ReadCurrsize({:linear} tid: One X) returns (val: int);
+refines right action {:layer 1} AtomicReadCurrsize
 { assert tid->val != nil; assert lock == tid->val || ghostLock == tid->val; val := currsize; }
 
-yield procedure {:layer 0} ReadCurrsize({:linear} tid: One X) returns (val: int);
-refines AtomicReadCurrsize;
-
-right action {:layer 1} AtomicReadNewsize({:linear} tid: One X) returns (val: int)
+yield procedure {:layer 0} ReadNewsize({:linear} tid: One X) returns (val: int);
+refines right action {:layer 1} AtomicReadNewsize
 { assert tid->val != nil; assert lock == tid->val || ghostLock == tid->val; val := newsize; }
 
-yield procedure {:layer 0} ReadNewsize({:linear} tid: One X) returns (val: int);
-refines AtomicReadNewsize;
-
-atomic action {:layer 1} AtomicWriteNewsize({:linear} tid: One X, val: int)
-modifies newsize, ghostLock;
+yield procedure {:layer 0} WriteNewsize({:linear} tid: One X, val: int);
+refines atomic action {:layer 1} AtomicWriteNewsize
 { assert tid->val != nil; assert lock == tid->val && ghostLock == nil; newsize := val; ghostLock := tid->val; }
 
-yield procedure {:layer 0} WriteNewsize({:linear} tid: One X, val: int);
-refines AtomicWriteNewsize;
-
-atomic action {:layer 1} AtomicWriteCurrsize({:linear} tid: One X, val: int)
-modifies currsize, ghostLock;
+yield procedure {:layer 0} WriteCurrsize({:linear} tid: One X, val: int);
+refines atomic action {:layer 1} AtomicWriteCurrsize
 { assert tid->val != nil; assert lock == tid->val && ghostLock == tid->val; currsize := val; ghostLock := nil; }
 
-yield procedure {:layer 0} WriteCurrsize({:linear} tid: One X, val: int);
-refines AtomicWriteCurrsize;
-
-atomic action {:layer 1} AtomicReadCacheEntry({:linear} tid: One X, index: int)
+yield procedure {:layer 0} ReadCacheEntry({:linear} tid: One X, index: int);
+refines atomic action {:layer 1} AtomicReadCacheEntry
 { assert 0 <= index && index < currsize; }
 
-yield procedure {:layer 0} ReadCacheEntry({:linear} tid: One X, index: int);
-refines AtomicReadCacheEntry;
-
-right action {:layer 1} AtomicWriteCacheEntry({:linear} tid: One X, index: int)
+yield procedure {:layer 0} WriteCacheEntry({:linear} tid: One X, index: int);
+refines right action {:layer 1} AtomicWriteCacheEntry
 { assert tid->val != nil; assert currsize <= index && ghostLock == tid->val; }
 
-yield procedure {:layer 0} WriteCacheEntry({:linear} tid: One X, index: int);
-refines AtomicWriteCacheEntry;
-
-right action {:layer 1} atomic_acquire({:linear} tid: One X)
-modifies lock;
+yield procedure {:layer 0} acquire({:linear} tid: One X);
+refines right action {:layer 1} atomic_acquire
 { assert tid->val != nil; assume lock == nil; lock := tid->val; }
 
-yield procedure {:layer 0} acquire({:linear} tid: One X);
-refines atomic_acquire;
-
-left action {:layer 1} atomic_release({:linear} tid: One X)
-modifies lock;
+yield procedure {:layer 0} release({:linear} tid: One X);
+refines left action {:layer 1} atomic_release
 { assert tid->val != nil; assert lock == tid->val; lock := nil; }
 
-yield procedure {:layer 0} release({:linear} tid: One X);
-refines atomic_release;
-
-atomic action {:layer 1} AtomicAllocateLow() returns ({:linear} tid: One X)
-modifies unallocated;
-{ assume tid->val != nil; assume Map_Contains(unallocated, tid); call One_Get(unallocated, tid); }
-
 yield procedure {:layer 0} AllocateLow() returns ({:linear} tid: One X);
-refines AtomicAllocateLow;
+refines atomic action {:layer 1} AtomicAllocateLow
+{ assume tid->val != nil; assume Map_Contains(unallocated, tid); call One_Get(unallocated, tid); }

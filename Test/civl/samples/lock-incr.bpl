@@ -86,28 +86,23 @@ refines WriteSpec;
     call WRITE(v);
 }
 
-atomic action {:layer 1,1} atomic_CAS(old_b: bool, new_b: bool) returns (success: bool)
-modifies b;
+yield procedure {:layer 0} CAS(old_b: bool, new_b: bool) returns (success: bool);
+refines atomic action {:layer 1,1} atomic_CAS
 {
     success := b == old_b;
     if (success) {
         b := new_b;
     }
 }
-yield procedure {:layer 0} CAS(old_b: bool, new_b: bool) returns (success: bool);
-refines atomic_CAS;
 
-atomic action {:layer 1,1} atomic_READ() returns (v: int)
+yield procedure {:layer 0} READ() returns (v: int);
+refines atomic action {:layer 1,1} atomic_READ
 {
     v := count;
 }
-yield procedure {:layer 0} READ() returns (v: int);
-refines atomic_READ;
 
-atomic action {:layer 1,1} atomic_WRITE(v: int)
-modifies count;
+yield procedure {:layer 0} WRITE(v: int);
+refines atomic action {:layer 1,1} atomic_WRITE
 {
     count := v;
 }
-yield procedure {:layer 0} WRITE(v: int);
-refines atomic_WRITE;

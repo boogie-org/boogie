@@ -109,8 +109,8 @@ modifies col_dom, col_val, dec_dom, dec_val;
   }
 }
 
-left action {:layer 1} Q_atomic (r:int, s:int, v:int, {:linear_in} p: One Perm)
-modifies col_dom, col_val, dec_dom, dec_val;
+yield procedure {:layer 0} Q (r:int, s:int, v:int, {:linear_in} p: One Perm);
+refines left action {:layer 1} Q_atomic
 {
   assert is_perm(s,r,p->val);
   col_dom[r][s] := true;
@@ -121,16 +121,11 @@ modifies col_dom, col_val, dec_dom, dec_val;
   }
 }
 
-both action {:layer 1} read_init_val_atomic (pid:Pid) returns (v:int)
+yield procedure {:layer 0} read_init_val (pid:Pid) returns (v:int);
+refines both action {:layer 1} read_init_val_atomic
 {
   v := init_val[pid];
 }
-
-yield procedure {:layer 0} Q (r:int, s:int, v:int, {:linear_in} p: One Perm);
-refines Q_atomic;
-
-yield procedure {:layer 0} read_init_val (pid:Pid) returns (v:int);
-refines read_init_val_atomic;
 
 // ###########################################################################
 // Linear permissions

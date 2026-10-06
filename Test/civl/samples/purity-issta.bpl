@@ -59,29 +59,18 @@ refines atomic_Free;
   call release(tid, i);
 }
 
-right action {:layer 1} atomic_acquire({:linear} tid: One X, i: int)
-modifies l;
+yield procedure {:layer 0} acquire({:linear} tid: One X, i: int);
+refines right action {:layer 1} atomic_acquire
 { assert tid->val != nil; assume l[i] == nil; l[i] := tid->val; }
 
-left action {:layer 1} atomic_release({:linear} tid: One X, i: int)
-modifies l;
+yield procedure {:layer 0} release({:linear} tid: One X, i: int);
+refines left action {:layer 1} atomic_release
 { assert tid->val != nil; assert l[i] == tid->val; l[i] := nil; }
 
-both action {:layer 1} atomic_Read({:linear} tid: One X, i: int) returns (val: bool)
+yield procedure {:layer 0} Read({:linear} tid: One X, i: int) returns (val: bool);
+refines both action {:layer 1} atomic_Read
 { assert tid->val != nil; assert l[i] == tid->val; val := status[i]; }
 
-both action {:layer 1} atomic_Write({:linear} tid: One X, i: int, val: bool)
-modifies status;
-{ assert tid->val != nil; assert l[i] == tid->val; status[i] := val; }
-
-yield procedure {:layer 0} acquire({:linear} tid: One X, i: int);
-refines atomic_acquire;
-
-yield procedure {:layer 0} release({:linear} tid: One X, i: int);
-refines atomic_release;
-
-yield procedure {:layer 0} Read({:linear} tid: One X, i: int) returns (val: bool);
-refines atomic_Read;
-
 yield procedure {:layer 0} Write({:linear} tid: One X, i: int, val: bool);
-refines atomic_Write;
+refines both action {:layer 1} atomic_Write
+{ assert tid->val != nil; assert l[i] == tid->val; status[i] := val; }

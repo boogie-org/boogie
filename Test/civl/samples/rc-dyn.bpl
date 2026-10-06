@@ -68,12 +68,14 @@ ensures call YieldTag(right);
 }
 
 yield procedure {:layer 0} AddCounter({:linear_in} one_loc: One Loc, {:linear_in} counter: Counter);
-refines atomic action {:layer 1} _ {
+refines atomic action {:layer 1} _
+{
     call Map_Put(counters, one_loc, counter);
 }
 
 yield procedure {:layer 0} ReadLow({:linear} ref: Ref) returns (val: int);
-refines atomic action {:layer 1} _ {
+refines atomic action {:layer 1} _
+{
     var one_loc: One Loc;
 
     one_loc := One(ref->loc);
@@ -81,7 +83,8 @@ refines atomic action {:layer 1} _ {
 }
 
 yield procedure {:layer 0} WriteLow({:linear} ref: Ref, val: int);
-refines atomic action {:layer 1} _ {
+refines atomic action {:layer 1} _
+{
     var one_loc: One Loc;
 
     one_loc := One(ref->loc);
@@ -89,7 +92,8 @@ refines atomic action {:layer 1} _ {
 }
 
 yield procedure {:layer 0} DropReferenceCount({:linear_in} ref: Ref);
-refines atomic action {:layer 1} _ {
+refines atomic action {:layer 1} _
+{
     var one_loc: One Loc;
     var counter: Counter;
     var val: int;
@@ -108,7 +112,8 @@ refines atomic action {:layer 1} _ {
 }
 
 yield procedure {:layer 0} SplitLow({:linear_in} ref: Ref) returns ({:linear} left: Ref, {:linear} right: Ref);
-refines atomic action {:layer 1} _ {
+refines atomic action {:layer 1} _
+{
     var loc: Loc;
     var a, b, middle: real;
     var tags, left_tags, right_tags: UnitMap (One (Tag real));

@@ -21,7 +21,8 @@ atomic action {:layer 2} AtomicTryInc() returns (ok: bool) {
 }
 
 yield procedure {:layer 0} CAS(prev: int, next: int) returns (ok: bool);
-refines atomic action {:layer 1} _ {
+refines atomic action {:layer 1} _
+{
     ok := (count == prev);
     if (ok) {
         count := next;
@@ -29,7 +30,8 @@ refines atomic action {:layer 1} _ {
 }
 
 yield procedure {:layer 0} Read() returns (val: int); 
-refines atomic action {:layer 1} _ {
+refines atomic action {:layer 1} _
+{
     val := count;
 }
 

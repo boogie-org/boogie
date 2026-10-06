@@ -91,32 +91,24 @@ function {:inline} AllocInv(count: int, unallocated: UnitMap (One int)): bool
   (forall x: int :: Map_Contains(unallocated, One(x)) || x < count)
 }
 
-atomic action {:layer 1,1} AtomicReadLow(i: int) returns (val: int)
+yield procedure {:layer 0} ReadLow(i: int) returns (val: int);
+refines atomic action {:layer 1,1} AtomicReadLow
 {
   val := a[i];
 }
 
-atomic action {:layer 1,1} AtomicWriteLow(i: int, val: int)
-modifies a;
+yield procedure {:layer 0} WriteLow(i: int, val: int);
+refines atomic action {:layer 1,1} AtomicWriteLow
 {
   a[i] := val;
 }
 
-atomic action {:layer 1,1} AtomicAllocateLow() returns (i: int)
-modifies count;
+yield procedure {:layer 0} AllocateLow() returns (i: int);
+refines atomic action {:layer 1,1} AtomicAllocateLow
 {
   i := count;
   count := i + 1;
 }
-
-yield procedure {:layer 0} ReadLow(i: int) returns (val: int);
-refines AtomicReadLow;
-
-yield procedure {:layer 0} WriteLow(i: int, val: int);
-refines AtomicWriteLow;
-
-yield procedure {:layer 0} AllocateLow() returns (i: int);
-refines AtomicAllocateLow;
 
 pure action MakeLinear(i: int, {:linear_in} unallocated: UnitMap (One int))
 returns ({:linear} tid: One int, {:linear} unallocated': UnitMap (One int))

@@ -96,16 +96,15 @@ pure action Alloc(tid: Tid, ptr: int, allocMap: Bijection) returns (allocMap': B
     allocMap' := Bijection(Map_Remove(allocMap'->tidToPtr, tid), Map_Remove(allocMap'->ptrToTid, ptr'));
 }
 
-atomic action {:layer 1} AtomicDecrementFreeSpace({:linear} tid: One Tid)
-modifies freeSpace;
+yield procedure {:layer 0} DecrementFreeSpace({:linear} tid: One Tid);
+refines atomic action {:layer 1} AtomicDecrementFreeSpace
 {
     assume 0 < freeSpace;
     freeSpace := freeSpace - 1;
 }
-yield procedure {:layer 0} DecrementFreeSpace({:linear} tid: One Tid);
-refines AtomicDecrementFreeSpace;
 
-atomic action {:layer 1} AtomicAllocIfPtrFree({:linear} tid: One Tid, ptr: int) returns (spaceFound:bool)
+yield procedure {:layer 0} AllocIfPtrFree({:linear} tid: One Tid, ptr: int) returns (spaceFound:bool);
+refines atomic action {:layer 1} AtomicAllocIfPtrFree
 {
     assert memAddr(ptr);
     spaceFound := isFree[ptr];
@@ -113,17 +112,14 @@ atomic action {:layer 1} AtomicAllocIfPtrFree({:linear} tid: One Tid, ptr: int) 
         isFree[ptr] := false;
     }
 }
-yield procedure {:layer 0} AllocIfPtrFree({:linear} tid: One Tid, ptr: int) returns (spaceFound:bool);
-refines AtomicAllocIfPtrFree;
 
-atomic action {:layer 1} AtomicReclaim() returns (ptr: int)
+yield procedure {:layer 0} Reclaim() returns (ptr: int);
+refines atomic action {:layer 1} AtomicReclaim
 {
     assume memAddr(ptr) && !isFree[ptr];
     freeSpace := freeSpace + 1;
     isFree[ptr] := true;
 }
-yield procedure {:layer 0} Reclaim() returns (ptr: int);
-refines AtomicReclaim;
 
 yield invariant {:layer 1} YieldInvariant#1({:linear} tid: One Tid, status: bool, i: int);
 preserves Map_Contains(allocMap->tidToPtr, tid->val) == status;

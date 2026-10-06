@@ -78,8 +78,8 @@ refines AtomicLowerLeave;
   call {:layer 1} lock := Copy(nil);
 }
 
-atomic action {:layer 1} AtomicCAS(prev: bool, next: bool) returns (status: bool)
-modifies b;
+yield procedure {:layer 0} CAS(prev: bool, next: bool) returns (status: bool);
+refines atomic action {:layer 1} AtomicCAS
 {
   if (b == prev) {
     b := next;
@@ -89,12 +89,6 @@ modifies b;
   }
 }
 
-atomic action {:layer 1} AtomicSET(next: bool)
-modifies b;
-{ b := next; }
-
-yield procedure {:layer 0} CAS(prev: bool, next: bool) returns (status: bool);
-refines AtomicCAS;
-
 yield procedure {:layer 0} SET(next: bool);
-refines AtomicSET;
+refines atomic action {:layer 1} AtomicSET
+{ b := next; }

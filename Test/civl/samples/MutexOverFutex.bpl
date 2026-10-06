@@ -101,55 +101,45 @@ preserves inSlowPath[tid->val];
 
 /// Primitive atomic actions
 
-atomic action {:layer 1} AtomicCmpXchg(expected: int, newValue: int) returns (oldValue: int)
-modifies futex;
+yield procedure {:layer 0} CmpXchg(expected: int, newValue: int) returns (oldValue: int);
+refines atomic action {:layer 1} AtomicCmpXchg
 {
   oldValue := futex->word;
   if (oldValue == expected) {
     futex->word := newValue;
   }
 }
-yield procedure {:layer 0} CmpXchg(expected: int, newValue: int) returns (oldValue: int);
-refines AtomicCmpXchg;
 
-atomic action {:layer 1} AtomicFetchSub(val: int) returns (oldValue: int)
-modifies futex;
+yield procedure {:layer 0} FetchSub(val: int) returns (oldValue: int);
+refines atomic action {:layer 1} AtomicFetchSub
 {
   oldValue := futex->word;
   futex->word := oldValue - 1;
 }
-yield procedure {:layer 0} FetchSub(val: int) returns (oldValue: int);
-refines AtomicFetchSub;
 
-atomic action {:layer 1} AtomicStore(val: int)
-modifies futex;
+yield procedure {:layer 0} Store(val: int);
+refines atomic action {:layer 1} AtomicStore
 {
   futex->word := val;
 }
-yield procedure {:layer 0} Store(val: int);
-refines AtomicStore;
 
-atomic action {:layer 1} AtomicWaitEnter(tid: Tid, val: int)
-modifies futex;
+yield procedure {:layer 0} WaitEnter(tid: Tid, val: int);
+refines atomic action {:layer 1} AtomicWaitEnter
 {
   assert !futex->waiters[tid];
   if (futex->word == val) {
     futex->waiters[tid] := true;
   }
 }
-yield procedure {:layer 0} WaitEnter(tid: Tid, val: int);
-refines AtomicWaitEnter;
 
-atomic action {:layer 1} AtomicWaitExit(tid: Tid)
-modifies futex;
+yield procedure {:layer 0} WaitExit(tid: Tid);
+refines atomic action {:layer 1} AtomicWaitExit
 {
   assume !futex->waiters[tid];
 }
-yield procedure {:layer 0} WaitExit(tid: Tid);
-refines AtomicWaitExit;
 
-atomic action {:layer 1} AtomicWake()
-modifies futex;
+yield procedure {:layer 0} Wake();
+refines atomic action {:layer 1} AtomicWake
 {
   var tid: Tid;
   if (futex->waiters != MapConst(false)) {
@@ -157,5 +147,3 @@ modifies futex;
     futex->waiters[tid] := false;
   }
 }
-yield procedure {:layer 0} Wake();
-refines AtomicWake;

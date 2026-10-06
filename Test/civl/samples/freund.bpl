@@ -26,8 +26,8 @@ refines AtomicInc;
     }
 }
 
-atomic action {:layer 1} AtomicCAS(prev: int, next: int) returns (status: bool)
-modifies count;
+yield procedure {:layer 0} CAS(prev: int, next: int) returns (status: bool);
+refines atomic action {:layer 1} AtomicCAS
 {
     if (count == prev) {
         count := next;
@@ -36,14 +36,11 @@ modifies count;
         status := false;
     }
 }
-yield procedure {:layer 0} CAS(prev: int, next: int) returns (status: bool);
-refines AtomicCAS;
 
-atomic action {:layer 1} AtomicRead() returns (val: int)
+yield procedure {:layer 0} Read() returns (val: int);
+refines atomic action {:layer 1} AtomicRead
 {
     val := count;
 }
-yield procedure {:layer 0} Read() returns (val: int);
-refines AtomicRead;
 
 yield invariant {:layer 1} Yield();

@@ -48,6 +48,7 @@ refines atomic action {:layer 1,1} _
 }
 
 yield procedure {:layer 0} _incr_y();
-refines atomic action {:layer 1,1} _ {
+refines atomic action {:layer 1,1} _
+{
     y := y + 1;
 }

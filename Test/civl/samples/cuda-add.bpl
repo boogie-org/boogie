@@ -50,16 +50,19 @@ refines AtomicAdd;
 // Layer 0 primitives: slot-local reads/writes with linear tid ownership.
 
 yield procedure {:layer 0} ReadA({:linear} tid: One int) returns (v: int);
-refines both action {:layer 1,2} _ {
+refines both action {:layer 1,2} _
+{
   v := a[tid->val];
 }
 
 yield procedure {:layer 0} ReadB({:linear} tid: One int) returns (v: int);
-refines both action {:layer 1,2} _ {
+refines both action {:layer 1,2} _
+{
   v := b[tid->val];
 }
 
 yield procedure {:layer 0} WriteC({:linear} tid: One int, v: int);
-refines both action {:layer 1,2} _ {
+refines both action {:layer 1,2} _
+{
   c[tid->val] := v;
 }
