@@ -564,6 +564,7 @@ namespace Microsoft.Boogie
     /// and then attempts to verify it.  Returns:
     ///  - Done if command line specified no verification
     ///  - FatalError if a fatal error occurred, in which case an error has been printed to console
+    ///  - Cancelled if verification was cancelled
     ///  - VerificationCompleted if inference and verification completed, in which the out
     ///    parameters contain meaningful values
     /// </summary>
@@ -769,7 +770,7 @@ namespace Microsoft.Boogie
         foreach (var task in tasks) {
           task.Result.ProcessXml(this);
         }
-      } catch(TaskCanceledException) {
+      } catch(OperationCanceledException) {
         outcome = PipelineOutcome.Cancelled;
       } catch(ProverException e) {
         Options.Printer.ErrorWriteLine(outputWriter, "Fatal Error: ProverException: {0}", e.Message);
