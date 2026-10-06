@@ -61,11 +61,10 @@ namespace Microsoft.Boogie
     }
 
     /// <summary>
-    /// Return this checker to its pool, or close it if its prover can not be reused.
+    /// Return this checker to its pool, or close it if its prover cannot be reused.
     /// </summary>
-    /// <param name="beginCheck">The task of the check the caller started on this checker, if any.
-    /// A caller that stopped waiting for that check, because of cancellation or a time limit,
-    /// leaves it sending commands to the prover, so the prover can not be given to another check.</param>
+    /// <param name="beginCheck">The task of the check the caller began on this checker, if any. A caller that stopped
+    /// waiting for it, on cancellation or a time limit, may leave it sending to the prover.</param>
     public async Task GoBackToIdle(Task beginCheck = null)
     {
       Contract.Requires(IsBusy);
@@ -80,7 +79,7 @@ namespace Microsoft.Boogie
           return;
         }
         catch (Exception) {
-          // The prover did not answer in time, or failed, so it can not be trusted with another check.
+          // The prover did not answer in time, or failed, so it cannot be trusted with another check.
         }
       }
       Pool.CheckerDied();

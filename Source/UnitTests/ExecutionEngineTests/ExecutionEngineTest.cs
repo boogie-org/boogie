@@ -374,12 +374,18 @@ procedure Foo(x: int) {
   [Test]
   public async Task TimedOutCheckDoesNotShareItsSolverWithTheNextCheck() {
     var harness = new BlockedSendHarness("(assert (not", timeLimit: 1);
-    var task = (await harness.Engine.GetVerificationTasks(harness.Parse()))[0];
+    var tasks = await harness.Engine.GetVerificationTasks(harness.Parse(@"
+procedure Foo(x: int) {
+  assert true;
+}
+procedure Bar(x: int) {
+  assert true;
+}"));
     try {
-      // The time limit passes while the check is still sending its VC.
-      Assert.ThrowsAsync<TimeoutException>(() => task.TryRun()!.ToTask());
+      // The time limit passes while the check of Foo is still sending its VC.
+      Assert.AreEqual(SolverOutcome.TimeOut, ((Completed)await tasks[0].TryRun()!.ToTask()).Result.Outcome);
 
-      Assert.IsTrue(await task.TryRun()!.ToTask() is Completed);
+      Assert.AreEqual(SolverOutcome.Valid, ((Completed)await tasks[1].TryRun()!.ToTask()).Result.Outcome);
     } finally {
       harness.Unblock();
     }
@@ -519,8 +525,8 @@ procedure Bar(x: int) {
       var statuses = task.TryRun()!;
       await harness.Blocked.WaitAsync();
       harness.Engine.Dispose();
-      // Giving the checker back to the disposed pool must not replace the timeout with another failure.
-      Assert.ThrowsAsync<TimeoutException>(() => statuses.ToTask());
+      // Giving the checker back to the disposed pool must not replace the timeout with a failure.
+      Assert.AreEqual(SolverOutcome.TimeOut, ((Completed)await statuses.ToTask()).Result.Outcome);
     } finally {
       harness.Unblock();
     }

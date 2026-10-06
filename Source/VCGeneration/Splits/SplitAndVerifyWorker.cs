@@ -121,8 +121,7 @@ namespace VC
       var checker = await split.parent.CheckerPool.FindCheckerFor(split.parent.program, split, cancellationToken);
 
       Task beginCheckTask = null;
-      // Results are processed, and further splits verified, after the checker is given back,
-      // so a failure that comes later must not give it back again.
+      // Further splits are verified after the checker is given back, so a failure in them must not give it back again.
       var released = false;
       Task ReleaseChecker()
       {
@@ -140,30 +139,15 @@ namespace VC
         var timeout = KeepGoing && split.LastChance ? options.VcsFinalAssertTimeout :
           KeepGoing ? options.VcsKeepGoingTimeout :
           run.Implementation.GetTimeLimit(options);
-        var start = DateTime.UtcNow;
         beginCheckTask = await StartCheck(iteration, split, checker, timeout, cancellationToken);
-        if (timeout != 0)
+        var result = await split.WaitForBeginCheck(beginCheckTask, iteration, timeout, callback, cancellationToken);
+        if (result == null)
         {
-          try
-          {
-            await beginCheckTask.WaitAsync(TimeSpan.FromSeconds(timeout), cancellationToken);
-          }
-          catch (TimeoutException)
-          {
-            // Beginning the check took all its time, so it timed out.
-            await ProcessResultAndReleaseChecker(iteration, split, checker, ReleaseChecker, cancellationToken,
-              split.TimedOutBeforeSolving(iteration, start, TimeSpan.FromSeconds(timeout), callback));
-            return;
-          }
+          await checker.ProverTask;
+          result = split.ReadOutcome(iteration, checker, callback);
+          TotalProverElapsedTime += result.RunTime;
         }
-        else
-        {
-          await beginCheckTask;
-        }
-        await checker.ProverTask;
-        var proverRunTime = checker.ProverRunTime;
-        await ProcessResultAndReleaseChecker(iteration, split, checker, ReleaseChecker, cancellationToken);
-        TotalProverElapsedTime += proverRunTime;
+        await ProcessResultAndReleaseChecker(split, checker, result, ReleaseChecker, cancellationToken);
       }
       catch
       {
@@ -197,9 +181,8 @@ namespace VC
 
     private Implementation Implementation => run.Implementation;
 
-    /// <param name="result">The result of the check, if it is not to be read from the checker.</param>
-    private async Task ProcessResultAndReleaseChecker(int iteration, Split split, Checker checker,
-      Func<Task> releaseChecker, CancellationToken cancellationToken, VerificationRunResult result = null)
+    private async Task ProcessResultAndReleaseChecker(Split split, Checker checker, VerificationRunResult result,
+      Func<Task> releaseChecker, CancellationToken cancellationToken)
     {
       if (TrackingProgress)
       {
@@ -209,7 +192,6 @@ namespace VC
         }
       }
 
-      result ??= split.ReadOutcome(iteration, checker, callback);
       lock (this)
       {
         vcOutcome = MergeOutcomes(vcOutcome, result.Outcome);

@@ -886,14 +886,30 @@ namespace VC
       }
 
       /// <summary>
-      /// The result of a check that ran out of time before the solver started on it.
+      /// Waits for <paramref name="beginCheck"/>, which begins this split's check. If it outlasts the time limit,
+      /// stops waiting and returns the check's result, a time out. Otherwise returns null.
       /// </summary>
-      public VerificationRunResult TimedOutBeforeSolving(int iteration, DateTime start, TimeSpan runTime,
-        VerifierCallback callback)
+      public async Task<VerificationRunResult> WaitForBeginCheck(Task beginCheck, int iteration, uint timeout,
+        VerifierCallback callback, CancellationToken cancellationToken)
       {
-        var result = Result(iteration, start, SolverOutcome.TimeOut, runTime, Options.ErrorLimit, 0);
-        callback.OnVCResult(result);
-        return result;
+        if (timeout == 0)
+        {
+          await beginCheck;
+          return null;
+        }
+        var start = DateTime.UtcNow;
+        try
+        {
+          await beginCheck.WaitAsync(TimeSpan.FromSeconds(timeout), cancellationToken);
+          return null;
+        }
+        catch (TimeoutException)
+        {
+          var result = Result(iteration, start, SolverOutcome.TimeOut, TimeSpan.FromSeconds(timeout),
+            Options.ErrorLimit, 0);
+          callback.OnVCResult(result);
+          return result;
+        }
       }
 
       private VerificationRunResult Result(int iteration, DateTime start, SolverOutcome outcome, TimeSpan runTime,
