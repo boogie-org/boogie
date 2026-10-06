@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Boogie;
 using NUnit.Framework;
 using SMTLib;
 
@@ -12,14 +14,12 @@ public class SExprParserTest {
   [Test]
   public async Task ReadsAfterTheEndOfTheInputDoNotWait() {
     var parser = new SExprParser();
-    parser.AddLine("unsat");
+    parser.AddLine("(model");
     parser.AddLine(null);
 
-    Assert.AreEqual(1, (await parser.ParseSExprs(true).ToListAsync()).Count);
-    for (var i = 0; i < 3; i++) {
-      var exprs = await parser.ParseSExprs(true).ToListAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(10));
-      Assert.AreEqual(0, exprs.Count);
-    }
+    Task<List<SExpr>> Parse() => parser.ParseSExprs(true).ToListAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(10));
+    Assert.AreEqual("model", (await Parse()).Single().Name);
+    Assert.AreEqual(0, (await Parse()).Count);
     Assert.IsTrue(parser.EndOfInput);
   }
 }
