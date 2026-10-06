@@ -3,12 +3,8 @@
 
 datatype Role { Left(), Right() }
 
-const N: int;
-axiom 0 < N;
-
 const Mutators: UnitMap (One (Tag Role));
-axiom Mutators->dom == (lambda ticket: One (Tag Role):: ticket->val->val == Left());
-axiom Set_Size(Mutators->dom) == N;
+axiom (forall ticket: One (Tag Role):: Map_Contains(Mutators, ticket) ==> ticket->val->val == Left());
 
 var {:layer 0,1} barrier_on: Tag bool;
 var {:layer 0,1} unparked: int;
@@ -65,7 +61,7 @@ refines atomic action {:layer 1} _
 
 yield invariant {:layer 1} BarrierInv();
 preserves Set_IsSubset(parked->dom, Mutators->dom);
-preserves Set_Size(parked->dom) + unparked == N;
+preserves Set_Size(parked->dom) + unparked == Set_Size(Mutators->dom);
 
 yield invariant {:layer 1} MutatorInv({:linear} right: One (Tag Role));
 preserves right->val->val == Right();
@@ -95,6 +91,7 @@ ensures {:layer 1} left == LeftTicket(right);
 yield procedure {:layer 1} Mutator({:linear_in} initial_left: One (Tag Role), {:linear} right: One (Tag Role))
 requires {:layer 1} right->val->val == Right() && initial_left == LeftTicket(right);
 preserves call BarrierInv();
+requires {:layer 1} Map_Contains(Mutators, LeftTicket(right));
 {
     var b: bool;
     var {:linear} left: One (Tag Role);
@@ -149,7 +146,7 @@ requires call CollectorInv(tid, false, false);
         call SetBarrier(true);
         call BarrierInv() | CollectorInv(tid, true, false);
         call WaitForAllParked(tid);
-        assert {:layer 1} Set_Size(parked->dom) == N;
+        assert {:layer 1} parked->dom == Mutators->dom;
         call SetBarrier(false);
     }
 }
