@@ -148,9 +148,6 @@ namespace Microsoft.Boogie.SMTLib
         Send(PingRequest);
         while (true) {
           var response = await GetProverResponse();
-          if (response == null && sexpParser.EndOfInput) {
-            throw new ProverDiedException();
-          }
           if (IsPong(response)) {
             if (previousResponse == null) {
               throw new Exception("Request returned no response");
@@ -224,6 +221,9 @@ namespace Microsoft.Boogie.SMTLib
         var exprs = await sexpParser.ParseSExprs(true).ToListAsync();
         Contract.Assert(exprs.Count <= 1);
         if (exprs.Count == 0) {
+          if (sexpParser.EndOfInput) {
+            throw new ProverDiedException();
+          }
           return null;
         }
 
