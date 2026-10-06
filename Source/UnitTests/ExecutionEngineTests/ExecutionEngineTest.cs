@@ -51,6 +51,76 @@ public class ExecutionEngineTest {
   }
 
   [Test]
+  public void TaskStartsWhileTheThreadPoolIsStarved()
+  {
+    // The scheduler has threads of its own, so handing one of them a task must not need a thread pool thread.
+    var scheduler = CustomStackSizePoolTaskScheduler.Create(ExecutionEngine.StackSize, 1);
+    var thread = Task.Factory.StartNew(() => Thread.CurrentThread, CancellationToken.None,
+      TaskCreationOptions.None, scheduler).Result;
+    Assert.IsTrue(SpinWait.SpinUntil(() => thread.ThreadState.HasFlag(System.Threading.ThreadState.WaitSleepJoin),
+      TimeSpan.FromSeconds(10)));
+    ThreadPool.GetMinThreads(out var minWorkers, out _);
+    // Not disposed: the pool may start some of the blocking work items only after the test is done.
+    var unblock = new ManualResetEventSlim();
+    var blocked = 0;
+    try {
+      for (int i = 0; i < minWorkers + 8; i++) {
+        ThreadPool.UnsafeQueueUserWorkItem(_ => {
+          Interlocked.Increment(ref blocked);
+          unblock.Wait();
+        }, null);
+      }
+      Assert.IsTrue(SpinWait.SpinUntil(() => Volatile.Read(ref blocked) >= minWorkers, TimeSpan.FromSeconds(10)));
+      var task = Task.Factory.StartNew(() => { }, CancellationToken.None, TaskCreationOptions.None, scheduler);
+      Assert.IsTrue(task.Wait(TimeSpan.FromSeconds(2)));
+    } finally {
+      unblock.Set();
+      scheduler.Dispose();
+    }
+  }
+
+  [Test]
+  public void DisposeWhileThreadsFinishTasks()
+  {
+    // A thread that finishes its task while its scheduler is disposed starts to wait for the next one.
+    for (int i = 0; i < 300; i++) {
+      var scheduler = CustomStackSizePoolTaskScheduler.Create(ExecutionEngine.StackSize, 4);
+      for (int j = 0; j < 50; j++) {
+        Task.Factory.StartNew(() => { }, CancellationToken.None, TaskCreationOptions.None, scheduler);
+      }
+      scheduler.Dispose();
+    }
+  }
+
+  [Test]
+  public void DisposeEndsAnIdleThread()
+  {
+    var scheduler = CustomStackSizePoolTaskScheduler.Create(ExecutionEngine.StackSize, 1);
+    var thread = Task.Factory.StartNew(() => Thread.CurrentThread, CancellationToken.None,
+      TaskCreationOptions.None, scheduler).Result;
+    scheduler.Dispose();
+    Assert.IsTrue(thread.Join(TimeSpan.FromSeconds(10)));
+  }
+
+  [Test]
+  public async Task TaskThatRunsWhenItsSchedulerIsDisposedCompletes()
+  {
+    var scheduler = CustomStackSizePoolTaskScheduler.Create(ExecutionEngine.StackSize, 1);
+    using var release = new ManualResetEvent(false);
+    Thread thread = null;
+    var task = Task.Factory.StartNew(() => {
+      Volatile.Write(ref thread, Thread.CurrentThread);
+      release.WaitOne();
+    }, CancellationToken.None, TaskCreationOptions.None, scheduler);
+    // Dispose while the task waits.
+    Assert.IsTrue(SpinWait.SpinUntil(() => Volatile.Read(ref thread) is { } running &&
+      running.ThreadState.HasFlag(System.Threading.ThreadState.WaitSleepJoin), TimeSpan.FromSeconds(10)));
+    scheduler.Dispose();
+    release.Set();
+    await task;
+  }
+
+  [Test]
   public void ResolutionErrorOnGetVerificationTasks()
   {
     var programString = @"
