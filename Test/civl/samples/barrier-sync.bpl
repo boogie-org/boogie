@@ -153,7 +153,7 @@ yield procedure {:layer 1} Collector({:linear} tid: One Loc)
 preserves call BarrierInv();
 requires call CollectorInv(tid, false, false);
 {
-    call Createmutators(tid);
+    call CreateMutators(tid);
     while (true)
         invariant {:yields} true;
         invariant call BarrierInv();
@@ -167,7 +167,7 @@ requires call CollectorInv(tid, false, false);
     }
 }
 
-yield procedure {:layer 1} Createmutators({:linear} tid: One Loc)
+yield procedure {:layer 1} CreateMutators({:linear} tid: One Loc)
 preserves call BarrierInv();
 preserves call CollectorInv(tid, false, false);
 {
@@ -189,6 +189,6 @@ preserves call CollectorInv(tid, false, false);
         call {:layer 1} Assume(!Map_Contains(mutators, new_one_loc));
         call AddMutator(new_one_loc);
         async call Mutator(left, right);
-        call Createmutators(tid);
+        call CreateMutators(tid);
     }
 }
