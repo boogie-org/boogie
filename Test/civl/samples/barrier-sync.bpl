@@ -6,13 +6,14 @@ datatype Role { Left(), Right() }
 var {:layer 0,1} barrier_on: Tag bool;
 var {:layer 0,1} unparked: int;
 var {:layer 0,1} {:linear} parked: UnitMap (One (Tag Role));
-var {:layer 0,1} {:linear} Mutators: UnitMap (One Loc);
+var {:layer 0,1} {:linear} mutators: UnitMap (One Loc);
 
 function {:inline} LeftTicket(right: One (Tag Role)): One (Tag Role)
 {
     One(Tag(right->val->loc, Left()))
 }
 
+// applies a one-one function pointwise to each member of one_locs
 function {:inline} LeftTickets(one_locs: [One Loc]bool): [One (Tag Role)]bool {
     (lambda ticket: One (Tag Role):: Set_Contains(one_locs, One(ticket->val->loc)) && ticket->val->val == Left())
 }
@@ -65,22 +66,22 @@ yield procedure {:layer 0} AddMutator({:linear_in} one_loc: One Loc);
 refines atomic action {:layer 1} _
 {
     unparked := unparked + 1;
-    call One_Put(Mutators, one_loc);
+    call One_Put(mutators, one_loc);
 }
 
 yield invariant {:layer 1} BarrierInv();
-preserves Set_Size(parked->dom) + unparked == Set_Size((Mutators->dom));
+preserves Set_Size(parked->dom) + unparked == Set_Size((mutators->dom));
 preserves (forall ticket: One (Tag Role)::
-            Map_Contains(parked, ticket) ==> Map_Contains(Mutators, One(ticket->val->loc)) && ticket->val->val == Left());
+            Map_Contains(parked, ticket) ==> Map_Contains(mutators, One(ticket->val->loc)) && ticket->val->val == Left());
 
 yield invariant {:layer 1} MutatorInv({:linear} right: One (Tag Role), in_barrier: bool);
 preserves right->val->val == Right();
-preserves Map_Contains(Mutators, One(right->val->loc));
+preserves Map_Contains(mutators, One(right->val->loc));
 preserves in_barrier ==> Map_Contains(parked, LeftTicket(right));
 
 yield invariant {:layer 1} CollectorInv({:linear} tid: One Loc, on: bool, done: bool);
 preserves barrier_on == Tag(tid->val, on);
-preserves done ==> on && (forall one_loc: One Loc:: Map_Contains(Mutators, one_loc) ==> Map_Contains(parked, One(Tag(one_loc->val, Left()))));
+preserves done ==> on && (forall one_loc: One Loc:: Map_Contains(mutators, one_loc) ==> Map_Contains(parked, One(Tag(one_loc->val, Left()))));
 
 yield procedure {:layer 1} WaitForRelease({:linear} right: One (Tag Role))
     returns ({:linear} left: One (Tag Role))
@@ -141,8 +142,8 @@ ensures call CollectorInv(tid, true, true);
     {
         call done := AllParked();
         if (done) {
-            call {:layer 1} Assume(Set_Size(Mutators->dom) == Set_Size(LeftTickets(Mutators->dom)));
-            call {:layer 1} Lemma_SetSize_Subset(parked->dom, LeftTickets(Mutators->dom));
+            call {:layer 1} Assume(Set_Size(mutators->dom) == Set_Size(LeftTickets(mutators->dom)));
+            call {:layer 1} Lemma_SetSize_Subset(parked->dom, LeftTickets(mutators->dom));
             return;
         }
     }
@@ -152,7 +153,7 @@ yield procedure {:layer 1} Collector({:linear} tid: One Loc)
 preserves call BarrierInv();
 requires call CollectorInv(tid, false, false);
 {
-    call CreateMutators(tid);
+    call Createmutators(tid);
     while (true)
         invariant {:yields} true;
         invariant call BarrierInv();
@@ -161,12 +162,12 @@ requires call CollectorInv(tid, false, false);
         call SetBarrier(true);
         call BarrierInv() | CollectorInv(tid, true, false);
         call WaitForAllParked(tid);
-        assert {:layer 1} (forall one_loc: One Loc:: Map_Contains(Mutators, one_loc) ==> Map_Contains(parked, One(Tag(one_loc->val, Left()))));
+        assert {:layer 1} (forall one_loc: One Loc:: Map_Contains(mutators, one_loc) ==> Map_Contains(parked, One(Tag(one_loc->val, Left()))));
         call SetBarrier(false);
     }
 }
 
-yield procedure {:layer 1} CreateMutators({:linear} tid: One Loc)
+yield procedure {:layer 1} Createmutators({:linear} tid: One Loc)
 preserves call BarrierInv();
 preserves call CollectorInv(tid, false, false);
 {
@@ -185,9 +186,9 @@ preserves call CollectorInv(tid, false, false);
         right := One(Tag(new_one_loc->val, Right()));
         call One_Get(slots, left);
         call One_Get(slots, right);
-        call {:layer 1} Assume(!Map_Contains(Mutators, new_one_loc));
+        call {:layer 1} Assume(!Map_Contains(mutators, new_one_loc));
         call AddMutator(new_one_loc);
         async call Mutator(left, right);
-        call CreateMutators(tid);
+        call Createmutators(tid);
     }
 }
