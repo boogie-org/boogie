@@ -1,0 +1,8 @@
+IntervalStrictBound.bpl(20,5): Error: this assertion could not be proved
+Execution trace:
+    IntervalStrictBound.bpl(15,3): anon0
+    IntervalStrictBound.bpl(18,7): anon4_Then
+    IntervalStrictBound.bpl(19,5): anon5_LoopHead
+    IntervalStrictBound.bpl(19,5): anon5_LoopDone
+
+Boogie program verifier finished with 0 verified, 1 error
