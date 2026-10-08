@@ -17,7 +17,7 @@ public class SExprParserTest {
     parser.AddLine("(model");
     parser.AddLine(null);
 
-    Task<List<SExpr>> Parse() => parser.ParseSExprs(true).ToListAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(10));
+    Task<List<SExpr>> Parse() => parser.ParseSExprs(true).WaitAsync(TimeSpan.FromSeconds(10));
     Assert.AreEqual("model", (await Parse()).Single().Name);
     Assert.AreEqual(0, (await Parse()).Count);
     Assert.IsTrue(parser.EndOfInput);

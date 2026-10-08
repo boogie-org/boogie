@@ -208,7 +208,7 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       while (true) {
-        var exprs = await sexpParser.ParseSExprs(true).ToListAsync();
+        var exprs = await sexpParser.ParseSExprs(true);
         Contract.Assert(exprs.Count <= 1);
         if (exprs.Count == 0) {
           if (sexpParser.EndOfInput) {
