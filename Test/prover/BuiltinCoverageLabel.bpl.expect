@@ -1,0 +1,1 @@
+Fatal Error: ProverException: {:builtin "aux$$assume$$a"} names a symbol Boogie declares itself
