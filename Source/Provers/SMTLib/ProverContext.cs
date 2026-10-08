@@ -122,7 +122,7 @@ namespace Microsoft.Boogie
   /// </summary>
   public class DeclFreeProverContext : ProverContext
   {
-    private SMTLibOptions options;
+    protected SMTLibOptions options;
     protected VCExpressionGenerator gen;
     protected VCGenerationOptions genOptions;
     protected Boogie2VCExprTranslator translator;
