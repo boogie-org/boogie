@@ -1,5 +1,7 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
+// RUN: %parallel-boogie -infer:j "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
 
 var {:linear} g: One int;
 
