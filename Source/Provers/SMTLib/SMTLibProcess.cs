@@ -334,31 +334,27 @@ namespace Microsoft.Boogie.SMTLib
 
     /// <summary>
     /// Passes the lines that the solver writes to the stream to the handler, and then null once the stream ends.
-    /// The lines are read on a thread of their own: Process.BeginOutputReadLine would hand each one to the thread pool,
-    /// so the solver's answers would wait for the pool whenever it is busy.
+    /// The stream is read on a thread of its own: Process.BeginOutputReadLine reads on the thread pool, so the solver's
+    /// answers would wait for the pool whenever it is busy.
     /// </summary>
     private void ReadLines(StreamReader stream, Action<string> handleLine, string streamName)
     {
       new Thread(() =>
       {
-        while (true)
+        string line;
+        do
         {
-          string line;
           try
           {
             line = stream.ReadLine();
           }
-          catch (Exception e) when (e is IOException or ObjectDisposedException)
+          catch (IOException)
           {
             line = null;
           }
 
           handleLine(line);
-          if (line == null)
-          {
-            return;
-          }
-        }
+        } while (line != null);
       })
       {
         IsBackground = true,
