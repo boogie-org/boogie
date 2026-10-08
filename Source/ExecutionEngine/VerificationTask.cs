@@ -123,27 +123,26 @@ public class VerificationTask : IVerificationTask {
       yield return new Queued();
     }
     var checker = await checkerTask;
+    Task? beginCheckTask = null;
     try
     {
       yield return new Running();
 
       var collector = new VerificationResultCollector(Split.Options);
-      var beginCheckTask = engine.LargeThreadTaskFactory.StartNew(() => Split.BeginCheck(Split.Run.OutputWriter, checker, collector,
+      beginCheckTask = engine.LargeThreadTaskFactory.StartNew(() => Split.BeginCheck(Split.Run.OutputWriter, checker, collector,
         modelViewInfo, timeout, Split.Run.Implementation.GetResourceLimit(Split.Options), cancellationToken), cancellationToken).Unwrap();
-      if (timeout != 0)
+      var result = await Split.WaitForBeginCheck(beginCheckTask, 0, timeout, collector, cancellationToken);
+      if (result == null)
       {
-        beginCheckTask = beginCheckTask.WaitAsync(TimeSpan.FromSeconds(timeout), cancellationToken);
+        await checker.ProverTask.WaitAsync(cancellationToken);
+        result = Split.ReadOutcome(0, checker, collector);
       }
-      await beginCheckTask;
-
-      await checker.ProverTask.WaitAsync(cancellationToken);
-      var result = Split.ReadOutcome(0, checker, collector);
 
       CacheStatus = new Completed(result);
       yield return CacheStatus;
     }
     finally {
-      await checker.GoBackToIdle();
+      await checker.GoBackToIdle(beginCheckTask);
     }
   }
 

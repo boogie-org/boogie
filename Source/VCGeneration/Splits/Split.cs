@@ -885,6 +885,52 @@ namespace VC
         return result;
       }
 
+      /// <summary>
+      /// Waits for <paramref name="beginCheck"/>, which begins this split's check. If it outlasts the time limit,
+      /// stops waiting and returns the check's result, a time out. Otherwise returns null.
+      /// </summary>
+      public async Task<VerificationRunResult> WaitForBeginCheck(Task beginCheck, int iteration, uint timeout,
+        VerifierCallback callback, CancellationToken cancellationToken)
+      {
+        if (timeout == 0)
+        {
+          await beginCheck;
+          return null;
+        }
+        var start = DateTime.UtcNow;
+        try
+        {
+          await beginCheck.WaitAsync(TimeSpan.FromSeconds(timeout), cancellationToken);
+          return null;
+        }
+        catch (TimeoutException)
+        {
+          var result = Result(iteration, start, SolverOutcome.TimeOut, TimeSpan.FromSeconds(timeout),
+            Options.ErrorLimit, 0);
+          callback.OnVCResult(result);
+          return result;
+        }
+      }
+
+      private VerificationRunResult Result(int iteration, DateTime start, SolverOutcome outcome, TimeSpan runTime,
+        int maxCounterExamples, int resourceCount)
+      {
+        return new VerificationRunResult(
+          VcNum: SplitIndex + 1,
+          Iteration: iteration,
+          StartTime: start,
+          Outcome: outcome,
+          RunTime: runTime,
+          MaxCounterExamples: maxCounterExamples,
+          CounterExamples: Counterexamples,
+          Asserts: Asserts,
+          CoveredElements: CoveredElements,
+          ResourceCount: resourceCount,
+          SolverUsed: (Options as SMTLibSolverOptions)?.Solver,
+          DeclarationsAfterPruning: PrunedDeclarations
+          );
+      }
+
       public VerificationRunResult ReadOutcome(int iteration, Checker checker, VerifierCallback callback)
       {
         Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
@@ -902,21 +948,8 @@ namespace VC
             string.Join("\n  ", CoveredElements.Select(s => s.Description).OrderBy(s => s)));
         }
 
-        var resourceCount = checker.GetProverResourceCount();
-        var result = new VerificationRunResult(
-          VcNum: SplitIndex + 1,
-          Iteration: iteration,
-          StartTime: checker.ProverStart,
-          Outcome: outcome,
-          RunTime: checker.ProverRunTime,
-          MaxCounterExamples: checker.Options.ErrorLimit,
-          CounterExamples: Counterexamples,
-          Asserts: Asserts,
-          CoveredElements: CoveredElements,
-          ResourceCount: resourceCount,
-          SolverUsed: (Options as SMTLibSolverOptions)?.Solver,
-          DeclarationsAfterPruning: PrunedDeclarations
-          );
+        var result = Result(iteration, checker.ProverStart, outcome, checker.ProverRunTime,
+          checker.Options.ErrorLimit, checker.GetProverResourceCount());
         callback.OnVCResult(result);
 
         if (Options.VcsDumpSplits)

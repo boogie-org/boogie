@@ -96,7 +96,11 @@ namespace VC
 
     public void CheckerDied()
     {
-      checkersSemaphore.Release();
+      lock (availableCheckers) {
+        if (!disposed) {
+          checkersSemaphore.Release();
+        }
+      }
     }
   }
 }
