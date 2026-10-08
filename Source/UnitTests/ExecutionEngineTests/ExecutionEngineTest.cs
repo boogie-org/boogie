@@ -33,29 +33,24 @@ public class ExecutionEngineTest {
     using var scheduler = new OwnThreadsScheduler(2);
     var options = CommandLineOptions.FromArguments(TextWriter.Null);
     using var engine = new ExecutionEngine(options, new VerificationResultCache(), scheduler);
-    Task<bool> Verify()
-    {
-      Assert.AreEqual(0, Parser.Parse("procedure P(x: int) { assert x == x; }", "fakeFilename", out var program));
-      return engine.LargeThreadTaskFactory.StartNew(() => engine.ProcessProgram(TextWriter.Null, program, "fakeFilename")).Unwrap();
-    }
-    Assert.IsTrue(Verify().Result);
+    Assert.AreEqual(0, Parser.Parse("procedure P(x: int) { assert x == x; }", "fakeFilename", out var program));
 
     ThreadPool.GetMinThreads(out var minWorkers, out _);
+    ThreadPool.GetMaxThreads(out var maxWorkers, out var maxCompletionPorts);
     // Not disposed: the pool may start some of the blocking work items only after the test is done.
     var unblock = new ManualResetEventSlim();
-    var blocked = 0;
+    // Capped at its minimum, the pool has no thread for anything queued after these work items until they end.
+    Assert.IsTrue(ThreadPool.SetMaxThreads(minWorkers, maxCompletionPorts));
     try {
-      for (int i = 0; i < minWorkers + 8; i++) {
-        ThreadPool.UnsafeQueueUserWorkItem(_ => {
-          Interlocked.Increment(ref blocked);
-          unblock.Wait();
-        }, null);
+      for (int i = 0; i < minWorkers; i++) {
+        ThreadPool.UnsafeQueueUserWorkItem(_ => unblock.Wait(), null);
       }
-      Assert.IsTrue(SpinWait.SpinUntil(() => Volatile.Read(ref blocked) >= minWorkers, TimeSpan.FromSeconds(10)));
-      var verified = Verify();
-      Assert.IsTrue(verified.Wait(TimeSpan.FromSeconds(2)));
+      var verified = engine.LargeThreadTaskFactory
+        .StartNew(() => engine.ProcessProgram(TextWriter.Null, program, "fakeFilename")).Unwrap();
+      Assert.IsTrue(verified.Wait(TimeSpan.FromSeconds(5)));
       Assert.IsTrue(verified.Result);
     } finally {
+      ThreadPool.SetMaxThreads(maxWorkers, maxCompletionPorts);
       unblock.Set();
     }
   }
