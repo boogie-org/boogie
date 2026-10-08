@@ -69,7 +69,8 @@ namespace Microsoft.Boogie
         await thmProver.GoBackToIdle().WaitAsync(TimeSpan.FromMilliseconds(100));
         Pool.AddChecker(this);
       }
-      catch(TimeoutException) {
+      catch (Exception) {
+        // The prover did not answer in time, or failed, so it can not be trusted with another check.
         Pool.CheckerDied();
         Close();
       }
