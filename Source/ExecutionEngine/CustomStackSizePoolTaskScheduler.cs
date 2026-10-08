@@ -86,7 +86,6 @@ public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
     }
     catch (OperationCanceledException)
     {
-      // Disposing this scheduler cancels the wait for the next task
     }
   }
 
