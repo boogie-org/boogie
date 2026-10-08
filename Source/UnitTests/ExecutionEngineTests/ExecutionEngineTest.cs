@@ -274,6 +274,48 @@ Boogie program verifier finished with 0 verified, 1 error
     Assert.AreEqual(expected, output);
   }
 
+  [TestCase(true)] // The solver is created while the checker is prepared, before the check starts.
+  [TestCase(false)]
+  public async Task ProcessProgramCancelledDuringVerificationReturnsFalse(bool cancelOnSolverCreation) {
+    var options = CommandLineOptions.FromArguments(TextWriter.Null);
+    var cancellationSource = new CancellationTokenSource();
+    options.CreateSolver = (_, _) => {
+      if (cancelOnSolverCreation) {
+        cancellationSource.Cancel();
+      }
+      return new CancelOnCheckSatSolver(cancellationSource);
+    };
+    var engine = ExecutionEngine.CreateWithoutSharedCache(options);
+
+    var source = @"
+procedure Foo(x: int) {
+  assert true;
+}".TrimStart();
+    var result = Parser.Parse(source, "fakeFilename1", out var program);
+    Assert.AreEqual(0, result);
+    var success = await engine.ProcessProgram(TextWriter.Null, program, "fakeFilename1",
+      cancellationToken: cancellationSource.Token);
+    Assert.IsFalse(success);
+  }
+
+  /// <summary>
+  /// Cancels the given source when asked to check a VC, and never answers.
+  /// </summary>
+  private class CancelOnCheckSatSolver : UnsatSolver {
+    private readonly CancellationTokenSource cancellationSource;
+
+    public CancelOnCheckSatSolver(CancellationTokenSource cancellationSource) : base(new SemaphoreSlim(0)) {
+      this.cancellationSource = cancellationSource;
+    }
+
+    public override void Send(string request) {
+      if (request == "(check-sat)") {
+        cancellationSource.Cancel();
+      }
+      base.Send(request);
+    }
+  }
+
   [Test]
   public async Task RunCancelRunCancel() {
     var options = CommandLineOptions.FromArguments(TextWriter.Null);
