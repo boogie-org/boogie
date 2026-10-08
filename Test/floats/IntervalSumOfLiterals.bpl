@@ -1,9 +1,6 @@
 // RUN: %parallel-boogie -infer:j "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-// Why the domain describes no float: see IntervalNoFloatTracked.bpl, which pins that property directly.
-// This file pins one consequence of it.
-
 // Bounds were added the way an int's half-open bounds are added, subtracting one from the upper bound, so
 // a float sum produced Lo > Hi -- an inconsistent invariant, which proves anything.
 

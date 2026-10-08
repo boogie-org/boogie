@@ -1,11 +1,8 @@
 // RUN: %parallel-boogie -infer:j "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-// Why the domain describes no float: see IntervalNoFloatTracked.bpl, which pins that property directly.
-// This file pins one consequence of it.
-
-// Excluding one value from an interval moves an endpoint only when the values are integers. For a float
-// it leaves the bounds where they were.
+// The literal 1.5 has bounds [1, 2), and read half-open, as an int's, those denote just 1, so z != 1.5
+// raised z's lower bound from 1 to 2.
 
 procedure Disequality()
 {

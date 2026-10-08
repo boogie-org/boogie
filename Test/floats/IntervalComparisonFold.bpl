@@ -1,9 +1,6 @@
 // RUN: %parallel-boogie -infer:j "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-// Why the domain describes no float: see IntervalNoFloatTracked.bpl, which pins that property directly.
-// This file pins one consequence of it.
-
 // Comparing two float literals' bounds under the half-open reading decided the comparison the wrong way.
 
 procedure LiteralComparison()

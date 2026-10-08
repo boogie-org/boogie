@@ -1,9 +1,6 @@
 // RUN: %parallel-boogie -infer:j "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-// Why the domain describes no float: see IntervalNoFloatTracked.bpl, which pins that property directly.
-// This file pins one consequence of it.
-
 // From "lit < v" the domain took the next integer up, which is right for an int and wrong for a float:
 // the excluded value is the bound itself.
 

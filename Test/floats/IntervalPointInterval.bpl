@@ -1,9 +1,6 @@
 // RUN: %parallel-boogie -infer:j "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-// Why the domain describes no float: see IntervalNoFloatTracked.bpl, which pins that property directly.
-// This file pins one consequence of it.
-
 // A float pinned to a literal has equal bounds, and Meet tested emptiness the way it does for an int,
 // where Lo == Hi means empty. So the then-branch of a float equality was inferred unreachable, and a loop
 // alternating between two values reported only one of them.

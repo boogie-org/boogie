@@ -1,11 +1,8 @@
 // RUN: %parallel-boogie -infer:j "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-// Why the domain describes no float: see IntervalNoFloatTracked.bpl, which pins that property directly.
-// This file pins one consequence of it.
-
-// A one-point interval was emitted as an equality. That is wrong for a float, because -0.0 and +0.0 share
-// the value 0 while Boogie's == on floats is bit identity.
+// A one-point interval was emitted as an equality, which is wrong for a float: -0.0 and +0.0 share the
+// value 0, but Boogie's == keeps them apart.
 
 procedure SignedZero()
 {

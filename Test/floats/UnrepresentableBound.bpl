@@ -4,7 +4,7 @@
 // The interval domain (-infer:j) emitted a bound on a float as a literal of that float's own format, and
 // BigFloat.FromBigInt throws rather than rounds when the integer does not fit the format exactly. Bounds
 // it computed by adding two literals need not fit, so this used to end in an unhandled ArgumentException
-// during inference. The domain no longer bounds a float at all.
+// during inference.
 
 procedure Sum()
 {

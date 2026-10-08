@@ -1,11 +1,8 @@
 // RUN: %parallel-boogie -infer:j "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-// Why the domain describes no float: see IntervalNoFloatTracked.bpl, which pins that property directly.
-// This file pins one consequence of it.
-
-// NaN has no value for a bound to relate to, and every comparison against it is false, so a bound reached
-// through arithmetic that produces NaN is an inconsistent invariant.
+// No bound holds of a NaN, as every order comparison with one is false, yet the domain bounded 0.0 / 0.0
+// below by 0.
 
 procedure NotANumber()
 {
