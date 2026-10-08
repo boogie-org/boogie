@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -142,8 +141,9 @@ public class SExprParser
     ErrorHandler?.Invoke(msg);
   }
 
-  public async IAsyncEnumerable<SExpr> ParseSExprs(bool top)
+  public async Task<List<SExpr>> ParseSExprs(bool top)
   {
+    var exprs = new List<SExpr>();
     while (true)
     {
       var c = await SkipWs();
@@ -182,7 +182,7 @@ public class SExprParser
           id = await ParseId();
         }
 
-        var args = await ParseSExprs(false).ToListAsync();
+        var args = await ParseSExprs(false);
 
         c = await SkipWs();
         if (c == ')')
@@ -194,12 +194,12 @@ public class SExprParser
           ParseError("unclosed '(" + id + "'");
         }
 
-        yield return new SExpr(id, args);
+        exprs.Add(new SExpr(id, args));
       }
       else
       {
         id = await ParseId();
-        yield return new SExpr(id);
+        exprs.Add(new SExpr(id));
       }
 
       if (top)
@@ -207,5 +207,7 @@ public class SExprParser
         break;
       }
     }
+
+    return exprs;
   }
 }

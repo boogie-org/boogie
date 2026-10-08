@@ -57,13 +57,11 @@ namespace Microsoft.Boogie.SMTLib
         solver = new Process();
         solver.StartInfo = psi;
         solver.EnableRaisingEvents = true;
-        solver.ErrorDataReceived += SolverErrorDataReceived;
-        solver.OutputDataReceived += SolverOutputDataReceived;
         solver.Exited += SolverExited;
         solver.Start();
         toProver = solver.StandardInput;
-        solver.BeginErrorReadLine();
-        solver.BeginOutputReadLine();
+        ReadLines(solver.StandardOutput, SolverOutputReceived, "output");
+        ReadLines(solver.StandardError, SolverErrorReceived, "error");
       }
       catch (System.ComponentModel.Win32Exception e)
       {
@@ -210,7 +208,7 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       while (true) {
-        var exprs = await sexpParser.ParseSExprs(true).ToListAsync();
+        var exprs = await sexpParser.ParseSExprs(true);
         Contract.Assert(exprs.Count <= 1);
         if (exprs.Count == 0) {
           if (sexpParser.EndOfInput) {
@@ -334,25 +332,55 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    void SolverOutputDataReceived(object sender, DataReceivedEventArgs e)
+    /// <summary>
+    /// Passes the lines that the solver writes to the stream to the handler, and then null once the stream ends.
+    /// The stream is read on a thread of its own: Process.BeginOutputReadLine reads on the thread pool, so the solver's
+    /// answers would wait for the pool whenever it is busy.
+    /// </summary>
+    private void ReadLines(StreamReader stream, Action<string> handleLine, string streamName)
     {
-        if (e.Data == null)
+      new Thread(() =>
+      {
+        string line;
+        do
+        {
+          try
+          {
+            line = stream.ReadLine();
+          }
+          catch (IOException)
+          {
+            line = null;
+          }
+
+          handleLine(line);
+        } while (line != null);
+      })
+      {
+        IsBackground = true,
+        Name = $"SMT-{smtProcessId} {streamName} reader"
+      }.Start();
+    }
+
+    void SolverOutputReceived(string line)
+    {
+        if (line == null)
         {
           sexpParser.AddLine(null);
           return;
         }
 
-        if (options.Verbosity >= 2 || (options.Verbosity >= 1 && !e.Data.StartsWith("(:name ")))
+        if (options.Verbosity >= 2 || (options.Verbosity >= 1 && !line.StartsWith("(:name ")))
         {
-          Console.WriteLine("[SMT-OUT-{0}] {1}", smtProcessId, e.Data);
+          Console.WriteLine("[SMT-OUT-{0}] {1}", smtProcessId, line);
         }
 
-        sexpParser.AddLine(e.Data);
+        sexpParser.AddLine(line);
     }
 
-    void SolverErrorDataReceived(object sender, DataReceivedEventArgs e)
+    void SolverErrorReceived(string line)
     {
-      if (e.Data == null)
+      if (line == null)
       {
         return;
       }
@@ -361,10 +389,10 @@ namespace Microsoft.Boogie.SMTLib
 
         if (options.Verbosity >= 1)
         {
-          Console.WriteLine("[SMT-ERR-{0}] {1}", smtProcessId, e.Data);
+          Console.WriteLine("[SMT-ERR-{0}] {1}", smtProcessId, line);
         }
 
-        HandleError(e.Data);
+        HandleError(line);
       }
     }
 
