@@ -51,12 +51,14 @@ requires call YieldTag(tag);
 }
 
 yield procedure {:layer 0} AddCounter({:linear_in} one_loc: One Loc, {:linear_in} counter: Counter);
-refines atomic action {:layer 1} _ {
+refines atomic action {:layer 1} _
+{
     call Map_Put(counters, one_loc, counter);
 }
 
 yield procedure {:layer 0} ReadLow({:linear} tag: One (Tag X)) returns (val: int);
-refines atomic action {:layer 1} _ {
+refines atomic action {:layer 1} _
+{
     var one_loc: One Loc;
 
     one_loc := One(tag->val->loc);
@@ -64,7 +66,8 @@ refines atomic action {:layer 1} _ {
 }
 
 yield procedure {:layer 0} WriteLow({:linear} tag: One (Tag X), val: int);
-refines atomic action {:layer 1} _ {
+refines atomic action {:layer 1} _
+{
     var one_loc: One Loc;
 
     one_loc := One(tag->val->loc);
@@ -72,7 +75,8 @@ refines atomic action {:layer 1} _ {
 }
 
 yield procedure {:layer 0} DropReferenceCount({:linear_in} tag: One (Tag X));
-refines atomic action {:layer 1} _ {
+refines atomic action {:layer 1} _
+{
     var one_loc: One Loc;
     var counter: Counter;
     var val: int;

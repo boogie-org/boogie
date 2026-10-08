@@ -53,23 +53,17 @@ preserves call yield_ind_inv();
 
 // Low-level atomic actions
 
-atomic action {:layer 1} atomic_update_x(i: int)
-modifies x;
+yield procedure {:layer 0} update_x(i: int);
+refines atomic action {:layer 1} atomic_update_x
 {
   x[i] := 1;
 }
 
-atomic action {:layer 1} atomic_update_y(i: int)
-modifies y;
+yield procedure {:layer 0} update_y(i: int);
+refines atomic action {:layer 1} atomic_update_y
 {
   y[i] := x[(i-1) mod N];
 }
-
-yield procedure {:layer 0} update_x(i: int);
-refines atomic_update_x;
-
-yield procedure {:layer 0} update_y(i: int);
-refines atomic_update_y;
 
 // #############################################################################
 

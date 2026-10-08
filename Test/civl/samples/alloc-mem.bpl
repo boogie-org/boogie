@@ -157,32 +157,21 @@ var {:layer 1, 2} {:linear} pool: UnitMap (One int);
 var {:layer 0, 1} mem: [int]int;
 var {:layer 0, 1} unallocated: [int]bool;
 
-atomic action {:layer 1} atomic_ReadLow (i: int) returns (o: int)
+yield procedure {:layer 0} ReadLow (i: int) returns (o: int);
+refines atomic action {:layer 1} atomic_ReadLow
 { o := mem[i]; }
 
-atomic action {:layer 1} atomic_WriteLow (i: int, o: int)
-modifies mem;
+yield procedure {:layer 0} WriteLow (i: int, o: int);
+refines atomic action {:layer 1} atomic_WriteLow
 { mem[i] := o; }
 
-atomic action {:layer 1} atomic_PickAddr () returns (i: int)
-modifies unallocated;
+yield procedure {:layer 0} PickAddr () returns (i: int);
+refines atomic action {:layer 1} atomic_PickAddr
 {
   assume unallocated[i];
   unallocated[i] := false;
 }
 
-atomic action {:layer 1} atomic_ReturnAddr (i: int)
-modifies unallocated;
-{ unallocated[i] := true; }
-
-yield procedure {:layer 0} ReadLow (i: int) returns (o: int);
-refines atomic_ReadLow;
-
-yield procedure {:layer 0} WriteLow (i: int, o: int);
-refines atomic_WriteLow;
-
-yield procedure {:layer 0} PickAddr () returns (i: int);
-refines atomic_PickAddr;
-
 yield procedure {:layer 0} ReturnAddr (i: int);
-refines atomic_ReturnAddr;
+refines atomic action {:layer 1} atomic_ReturnAddr
+{ unallocated[i] := true; }

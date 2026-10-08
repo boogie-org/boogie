@@ -6,7 +6,8 @@ const max: int;
 
 yield procedure {:layer 1} TryIncBelowMax() returns (ok: bool)
 preserves call Yield1();
-refines atomic action {:layer 2} _ {
+refines atomic action {:layer 2} _
+{
     if (ok) {
         assume count < max;
         count := count + 1;
@@ -23,7 +24,8 @@ refines atomic action {:layer 2} _ {
 
 yield procedure {:layer 1} HelperInc(tries: int, limit: int) returns (ok: bool)
 preserves call Yield1();
-refines atomic action {:layer 2} _ {
+refines atomic action {:layer 2} _
+{
     if (ok) {
         assume count < max;
         count := count + 1;
@@ -54,7 +56,8 @@ refines atomic action {:layer 2} _ {
 }
 
 yield procedure {:layer 1} ComputeLimit() returns (limit: int);
-refines atomic action {:layer 2} _ { }
+refines atomic action {:layer 2} _
+{ }
 ensures {:layer 1} limit >= 0;
 
 yield procedure {:layer 1} BackgroundMaintenance()
@@ -64,7 +67,8 @@ preserves call Yield1();
 }
 
 yield procedure {:layer 0} CAS(prev: int, next: int) returns (status: bool);
-refines atomic action {:layer 1} _ {
+refines atomic action {:layer 1} _
+{
     assert prev < max; 
     status := (count == prev); 
 
@@ -75,7 +79,8 @@ refines atomic action {:layer 1} _ {
 }
 
 yield procedure {:layer 0} Read() returns (val: int);
-refines atomic action {:layer 1} _ {
+refines atomic action {:layer 1} _
+{
     assert count <= max;
     val := count;
 }

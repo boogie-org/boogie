@@ -231,7 +231,8 @@ preserves call ValueStoreInv#3(LeastTimeStamp(), InitValue);
 }
 
 yield procedure {:layer 3} Begin({:linear} one_pid: One ProcessId) returns (ts: TimeStamp, {:hide} {:layer 2, 3} tsq: ReplicaSet)
-refines action {:layer 4} _ {
+refines action {:layer 4} _
+{
     ts := TS;
 }
 preserves call ReplicaInv();
@@ -245,7 +246,8 @@ ensures {:layer 3} IsQuorum(tsq);
 
 yield procedure {:layer 3} Read({:linear} one_pid: One ProcessId, old_ts: TimeStamp, {:hide} {:layer 2, 3} tsq: ReplicaSet)
     returns (ts: TimeStamp, value: Value, {:hide} {:layer 2} tsq': ReplicaSet)
-refines action {:layer 4} _ { 
+refines action {:layer 4} _
+{
     assume le(old_ts, ts);
     assume Map_Contains(value_store, ts);
     value := Map_At(value_store, ts);
@@ -270,7 +272,8 @@ preserves call ValueStoreInv#3(LeastTimeStamp(), InitValue);
 yield procedure {:layer 3}
 Write({:linear} one_pid: One ProcessId, value: Value, old_ts: TimeStamp, {:hide} {:layer 1} lwq: ReplicaSet, {:hide} {:layer 2, 3} tsq: ReplicaSet)
     returns (ts: TimeStamp, {:hide} {:layer 1} lwq': ReplicaSet, {:hide} {:layer 2} tsq': ReplicaSet)
-refines action {:layer 4} _ {
+refines action {:layer 4} _
+{
     assume lt(old_ts, ts);
     assume !Map_Contains(value_store, ts);
     value_store := Map_Update(value_store, ts, value);
@@ -382,7 +385,8 @@ ensures call MonotonicInduction#2(q, ts, i);
 }
 
 yield procedure {:layer 2} Begin#2({:linear} one_pid: One ProcessId) returns (ts: TimeStamp, {:layer 2} tsq: ReplicaSet)
-refines action {:layer 3} _ {
+refines action {:layer 3} _
+{
     ts := TS;
     assume IsQuorum(tsq) && (forall rid: ReplicaId :: tsq[rid] ==> le(ts, replica_ts[rid]));
 }
@@ -404,7 +408,8 @@ pure action CalculateQuorum(replica_ts: [ReplicaId]TimeStamp, ts: TimeStamp) ret
 
 yield procedure {:layer 2} Query#2(rid: ReplicaId, q: ReplicaSet, {:hide} {:layer 1} old_replica_ts: TimeStamp, old_ts: TimeStamp, {:layer 2} tsq: ReplicaSet)
     returns (ts: TimeStamp, value: Value)
-refines right action {:layer 3} _ {
+refines right action {:layer 3} _
+{
     if (q[rid])
     {
         if (tsq[rid])
@@ -446,7 +451,8 @@ preserves call TimeStampQuorum();
 }
 
 yield procedure {:layer 2} Update#2(rid: ReplicaId, ts: TimeStamp, value: Value, q: ReplicaSet)
-refines left action {:layer 3} _ {
+refines left action {:layer 3} _
+{
     if (q[rid])
     {
         if (lt(replica_ts[rid], ts)) {
@@ -468,7 +474,8 @@ preserves call TimeStampQuorum();
 }
 
 yield procedure {:layer 1} Query#1(rid: ReplicaId, {:hide} {:layer 1} old_replica_ts: TimeStamp) returns (ts: TimeStamp, value: Value)
-refines action {:layer 2} _ {
+refines action {:layer 2} _
+{
     ts := replica_ts[rid];
     assume Map_Contains(value_store, ts);
     value := Map_At(value_store, ts);
@@ -483,7 +490,8 @@ ensures call ValueStoreInv#1(ts, value);
 }
 
 yield procedure {:layer 1} AddToValueStore({:linear} one_pid: One ProcessId, ts: TimeStamp, value: Value)
-refines action {:layer 2, 3} _ {
+refines action {:layer 2, 3} _
+{
     assume !Map_Contains(value_store, ts);
     value_store := Map_Update(value_store, ts, value);
 }
@@ -496,7 +504,8 @@ ensures call LastWriteInv(one_pid, ts);
 }
 
 yield procedure {:layer 1} Update#1(rid: ReplicaId, ts: TimeStamp, value: Value)
-refines action {:layer 2} _ {
+refines action {:layer 2} _
+{
     if (lt(replica_ts[rid], ts)) {
         replica_ts[rid] := ts;
     }
@@ -511,12 +520,14 @@ ensures call Monotonic#1(true, ts, rid);
 }
 
 yield procedure {:layer 0} Begin#0({:linear} one_pid: One ProcessId) returns (ts: TimeStamp);
-refines action {:layer 1, 2} _ {
+refines action {:layer 1, 2} _
+{
     ts := TS;
 }
 
 yield procedure {:layer 0} Query#0(rid: ReplicaId) returns (ts: TimeStamp, value: Value);
-refines action {:layer 1} _ {
+refines action {:layer 1} _
+{
     var sv: StampedValue;
 
     sv := replica_store[rid];
@@ -524,7 +535,8 @@ refines action {:layer 1} _ {
 }
 
 yield procedure {:layer 0} Update#0(rid: ReplicaId, ts: TimeStamp, value: Value);
-refines action {:layer 1} _ {
+refines action {:layer 1} _
+{
     var sv: StampedValue;
 
     sv := replica_store[rid];
@@ -534,7 +546,8 @@ refines action {:layer 1} _ {
 }
 
 yield procedure {:layer 0} End({:linear} one_pid: One ProcessId, ts: TimeStamp);
-refines action {:layer 1, 4} _ {
+refines action {:layer 1, 4} _
+{
     if (lt(TS, ts)) {
         TS := ts;
     }

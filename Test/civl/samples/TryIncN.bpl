@@ -4,7 +4,8 @@
 var count: int;
 
 yield procedure {:layer 1} TryIncN() returns (ok: bool)
-refines atomic action {:layer 2} _{
+refines atomic action {:layer 2} _
+{
     if (*) {
         count := count + 1;
     }
@@ -20,7 +21,8 @@ refines atomic action {:layer 2} _{
 
 // Helper recursive procedure
 yield procedure {:layer 1} HelperInc(tries: int, limit: int) returns (ok: bool)
-refines atomic action {:layer 2} _{
+refines atomic action {:layer 2} _
+{
     if (*) {
         count := count + 1;
     }
@@ -47,7 +49,8 @@ refines AtomicComputeLimit;
 action {:layer 2} AtomicComputeLimit() returns (limit: int) { }
 
 yield procedure {:layer 0} CAS(prev: int, next: int) returns (ok: bool);
-refines atomic action {:layer 1} _ {
+refines atomic action {:layer 1} _
+{
     ok := (count == prev);
     if (ok) {
         count := next;
@@ -55,7 +58,8 @@ refines atomic action {:layer 1} _ {
 }
 
 yield procedure {:layer 0} Read() returns (val: int); 
-refines atomic action {:layer 1} _ {
+refines atomic action {:layer 1} _
+{
     val := count;
 }
 

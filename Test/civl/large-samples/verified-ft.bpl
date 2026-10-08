@@ -191,97 +191,65 @@ function {:inline} FTPreserved(tid: Tid,
 
 // VarState Lock
 yield procedure {:layer 0} AcquireVarLock({:linear} tid: One Tid, x : Var);
-refines AtomicAcquireVarLock;
-right action {:layer 1,20} AtomicAcquireVarLock({:linear} tid: One Tid, x : Var)
-modifies shadow.Lock;
+refines right action {:layer 1,20} AtomicAcquireVarLock
 { assert ValidTid(tid->val); assume shadow.Lock[ShadowableVar(x)] == nil; shadow.Lock[ShadowableVar(x)] := tid->val; }
-
 yield procedure {:layer 0} ReleaseVarLock({:linear} tid: One Tid, x : Var);
-refines AtomicReleaseVarLock;
-left action {:layer 1,20} AtomicReleaseVarLock({:linear} tid: One Tid, x : Var)
-modifies shadow.Lock;
+refines left action {:layer 1,20} AtomicReleaseVarLock
 { assert ValidTid(tid->val); assert shadow.Lock[ShadowableVar(x)] == tid->val; shadow.Lock[ShadowableVar(x)] := nil; }
-
 
 // ThreadState
 yield procedure {:layer 0} ThreadStateGetE({:linear} tid: One Tid) returns (e:Epoch);
-refines AtomicThreadStateGetE;
-both action {:layer 1,20} AtomicThreadStateGetE({:linear} tid: One Tid) returns (e:Epoch)
+refines both action {:layer 1,20} AtomicThreadStateGetE
 { assert ValidTid(tid->val); assert shadow.Lock[ShadowableTid(tid->val)] == tid->val; e := shadow.VC[ShadowableTid(tid->val)][tid->val]; }
-
 
 // VarState
 yield procedure {:layer 0} VarStateSetW({:linear} tid: One Tid, x : Var, e:Epoch);
-refines AtomicVarStateSetW;
-atomic action {:layer 1,20} AtomicVarStateSetW({:linear} tid: One Tid, x : Var, e:Epoch)
-modifies sx.W;
+refines atomic action {:layer 1,20} AtomicVarStateSetW
 { assert ValidTid(tid->val); assert shadow.Lock[ShadowableVar(x)] == tid->val; sx.W[x] := e; }
-
 yield procedure {:layer 0} VarStateGetW({:linear} tid: One Tid, x : Var) returns (e:Epoch);
-refines AtomicVarStateGetW;
-both action {:layer 1,20} AtomicVarStateGetW({:linear} tid: One Tid, x : Var) returns (e:Epoch)
+refines both action {:layer 1,20} AtomicVarStateGetW
 { assert ValidTid(tid->val); assert shadow.Lock[ShadowableVar(x)] == tid->val; e := sx.W[x]; }
-
 yield procedure {:layer 0} VarStateGetWNoLock({:linear} tid: One Tid, x : Var) returns (e:Epoch);
-refines AtomicVarStateGetWNoLock;
-atomic action {:layer 1,20} AtomicVarStateGetWNoLock({:linear} tid: One Tid, x : Var) returns (e:Epoch)
+refines atomic action {:layer 1,20} AtomicVarStateGetWNoLock
 { assert ValidTid(tid->val); e := sx.W[x]; }
-
 yield procedure {:layer 0} VarStateSetR({:linear} tid: One Tid, x : Var, e:Epoch);
-refines AtomicVarStateSetR;
-atomic action {:layer 1,20} AtomicVarStateSetR({:linear} tid: One Tid, x : Var, e:Epoch)
-modifies sx.R;
+refines atomic action {:layer 1,20} AtomicVarStateSetR
 { assert ValidTid(tid->val); assert shadow.Lock[ShadowableVar(x)] == tid->val; assert sx.R[x] != SHARED; sx.R[x] := e; }
-
 yield procedure {:layer 0} VarStateGetRNoLock({:linear} tid: One Tid, x : Var) returns (e:Epoch);
-refines AtomicVarStateGetRNoLock;
-atomic action {:layer 1,20} AtomicVarStateGetRNoLock({:linear} tid: One Tid, x : Var) returns (e:Epoch)
+refines atomic action {:layer 1,20} AtomicVarStateGetRNoLock
 { assert ValidTid(tid->val); e := sx.R[x]; }
-
 yield procedure {:layer 0} VarStateGetR({:linear} tid: One Tid, x : Var) returns (e:Epoch);
-refines AtomicVarStateGetR;
-both action {:layer 1,20} AtomicVarStateGetR({:linear} tid: One Tid, x : Var) returns (e:Epoch)
+refines both action {:layer 1,20} AtomicVarStateGetR
 { assert ValidTid(tid->val); assert shadow.Lock[ShadowableVar(x)] == tid->val; e := sx.R[x]; }
-
 yield procedure {:layer 0} VarStateGetRShared({:linear} tid: One Tid, x : Var) returns (e:Epoch);
-refines AtomicVarStateGetRShared;
-right action {:layer 1,20} AtomicVarStateGetRShared({:linear} tid: One Tid, x : Var) returns (e:Epoch)
+refines right action {:layer 1,20} AtomicVarStateGetRShared
 { assert ValidTid(tid->val); assume sx.R[x] == SHARED; e := SHARED; }
-
 
 // VCs
 
 yield procedure {:layer 0} VCGetSize({:linear} tid: One Tid, r: Shadowable) returns (i: int);
-refines AtomicVCGetSize;
-both action {:layer 1,10} AtomicVCGetSize({:linear} tid: One Tid, r: Shadowable) returns (i: int)
+refines both action {:layer 1,10} AtomicVCGetSize
 {
    assert ValidTid(tid->val);
    assert (shadow.Lock[r] == tid->val);
    i := VCArrayLen(shadow.VC[r]);
 }
-
 yield procedure {:layer 0} VCGetElem({:linear} tid: One Tid, r: Shadowable, i: int) returns (e: Epoch);
-refines AtomicVCGetElem;
-both action {:layer 1,20} AtomicVCGetElem({:linear} tid: One Tid, r: Shadowable, i: int) returns (e: Epoch)
+refines both action {:layer 1,20} AtomicVCGetElem
 {
    assert ValidTid(tid->val);
    assert (shadow.Lock[r] == tid->val);
    e := VCArrayGet(shadow.VC[r], i);
 }
-
 yield procedure {:layer 0} VCGetElemShared({:linear} tid: One Tid, x : Var) returns (e: Epoch);
-refines AtomicVCGetElemShared;
-atomic action {:layer 1,20} AtomicVCGetElemShared({:linear} tid: One Tid, x : Var) returns (e: Epoch)
+refines atomic action {:layer 1,20} AtomicVCGetElemShared
 {
    assert sx.R[x] == SHARED;
    assert ValidTid(tid->val);
    e := VCArrayGet(shadow.VC[ShadowableVar(x)], tid->val);
 }
-
 yield procedure {:layer 0} VCSetElemShared({:linear} tid: One Tid, x : Var, e: Epoch);
-refines AtomicVCSetElemShared;
-both action {:layer 1,20} AtomicVCSetElemShared({:linear} tid: One Tid, x : Var, e: Epoch)
-modifies shadow.VC;
+refines both action {:layer 1,20} AtomicVCSetElemShared
 {
    assert sx.R[x] == SHARED;
    assert ValidTid(tid->val);
@@ -289,11 +257,8 @@ modifies shadow.VC;
    shadow.VC[ShadowableVar(x)][tid->val] := e;
    shadow.VC[ShadowableVar(x)] := VCArraySetLen(shadow.VC[ShadowableVar(x)], max(VCArrayLen(shadow.VC[ShadowableVar(x)]),tid->val + 1));
 }
-
 yield procedure {:layer 0} VCSetElem({:linear} tid: One Tid, r: Shadowable, i: int, e: Epoch);
-refines AtomicVCSetElem;
-both action {:layer 1,20} AtomicVCSetElem({:linear} tid: One Tid, r: Shadowable, i: int, e: Epoch)
-modifies shadow.VC;
+refines both action {:layer 1,20} AtomicVCSetElem
 {
    assert r is ShadowableVar ==> sx.R[r->x] != SHARED;
    assert ValidTid(tid->val);
@@ -301,18 +266,14 @@ modifies shadow.VC;
    shadow.VC[r][i] := e;
    shadow.VC[r] := VCArraySetLen(shadow.VC[r], max(VCArrayLen(shadow.VC[r]),i+1));
 }
-
 yield procedure {:layer 0} VCInit({:linear} tid: One Tid, r: Shadowable);
-refines AtomicVCInit;
-both action {:layer 1,20} AtomicVCInit({:linear} tid: One Tid, r: Shadowable)
-modifies shadow.VC;
+refines both action {:layer 1,20} AtomicVCInit
 {
    assert ValidTid(tid->val);
    assert r is ShadowableVar ==> sx.R[r->x] != SHARED;
    assert (shadow.Lock[r] == tid->val);
    shadow.VC[r] := VC.bottom();
 }
-
 /****** Layer 10 -> 20 ******/
 
 yield invariant {:layer 10} Yield_FTRepOk_10();
@@ -1013,9 +974,7 @@ requires call Yield_ThreadState_30(tid);
 }
 
 yield procedure {:layer 0} ReleaseJoinLock({:linear} tid: One Tid, uid: Tid);
-refines AtomicReleaseJoinLock;
-atomic action {:layer 1,30} AtomicReleaseJoinLock({:linear} tid: One Tid, uid: Tid)
-modifies shadow.Lock;
+refines atomic action {:layer 1,30} AtomicReleaseJoinLock
 {
     assert ValidTid(tid->val);
     assert ValidTid(uid);
@@ -1023,11 +982,8 @@ modifies shadow.Lock;
     assert shadow.Lock[ShadowableTid(uid)] == tid->val;
     shadow.Lock[ShadowableTid(uid)] := nil;
 }
-
 yield procedure {:layer 0} ChooseThreadToJoin({:linear} tid: One Tid) returns (uid: Tid);
-refines AtomicChooseThreadToJoin;
-atomic action {:layer 1,30} AtomicChooseThreadToJoin({:linear} tid: One Tid) returns (uid: Tid)
-modifies shadow.Lock, thread.HasJoined;
+refines atomic action {:layer 1,30} AtomicChooseThreadToJoin
 {
     assert thread.State[tid->val] == RUNNING() && ValidTid(tid->val);
     assume tid->val != uid;
@@ -1036,11 +992,8 @@ modifies shadow.Lock, thread.HasJoined;
     shadow.Lock[ShadowableTid(uid)] := tid->val;
     thread.HasJoined[tid->val, uid] := true;
 }
-
 yield procedure {:layer 0} AllocTid({:linear} tid: One Tid) returns (uid: Tid);
-refines AtomicAllocTid;
-atomic action {:layer 1,30} AtomicAllocTid({:linear} tid: One Tid) returns (uid: Tid)
-modifies thread.State, thread.ForkedBy, shadow.Lock;
+refines atomic action {:layer 1,30} AtomicAllocTid
 {
     assert thread.State[tid->val] == RUNNING() && ValidTid(tid->val);
     assert (forall t: Tid :: thread.State[t] == UNUSED() ==> shadow.Lock[ShadowableTid(t)] == nil);
@@ -1051,11 +1004,8 @@ modifies thread.State, thread.ForkedBy, shadow.Lock;
     shadow.Lock[ShadowableTid(uid)] := tid->val;
     assume VCRepOk(shadow.VC[ShadowableTid(uid)]);
 }
-
 yield procedure {:layer 0} StartThread({:linear} tid: One Tid, uid: Tid);
-refines AtomicStartThread;
-atomic action {:layer 1,30} AtomicStartThread({:linear} tid: One Tid, uid: Tid)
-modifies thread.State, shadow.Lock;
+refines atomic action {:layer 1,30} AtomicStartThread
 {
     assert ValidTid(tid->val);
     assert ValidTid(uid);
@@ -1065,29 +1015,21 @@ modifies thread.State, shadow.Lock;
     thread.State[uid] := RUNNING();
     shadow.Lock[ShadowableTid(uid)] := uid;
 }
-
 yield procedure {:layer 0} ChooseLockToAcquire({:linear} tid: One Tid) returns (l: Lock);
-refines AtomicChooseLockToAcquire;
-atomic action {:layer 1,30} AtomicChooseLockToAcquire({:linear} tid: One Tid) returns (l: Lock)
-modifies shadow.Lock;
+refines atomic action {:layer 1,30} AtomicChooseLockToAcquire
 {
     assert ValidTid(tid->val);
     assume shadow.Lock[ShadowableLock(l)] == nil;
     shadow.Lock[ShadowableLock(l)] := tid->val;
 }
-
 yield procedure {:layer 0} ChooseLockToRelease({:linear} tid: One Tid) returns (l: Lock);
-refines AtomicChooseLockToRelease;
-atomic action {:layer 1,30} AtomicChooseLockToRelease({:linear} tid: One Tid) returns (l: Lock)
+refines atomic action {:layer 1,30} AtomicChooseLockToRelease
 {
     assert ValidTid(tid->val);
     assume shadow.Lock[ShadowableLock(l)] == tid->val;
 }
-
 yield procedure {:layer 0} ReleaseChosenLock({:linear} tid: One Tid, l: Lock);
-refines AtomicReleaseChosenLock;
-atomic action {:layer 1,30} AtomicReleaseChosenLock({:linear} tid: One Tid, l: Lock)
-modifies shadow.Lock;
+refines atomic action {:layer 1,30} AtomicReleaseChosenLock
 {
     assert ValidTid(tid->val);
     assert shadow.Lock[ShadowableLock(l)] == tid->val;

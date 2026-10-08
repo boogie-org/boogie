@@ -108,7 +108,8 @@ requires call YieldPong(y, p);
 // Bidirectional channels
 
 yield procedure {:layer 0} receive (p: ChannelHandle) returns (m: int);
-refines right action {:layer 1} _ {
+refines right action {:layer 1} _
+{
   var left_channel: [int]int;
   var right_channel: [int]int;
 
@@ -125,7 +126,8 @@ refines right action {:layer 1} _ {
 }
 
 yield procedure {:layer 0} send (p: ChannelHandle, m: int);
-refines left action {:layer 1} _ {
+refines left action {:layer 1} _
+{
   var left_channel: [int]int;
   var right_channel: [int]int;
 

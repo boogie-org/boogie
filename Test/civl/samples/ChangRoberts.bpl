@@ -72,6 +72,7 @@ modifies leader;
 ////////////////////////////////////////////////////////////////////////////////
 
 yield procedure {:layer 0} set_leader(pid: int);
-refines both action {:layer 1} _ {
+refines both action {:layer 1} _
+{
   leader[pid] := true;
 }

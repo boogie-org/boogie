@@ -115,22 +115,14 @@ refines atomic_set_val_b_perm;
 // ###########################################################################
 // Primitive atomic actions
 
-atomic action {:layer 1} atomic_get_val_a () returns (ret : int)
+yield procedure {:layer 0} get_val_a () returns (ret : int);
+refines atomic action {:layer 1} atomic_get_val_a
 { ret := val_a; }
 
-atomic action {:layer 1} atomic_set_val_a (val : int)
-modifies val_a;
+yield procedure {:layer 0} set_val_a (val : int);
+refines atomic action {:layer 1} atomic_set_val_a
 { val_a := val; }
 
-atomic action {:layer 1} atomic_set_val_b (val : int)
-modifies val_b;
-{ val_b := val; }
-
-yield procedure {:layer 0} get_val_a () returns (ret : int);
-refines atomic_get_val_a;
-
-yield procedure {:layer 0} set_val_a (val : int);
-refines atomic_set_val_a;
-
 yield procedure {:layer 0} set_val_b (val : int);
-refines atomic_set_val_b;
+refines atomic action {:layer 1} atomic_set_val_b
+{ val_b := val; }

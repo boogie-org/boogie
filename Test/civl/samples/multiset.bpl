@@ -14,52 +14,33 @@ const max : int;
 
 axiom (max > 0);
 
-right action {:layer 1,2} atomic_acquire(i : int, {:linear} tid: One X)
-modifies lock;
+yield procedure {:layer 0} acquire(i : int, {:linear} tid: One X);
+refines right action {:layer 1,2} _
 { assert 0 <= i && i < max; assert tid->val != nil && tid->val != done; assume lock[i] == nil; lock[i] := tid->val; }
 
-yield procedure {:layer 0} acquire(i : int, {:linear} tid: One X);
-refines atomic_acquire;
-
-left action {:layer 1,2} atomic_release(i : int, {:linear} tid: One X)
-modifies lock;
+yield procedure {:layer 0} release(i : int, {:linear} tid: One X);
+refines left action {:layer 1,2} _
 { assert 0 <= i && i < max; assert lock[i] == tid->val; assert tid->val != nil && tid->val != done; lock[i] := nil; }
 
-yield procedure {:layer 0} release(i : int, {:linear} tid: One X);
-refines atomic_release;
-
-both action {:layer 1} atomic_getElt(j : int, {:linear} tid: One X) returns (elt_j:int)
+yield procedure {:layer 0} getElt(j : int, {:linear} tid: One X) returns (elt_j:int);
+refines both action {:layer 1} _
 { assert 0 <= j && j < max; assert tid->val != nil && tid->val != done; assert lock[j] == tid->val; elt_j := elt[j]; }
 
-yield procedure {:layer 0} getElt(j : int, {:linear} tid: One X) returns (elt_j:int);
-refines atomic_getElt;
-
-both action {:layer 1} atomic_setElt(j : int, x : int, {:linear} tid: One X)
-modifies elt, owner;
+yield procedure {:layer 0} setElt(j : int, x : int, {:linear} tid: One X);
+refines both action {:layer 1} _
 { assert x != null && owner[j] == nil; assert 0 <= j && j < max; assert lock[j] == tid->val; assert tid->val != nil && tid->val != done; elt[j] := x; owner[j] := tid->val; }
 
-yield procedure {:layer 0} setElt(j : int, x : int, {:linear} tid: One X);
-refines atomic_setElt;
-
-left action {:layer 1,2} atomic_setEltToNull(j : int, {:linear} tid: One X)
-modifies elt, owner;
+yield procedure {:layer 0} setEltToNull(j : int, {:linear} tid: One X);
+refines left action {:layer 1,2} _
 { assert owner[j] == tid->val && lock[j] == tid->val; assert 0 <= j && j < max; assert !valid[j]; assert tid->val != nil  && tid->val != done; elt[j] := null; owner[j] := nil; }
 
-yield procedure {:layer 0} setEltToNull(j : int, {:linear} tid: One X);
-refines atomic_setEltToNull;
-
-both action {:layer 1,2} atomic_setValid(j : int, {:linear} tid: One X)
-modifies valid, owner;
+yield procedure {:layer 0} setValid(j : int, {:linear} tid: One X);
+refines both action {:layer 1,2} _
 { assert 0 <= j && j < max; assert lock[j] == tid->val; assert tid->val != nil && tid->val != done; assert owner[j] == tid->val; valid[j] := true; owner[j] := done; }
 
-yield procedure {:layer 0} setValid(j : int, {:linear} tid: One X);
-refines atomic_setValid;
-
-both action {:layer 1,2} atomic_isEltThereAndValid(j : int, x : int, {:linear} tid: One X) returns (fnd:bool)
-{ assert 0 <= j && j < max; assert lock[j] == tid->val; assert tid->val != nil && tid->val != done; fnd := (elt[j] == x) && valid[j]; }
-
 yield procedure {:layer 0} isEltThereAndValid(j : int, x : int, {:linear} tid: One X) returns (fnd:bool);
-refines atomic_isEltThereAndValid;
+refines both action {:layer 1,2} _
+{ assert 0 <= j && j < max; assert lock[j] == tid->val; assert tid->val != nil && tid->val != done; fnd := (elt[j] == x) && valid[j]; }
 
 right action {:layer 2} AtomicFindSlot(x : int, {:linear} tid: One X) returns (r : int)
 modifies elt, owner;

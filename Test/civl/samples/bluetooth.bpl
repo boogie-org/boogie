@@ -153,24 +153,21 @@ preserves call Inv1();
 
 /// primitive actions
 
-atomic action {:layer 1} AtomicEnter()
-modifies pendingIo;
+yield procedure {:layer 0} Enter();
+refines atomic action {:layer 1} AtomicEnter
 {
     assume !stoppingFlag;
     pendingIo := pendingIo + 1;
 }
-yield procedure {:layer 0} Enter();
-refines AtomicEnter;
 
-atomic action {:layer 1} AtomicCheckAssert()
+yield procedure {:layer 0} CheckAssert();
+refines atomic action {:layer 1} AtomicCheckAssert
 {
     assert !stopped;
 }
-yield procedure {:layer 0} CheckAssert();
-refines AtomicCheckAssert;
 
-right action {:layer 1,3} AtomicSetStoppingFlag({:linear} i: One int)
-modifies stoppingFlag;
+yield procedure {:layer 0} SetStoppingFlag({:linear} i: One int);
+refines right action {:layer 1,3} AtomicSetStoppingFlag
 {
     // The first assertion ensures that there is at most one stopper.
     // Otherwise AtomicSetStoppingFlag does not commute with itself.
@@ -178,31 +175,24 @@ modifies stoppingFlag;
     assert !stoppingFlag;
     stoppingFlag := true;
 }
-yield procedure {:layer 0} SetStoppingFlag({:linear} i: One int);
-refines AtomicSetStoppingFlag;
 
-atomic action {:layer 1} AtomicDeleteReference()
-modifies pendingIo, stoppingEvent;
+yield procedure {:layer 0} DeleteReference();
+refines atomic action {:layer 1} AtomicDeleteReference
 {
     pendingIo := pendingIo - 1;
     if (pendingIo == 0) {
         stoppingEvent := true;
     }
 }
-yield procedure {:layer 0} DeleteReference();
-refines AtomicDeleteReference;
 
-atomic action {:layer 1} AtomicWaitOnStoppingEvent()
+yield procedure {:layer 0} WaitOnStoppingEvent();
+refines atomic action {:layer 1} AtomicWaitOnStoppingEvent
 {
     assume stoppingEvent;
 }
-yield procedure {:layer 0} WaitOnStoppingEvent();
-refines AtomicWaitOnStoppingEvent;
 
-left action {:layer 1} AtomicSetStopped()
-modifies stopped;
+yield procedure {:layer 0} SetStopped();
+refines left action {:layer 1} AtomicSetStopped
 {
     stopped := true;
 }
-yield procedure {:layer 0} SetStopped();
-refines AtomicSetStopped;

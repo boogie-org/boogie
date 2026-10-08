@@ -3,12 +3,9 @@
 
 var {:layer 0,3} x: int;
 
-right action {:layer 1} AtomicIncr()
-modifies x;
-{ x := x + 1; }
-
 yield procedure {:layer 0} Incr();
-refines AtomicIncr;
+refines right action {:layer 1} AtomicIncr
+{ x := x + 1; }
 
 right action {:layer 2} AtomicIncr2()
 modifies x;

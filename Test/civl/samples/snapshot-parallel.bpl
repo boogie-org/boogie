@@ -36,7 +36,8 @@ yield procedure {:layer 3} main()
 }
 
 yield procedure {:layer 2} scan() returns (snapshot: [int]StampedValue)
-refines atomic action {:layer 3} _ {
+refines atomic action {:layer 3} _
+{
     assume (forall j:int :: 1 <= j && j <= n  ==> snapshot[j] == mem[j]);
 }
 {
@@ -131,11 +132,13 @@ refines action_read_s;
 }
 
 yield procedure {:layer 0} write(i: int, v: Value);
-refines atomic action {:layer 1,3} _ {
+refines atomic action {:layer 1,3} _
+{
     mem[i] := StampedValue(mem[i]->ts + 1, v);
 }
 
 yield procedure {:layer 0} read (i: int) returns (v: StampedValue);
-refines atomic action {:layer 1,3} _ {
+refines atomic action {:layer 1,3} _
+{
     v := mem[i];
 }

@@ -226,29 +226,34 @@ requires {:layer 1} IsPid(i) && p->val == Collect(i);
 ////////////////////////////////////////////////////////////////////////////////
 
 yield procedure {:layer 0} get_value(i:pid) returns (v:val);
-refines both action {:layer 1} _ {
+refines both action {:layer 1} _
+{
   v := value[i];
 }
 
 yield procedure {:layer 0} set_decision({:linear_in} p: One Permission, d:val);
-refines both action {:layer 1} _ {
+refines both action {:layer 1} _
+{
   assert p->val is Collect;
   decision[p->val->i] := d;
   call One_Put(usedPermissions, p);
 }
 
 yield procedure {:layer 0} send(v:val, i:pid);
-refines left action {:layer 1} _ {
+refines left action {:layer 1} _
+{
   channels[i][v] := channels[i][v] + 1;
 }
 
 yield procedure {:layer 0} receive(i:pid) returns (v:val);
-refines right action {:layer 1} _ {
+refines right action {:layer 1} _
+{
   assume channels[i][v] > 0;
   channels[i][v] := channels[i][v] - 1;
 }
 
 yield procedure {:layer 0} release_permission({:linear_in} p: One Permission);
-refines both action {:layer 1} _ {
+refines both action {:layer 1} _
+{
   call One_Put(usedPermissions, p);
 }

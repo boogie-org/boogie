@@ -84,61 +84,45 @@ requires {:layer 1} tid->val != nil;
 
 // =============================================================================
 
-both action {:layer 1} READ_A ({:linear} tid: One Tid, i:int) returns (v:int)
+yield procedure {:layer 0} read_A ({:linear} tid: One Tid, i:int) returns (v:int);
+refines both action {:layer 1} READ_A
 {
   assert tid->val != nil && lock == tid->val;
   v := A[i];
 }
 
-both action {:layer 1} WRITE_A ({:linear} tid: One Tid, i:int, v:int)
-modifies A;
+yield procedure {:layer 0} write_A ({:linear} tid: One Tid, i:int, v:int);
+refines both action {:layer 1} WRITE_A
 {
   assert tid->val != nil && lock == tid->val;
   A[i] := v;
 }
 
-both action {:layer 1} READ_COUNT ({:linear} tid: One Tid) returns (c:int)
+yield procedure {:layer 0} read_count ({:linear} tid: One Tid) returns (c:int);
+refines both action {:layer 1} READ_COUNT
 {
   assert tid->val != nil && lock == tid->val;
   c := count;
 }
 
-both action {:layer 1} WRITE_COUNT ({:linear} tid: One Tid, c:int)
-modifies count;
+yield procedure {:layer 0} write_count ({:linear} tid: One Tid, c:int);
+refines both action {:layer 1} WRITE_COUNT
 {
   assert tid->val != nil && lock == tid->val;
   count := c;
 }
 
-right action {:layer 1} ACQUIRE ({:linear} tid: One Tid)
-modifies lock;
+yield procedure {:layer 0} acquire ({:linear} tid: One Tid);
+refines right action {:layer 1} ACQUIRE
 {
   assert tid->val != nil;
   assume lock == nil;
   lock := tid->val;
 }
 
-left action {:layer 1} RELEASE ({:linear} tid: One Tid)
-modifies lock;
+yield procedure {:layer 0} release ({:linear} tid: One Tid);
+refines left action {:layer 1} RELEASE
 {
   assert tid->val != nil && lock == tid->val;
   lock := nil;
 }
-
-yield procedure {:layer 0} read_A ({:linear} tid: One Tid, i:int) returns (v:int);
-refines READ_A;
-
-yield procedure {:layer 0} write_A ({:linear} tid: One Tid, i:int, v:int);
-refines WRITE_A;
-
-yield procedure {:layer 0} read_count ({:linear} tid: One Tid) returns (c:int);
-refines READ_COUNT;
-
-yield procedure {:layer 0} write_count ({:linear} tid: One Tid, c:int);
-refines WRITE_COUNT;
-
-yield procedure {:layer 0} acquire ({:linear} tid: One Tid);
-refines ACQUIRE;
-
-yield procedure {:layer 0} release ({:linear} tid: One Tid);
-refines RELEASE;

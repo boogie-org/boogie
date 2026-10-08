@@ -42,73 +42,53 @@ requires {:layer 1} tid->val != nil;
   call release_y(tid);
 }
 
-right action {:layer 1} ACQUIRE_X ({:linear} tid: One Tid)
-modifies lock_x;
+yield procedure {:layer 0} acquire_x ({:linear} tid: One Tid);
+refines right action {:layer 1} ACQUIRE_X
 {
   assert tid->val != nil;
   assume lock_x == nil;
   lock_x := tid->val;
 }
 
-left action {:layer 1} RELEASE_X ({:linear} tid: One Tid)
-modifies lock_x;
-{
-  assert tid->val != nil && lock_x == tid->val;
-  lock_x := nil;
-}
-
-right action {:layer 1} ACQUIRE_Y ({:linear} tid: One Tid)
-modifies lock_y;
+yield procedure {:layer 0} acquire_y ({:linear} tid: One Tid);
+refines right action {:layer 1} ACQUIRE_Y
 {
   assert tid->val != nil;
   assume lock_y == nil;
   lock_y := tid->val;
 }
 
-left action {:layer 1} RELEASE_Y ({:linear} tid: One Tid)
-modifies lock_y;
+yield procedure {:layer 0} release_x ({:linear} tid: One Tid);
+refines left action {:layer 1} RELEASE_X
+{
+  assert tid->val != nil && lock_x == tid->val;
+  lock_x := nil;
+}
+
+yield procedure {:layer 0} release_y ({:linear} tid: One Tid);
+refines left action {:layer 1} RELEASE_Y
 {
   assert tid->val != nil && lock_y == tid->val;
   lock_y := nil;
 }
 
-both action {:layer 1} WRITE_X ({:linear} tid: One Tid, v: int)
-modifies x;
+yield procedure {:layer 0} write_x ({:linear} tid: One Tid, v: int);
+refines both action {:layer 1} WRITE_X
 {
   assert tid->val != nil && lock_x == tid->val;
   x := v;
 }
 
-both action {:layer 1} WRITE_Y ({:linear} tid: One Tid, v: int)
-modifies y;
+yield procedure {:layer 0} write_y ({:linear} tid: One Tid, v: int);
+refines both action {:layer 1} WRITE_Y
 {
   assert tid->val != nil && lock_y == tid->val;
   y := v;
 }
 
-both action {:layer 1} READ_X ({:linear} tid: One Tid) returns (r: int)
+yield procedure {:layer 0} read_x ({:linear} tid: One Tid) returns (r: int);
+refines both action {:layer 1} READ_X
 {
   assert tid->val != nil && lock_x == tid->val;
   r := x;
 }
-
-yield procedure {:layer 0} acquire_x ({:linear} tid: One Tid);
-refines ACQUIRE_X;
-
-yield procedure {:layer 0} acquire_y ({:linear} tid: One Tid);
-refines ACQUIRE_Y;
-
-yield procedure {:layer 0} release_x ({:linear} tid: One Tid);
-refines RELEASE_X;
-
-yield procedure {:layer 0} release_y ({:linear} tid: One Tid);
-refines RELEASE_Y;
-
-yield procedure {:layer 0} write_x ({:linear} tid: One Tid, v: int);
-refines WRITE_X;
-
-yield procedure {:layer 0} write_y ({:linear} tid: One Tid, v: int);
-refines WRITE_Y;
-
-yield procedure {:layer 0} read_x ({:linear} tid: One Tid) returns (r: int);
-refines READ_X;

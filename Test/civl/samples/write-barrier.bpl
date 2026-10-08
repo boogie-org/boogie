@@ -50,53 +50,40 @@ modifies Color;
   }
 }
 
-right action {:layer 1,1} AtomicAcquireLock({:linear} tid: One Tid)
-modifies lock;
+yield procedure {:layer 0} AcquireLock({:linear} tid: One Tid);
+refines right action {:layer 1,1} AtomicAcquireLock
 {
   assert tid->val != nil;
   assume lock == nil;
   lock := tid->val;
 }
 
-left action {:layer 1,1} AtomicReleaseLock({:linear} tid: One Tid)
-modifies lock;
+yield procedure {:layer 0} ReleaseLock({:linear} tid: One Tid);
+refines left action {:layer 1,1} AtomicReleaseLock
 {
   assert tid->val != nil;
   assert lock == tid->val;
   lock := nil;
 }
 
-atomic action {:layer 1,1} AtomicSetColorLocked({:linear} tid: One Tid, newCol:int)
-modifies Color;
+yield procedure {:layer 0} SetColorLocked({:linear} tid: One Tid, newCol:int);
+refines atomic action {:layer 1,1} AtomicSetColorLocked
 {
   assert tid->val != nil;
   assert lock == tid->val;
   Color := newCol;
 }
 
-both action {:layer 1,1} AtomicGetColorLocked({:linear} tid: One Tid) returns (col:int)
+yield procedure {:layer 0} GetColorLocked({:linear} tid: One Tid) returns (col:int);
+refines both action {:layer 1,1} AtomicGetColorLocked
 {
   assert tid->val != nil;
   assert lock == tid->val;
   col := Color;
 }
 
-atomic action {:layer 1,2} AtomicGetColorNoLock() returns (col:int)
+yield procedure {:layer 0} GetColorNoLock() returns (col:int);
+refines atomic action {:layer 1,2} AtomicGetColorNoLock
 {
   col := Color;
 }
-
-yield procedure {:layer 0} AcquireLock({:linear} tid: One Tid);
-refines AtomicAcquireLock;
-
-yield procedure {:layer 0} ReleaseLock({:linear} tid: One Tid);
-refines AtomicReleaseLock;
-
-yield procedure {:layer 0} SetColorLocked({:linear} tid: One Tid, newCol:int);
-refines AtomicSetColorLocked;
-
-yield procedure {:layer 0} GetColorLocked({:linear} tid: One Tid) returns (col:int);
-refines AtomicGetColorLocked;
-
-yield procedure {:layer 0} GetColorNoLock() returns (col:int);
-refines AtomicGetColorNoLock;

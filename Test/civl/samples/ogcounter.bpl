@@ -7,10 +7,7 @@ const MainTid: X;
 var {:layer 0,2} x: int;
 
 yield procedure {:layer 0} Incr();
-refines AtomicIncr;
-
-left action {:layer 1} AtomicIncr()
-modifies x;
+refines left action {:layer 1} AtomicIncr
 { x := x + 1; }
 
 yield procedure {:layer 1} IncrBy2()

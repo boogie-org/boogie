@@ -13,38 +13,30 @@ var status:[int]int;
 const n: int;
 axiom 0 <= n;
 
-left action {:layer 1} AtomicCreateTask({:linear} tid: One int)
-modifies status;
+yield procedure {:layer 0} CreateTask({:linear} tid: One int);
+refines left action {:layer 1} AtomicCreateTask
 {
     assert status[tid->val] == DEFAULT;
     status[tid->val] := CREATED;
 }
-yield procedure {:layer 0} CreateTask({:linear} tid: One int);
-refines AtomicCreateTask;
 
-left action {:layer 1} AtomicProcessTask({:linear} tid: One int)
-modifies status;
+yield procedure {:layer 0} ProcessTask({:linear} tid: One int);
+refines left action {:layer 1} AtomicProcessTask
 {
     assert status[tid->val] == CREATED;
     status[tid->val] := PROCESSED;
 }
-yield procedure {:layer 0} ProcessTask({:linear} tid: One int);
-refines AtomicProcessTask;
 
-left action {:layer 1} AtomicFinishTask({:linear} tid: One int)
-modifies status;
+yield procedure {:layer 0} FinishTask({:linear} tid: One int);
+refines left action {:layer 1} AtomicFinishTask
 {
     assert status[tid->val] == PROCESSED;
     status[tid->val] := FINISHED;
 }
-yield procedure {:layer 0} FinishTask({:linear} tid: One int);
-refines AtomicFinishTask;
 
 yield procedure {:layer 0} Alloc(i: int, {:linear_in} tidq: UnitMap (One int)) returns ({:linear} id: One int, {:linear} tidq': UnitMap (One int));
-refines AtomicAlloc;
-both action {:layer 1} AtomicAlloc(i: int, {:linear_in} tidq: UnitMap (One int)) returns ({:linear} id: One int, {:linear} tidq': UnitMap (One int))
+refines both action {:layer 1} AtomicAlloc
 { tidq' := tidq; id := One(i); call One_Get(tidq', id); }
-
 atomic action {:layer 2} AtomicMain({:linear_in} tids: UnitMap (One int))
 modifies status;
 {

@@ -19,6 +19,7 @@ modifies x;
 }
 
 yield procedure {:layer 0} add (i: int);
-refines left action {:layer 1} _ {
+refines left action {:layer 1} _
+{
   x := x + i;
 }

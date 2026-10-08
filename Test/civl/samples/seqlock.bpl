@@ -152,73 +152,52 @@ refines LOCKED_WRITE_Y;
 // * read and increment of seq
 // * acquire and release of lock
 
-atomic action {:layer 1} READ_X () returns (r:int)
+yield procedure {:layer 0} read_x () returns (r:int);
+refines atomic action {:layer 1} READ_X
 {
   r := x;
 }
 
-atomic action {:layer 1} READ_Y () returns (r:int)
+yield procedure {:layer 0} read_y () returns (r:int);
+refines atomic action {:layer 1} READ_Y
 {
   r := y;
 }
 
-atomic action {:layer 1} WRITE_X (v:int)
-modifies x;
+yield procedure {:layer 0} write_x (v:int);
+refines atomic action {:layer 1} WRITE_X
 {
   x := v;
 }
 
-atomic action {:layer 1} WRITE_Y (v:int)
-modifies y;
+yield procedure {:layer 0} write_y (v:int);
+refines atomic action {:layer 1} WRITE_Y
 {
   y := v;
 }
 
-atomic action {:layer 1,2} READ_SEQ () returns (r:int)
+yield procedure {:layer 0} read_seq () returns (r:int);
+refines atomic action {:layer 1,2} READ_SEQ
 {
   r := seq;
 }
 
-atomic action {:layer 1} INC_SEQ ()
-modifies seq;
+yield procedure {:layer 0} inc_seq ();
+refines atomic action {:layer 1} INC_SEQ
 {
   seq := seq + 1;
 }
 
-right action {:layer 1,2} ACQUIRE ({:linear} tid: One Tid)
-modifies lock;
+yield procedure {:layer 0} acquire ({:linear} tid: One Tid);
+refines right action {:layer 1,2} ACQUIRE
 {
   assume lock == None();
   lock := Some(tid->val);
 }
 
-left action {:layer 1,2} RELEASE ({:linear} tid: One Tid)
-modifies lock;
+yield procedure {:layer 0} release ({:linear} tid: One Tid);
+refines left action {:layer 1,2} RELEASE
 {
   assert lock == Some(tid->val);
   lock := None();
 }
-
-yield procedure {:layer 0} read_x () returns (r:int);
-refines READ_X;
-
-yield procedure {:layer 0} read_y () returns (r:int);
-refines READ_Y;
-
-yield procedure {:layer 0} write_x (v:int);
-refines WRITE_X;
-
-yield procedure {:layer 0} write_y (v:int);
-refines WRITE_Y;
-
-yield procedure {:layer 0} read_seq () returns (r:int);
-refines READ_SEQ;
-
-yield procedure {:layer 0} inc_seq ();
-refines INC_SEQ;
-
-yield procedure {:layer 0} acquire ({:linear} tid: One Tid);
-refines ACQUIRE;
-
-yield procedure {:layer 0} release ({:linear} tid: One Tid);
-refines RELEASE;

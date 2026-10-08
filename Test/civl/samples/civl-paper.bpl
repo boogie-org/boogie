@@ -117,28 +117,20 @@ preserves call InvLock();
   call CLEAR(tid->val, false);
 }
 
-atomic action {:layer 1,2} AtomicTransferToGlobal({:linear} tid: One X, {:linear_in} l: Map (One int) int)
-modifies g;
+yield procedure {:layer 0} TransferToGlobal({:linear} tid: One X, {:linear_in} l: Map (One int) int);
+refines atomic action {:layer 1,2} AtomicTransferToGlobal
 { g := l; }
 
-yield procedure {:layer 0} TransferToGlobal({:linear} tid: One X, {:linear_in} l: Map (One int) int);
-refines AtomicTransferToGlobal;
-
-atomic action {:layer 1,2} AtomicTransferFromGlobal({:linear} tid: One X) returns ({:linear} l: Map (One int) int)
-modifies g;
+yield procedure {:layer 0} TransferFromGlobal({:linear} tid: One X) returns ({:linear} l: Map (One int) int);
+refines atomic action {:layer 1,2} AtomicTransferFromGlobal
 { l := g; call g := Map_MakeEmpty(); }
 
-yield procedure {:layer 0} TransferFromGlobal({:linear} tid: One X) returns ({:linear} l: Map (One int) int);
-refines AtomicTransferFromGlobal;
-
-both action {:layer 1,3} AtomicLoad({:linear} l: Map (One int) int, a: int) returns (v: int)
+yield procedure {:layer 0} Load({:linear} l: Map (One int) int, a: int) returns (v: int);
+refines both action {:layer 1,3} AtomicLoad
 { v := l->val[One(a)]; }
 
-yield procedure {:layer 0} Load({:linear} l: Map (One int) int, a: int) returns (v: int);
-refines AtomicLoad;
-
-both action {:layer 1,3} AtomicStore({:linear_in} l_in: Map (One int) int, a: int, v: int)
-  returns ({:linear} l_out: Map (One int) int)
+yield procedure {:layer 0} Store({:linear_in} l_in: Map (One int) int, a: int, v: int) returns ({:linear} l_out: Map (One int) int);
+refines both action {:layer 1,3} AtomicStore
 {
   var one_a: One int;
   var _v: int;
@@ -149,11 +141,8 @@ both action {:layer 1,3} AtomicStore({:linear_in} l_in: Map (One int) int, a: in
   call Map_Put(l_out, one_a, v);
 }
 
-yield procedure {:layer 0} Store({:linear_in} l_in: Map (One int) int, a: int, v: int) returns ({:linear} l_out: Map (One int) int);
-refines AtomicStore;
-
-atomic action {:layer 1} AtomicCAS(tid: X, prev: bool, next: bool) returns (status: bool)
-modifies b, lock;
+yield procedure {:layer 0} CAS(tid: X, prev: bool, next: bool) returns (status: bool);
+refines atomic action {:layer 1} AtomicCAS
 {
   if (*) {
     assume b == prev; b := next; status := true; lock := tid;
@@ -162,12 +151,6 @@ modifies b, lock;
   }
 }
 
-yield procedure {:layer 0} CAS(tid: X, prev: bool, next: bool) returns (status: bool);
-refines AtomicCAS;
-
-atomic action {:layer 1} AtomicCLEAR(tid: X, next: bool)
-modifies b, lock;
-{ b := next; lock := nil; }
-
 yield procedure {:layer 0} CLEAR(tid: X, next: bool);
-refines AtomicCLEAR;
+refines atomic action {:layer 1} AtomicCLEAR
+{ b := next; lock := nil; }

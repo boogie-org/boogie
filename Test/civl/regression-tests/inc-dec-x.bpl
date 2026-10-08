@@ -24,22 +24,16 @@ preserves call Inv();
   call geq0_dec();
 }
 
-right action {:layer 1} GEQ0_INC ()
-modifies x;
+yield procedure {:layer 0} geq0_inc ();
+refines right action {:layer 1} GEQ0_INC
 {
   assert x >= 0;
   x := x + 1;
 }
 
-atomic action {:layer 1} GEQ0_DEC ()
-modifies x;
+yield procedure {:layer 0} geq0_dec ();
+refines atomic action {:layer 1} GEQ0_DEC
 {
   assert x >= 0;
   x := x - 1;
 }
-
-yield procedure {:layer 0} geq0_inc ();
-refines GEQ0_INC;
-
-yield procedure {:layer 0} geq0_dec ();
-refines GEQ0_DEC;

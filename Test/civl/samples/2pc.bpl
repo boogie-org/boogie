@@ -159,7 +159,8 @@ modifies locked_transactions;
 }
 
 yield procedure {:layer 0} vote({:linear} vr: One VoteRequest) returns (result : Vote);
-refines right action {:layer 1, 1} _ {
+refines right action {:layer 1, 1} _
+{
     if (*)
     {
         result := NO();
@@ -179,7 +180,8 @@ refines right action {:layer 1, 1} _ {
 }
 
 yield procedure {:layer 0} finalize(d: Decision, {:linear} vr: One VoteRequest);
-refines left action {:layer 1, 1} _ {
+refines left action {:layer 1, 1} _
+{
     if (d != COMMIT())
     {
         locked_transactions[vr->val->rid] := Set_Remove(locked_transactions[vr->val->rid], vr->val->xid);
@@ -187,7 +189,8 @@ refines left action {:layer 1, 1} _ {
 }
 
 yield procedure {:layer 0} add_to_committed_transactions({:linear} xid: One TransactionId);
-refines atomic action {:layer 1, 1} _ {
+refines atomic action {:layer 1, 1} _
+{
     assert (forall xid0: TransactionId :: Set_Contains(committed_transactions, xid0) ==> !Conflict[xid0][xid->val]);
     committed_transactions := Set_Add(committed_transactions, xid->val);
 }
