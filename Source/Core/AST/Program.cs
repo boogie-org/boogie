@@ -207,6 +207,31 @@ public class Program : Absy
       {
         seeker.Visit(d);
       }
+
+      ReverseGuardNegations();
+    }
+  }
+
+  /// <summary>
+  /// Reverses the negated guards of "if" and "while" that Expr.Not left negated, for want of a type, when
+  /// the implementation was built. A float's stays negated.
+  /// </summary>
+  private void ReverseGuardNegations()
+  {
+    foreach (var cmd in Implementations
+               .SelectMany(impl => impl.Blocks)
+               .SelectMany(block => block.Cmds)
+               .OfType<AssumeCmd>()
+               .Where(cmd => cmd.Attributes.FindBoolAttribute("partition")))
+    {
+      if (cmd.Expr is NAryExpr { Fun: UnaryOperator { Op: UnaryOperator.Opcode.Not } } negation &&
+          Expr.Not(negation.Args[0]) is NAryExpr { Fun: BinaryOperator } reversed)
+      {
+        // Typed as the negation it replaces.
+        reversed.Type = negation.Type;
+        reversed.TypeParameters = negation.TypeParameters;
+        cmd.Expr = reversed;
+      }
     }
   }
 

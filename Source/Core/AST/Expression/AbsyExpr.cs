@@ -301,6 +301,11 @@ namespace Microsoft.Boogie
           BinaryOperator op = (BinaryOperator) nary.Fun;
           Expr arg0 = Cce.NonNull(nary.Args[0]);
           Expr arg1 = Cce.NonNull(nary.Args[1]);
+          // A negated order relation is the reverse relation only where the order is total, as on int and
+          // real but not float: a NaN satisfies "!(a < b)" but not "b <= a". The guards of "if" and "while"
+          // are negated before typechecking, when the type is usually unknown; Program.ReverseGuardNegations
+          // asks again.
+          var knownTotalOrder = arg0.Type != null && (arg0.Type.IsInt || arg0.Type.IsReal);
           if (op.Op == BinaryOperator.Opcode.Eq)
           {
             return Neq(arg0, arg1);
@@ -309,19 +314,19 @@ namespace Microsoft.Boogie
           {
             return Eq(arg0, arg1);
           }
-          else if (op.Op == BinaryOperator.Opcode.Lt)
+          else if (knownTotalOrder && op.Op == BinaryOperator.Opcode.Lt)
           {
             return Le(arg1, arg0);
           }
-          else if (op.Op == BinaryOperator.Opcode.Le)
+          else if (knownTotalOrder && op.Op == BinaryOperator.Opcode.Le)
           {
             return Lt(arg1, arg0);
           }
-          else if (op.Op == BinaryOperator.Opcode.Ge)
+          else if (knownTotalOrder && op.Op == BinaryOperator.Opcode.Ge)
           {
             return Gt(arg1, arg0);
           }
-          else if (op.Op == BinaryOperator.Opcode.Gt)
+          else if (knownTotalOrder && op.Op == BinaryOperator.Opcode.Gt)
           {
             return Ge(arg1, arg0);
           }
