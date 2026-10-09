@@ -213,14 +213,8 @@ public class Program : Absy
   }
 
   /// <summary>
-  /// Finishes negating the guards of "if" and "while". They are negated from the Implementation
-  /// constructor, while parsing, so nothing has a type yet and Expr.Not leaves an order relation alone --
-  /// see there. Asking it again here reverses the ones it can, and still leaves a float's alone.
-  ///
-  /// This reaches the blocks, which is what gets verified. It cannot reach a -print taken of the program
-  /// as parsed: that happens before resolution (ExecutionEngine.ProcessProgram), while the blocks already
-  /// exist, because the Implementation constructor built them. So such a print shows the unreversed
-  /// guard, which is why Test/inline/test4.bpl expects one.
+  /// Reverses the negated guards of "if" and "while" that Expr.Not left negated, for want of a type, when
+  /// the implementation was built. A float's stays negated.
   /// </summary>
   private void ReverseGuardNegations()
   {
@@ -231,8 +225,11 @@ public class Program : Absy
                .Where(cmd => cmd.Attributes.FindBoolAttribute("partition")))
     {
       if (cmd.Expr is NAryExpr { Fun: UnaryOperator { Op: UnaryOperator.Opcode.Not } } negation &&
-          Expr.TryPushNegation(negation, out var reversed))
+          Expr.Not(negation.Args[0]) is NAryExpr { Fun: BinaryOperator } reversed)
       {
+        // Typed as the negation it replaces.
+        reversed.Type = negation.Type;
+        reversed.TypeParameters = negation.TypeParameters;
         cmd.Expr = reversed;
       }
     }

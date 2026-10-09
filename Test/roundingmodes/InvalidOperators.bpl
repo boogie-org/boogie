@@ -26,4 +26,8 @@ procedure foo()
   } else if (a > b) {
     c := b;
   }
+
+  if (RNE < b) {
+    c := a;
+  }
 }
