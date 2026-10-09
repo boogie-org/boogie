@@ -1,0 +1,5 @@
+BuiltinWithDefinition.bpl(6,24): Error: a function declared {:builtin ...} must not also have a definition
+BuiltinWithDefinition.bpl(8,39): Error: a function declared {:builtin ...} must not also have a definition
+BuiltinWithDefinition.bpl(10,39): Error: a function declared {:builtin ...} must not also have a definition
+BuiltinWithDefinition.bpl(12,30): Error: a function declared {:bvbuiltin ...} must not also have a definition
+4 type checking errors detected in BuiltinWithDefinition.bpl
