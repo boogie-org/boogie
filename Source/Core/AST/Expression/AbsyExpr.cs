@@ -172,12 +172,20 @@ namespace Microsoft.Boogie
       return Binary(e0.tok ?? e1.tok ?? Token.NoToken, op, e0, e1);
     }
 
+    // Sets Type for the passes that build after typechecking. TypeParameters stays null, so that
+    // NAryExpr.Typecheck still checks a node built before typechecking.
+    private static NAryExpr Bool(NAryExpr e)
+    {
+      e.Type = Type.Bool;
+      return e;
+    }
+
     public static NAryExpr Eq(Expr e1, Expr e2)
     {
       Contract.Requires(e2 != null);
       Contract.Requires(e1 != null);
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
-      return Binary(BinaryOperator.Opcode.Eq, e1, e2);
+      return Bool(Binary(BinaryOperator.Opcode.Eq, e1, e2));
     }
 
     public static NAryExpr Neq(Expr e1, Expr e2)
@@ -185,7 +193,7 @@ namespace Microsoft.Boogie
       Contract.Requires(e2 != null);
       Contract.Requires(e1 != null);
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
-      return Binary(BinaryOperator.Opcode.Neq, e1, e2);
+      return Bool(Binary(BinaryOperator.Opcode.Neq, e1, e2));
     }
 
     public static NAryExpr Le(Expr e1, Expr e2)
@@ -193,7 +201,7 @@ namespace Microsoft.Boogie
       Contract.Requires(e2 != null);
       Contract.Requires(e1 != null);
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
-      return Binary(BinaryOperator.Opcode.Le, e1, e2);
+      return Bool(Binary(BinaryOperator.Opcode.Le, e1, e2));
     }
 
     public static NAryExpr Ge(Expr e1, Expr e2)
@@ -201,7 +209,7 @@ namespace Microsoft.Boogie
       Contract.Requires(e2 != null);
       Contract.Requires(e1 != null);
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
-      return Binary(BinaryOperator.Opcode.Ge, e1, e2);
+      return Bool(Binary(BinaryOperator.Opcode.Ge, e1, e2));
     }
 
     public static NAryExpr Lt(Expr e1, Expr e2)
@@ -209,7 +217,7 @@ namespace Microsoft.Boogie
       Contract.Requires(e2 != null);
       Contract.Requires(e1 != null);
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
-      return Binary(BinaryOperator.Opcode.Lt, e1, e2);
+      return Bool(Binary(BinaryOperator.Opcode.Lt, e1, e2));
     }
 
     public static NAryExpr Gt(Expr e1, Expr e2)
@@ -217,7 +225,7 @@ namespace Microsoft.Boogie
       Contract.Requires(e2 != null);
       Contract.Requires(e1 != null);
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
-      return Binary(BinaryOperator.Opcode.Gt, e1, e2);
+      return Bool(Binary(BinaryOperator.Opcode.Gt, e1, e2));
     }
 
     public static Expr And(Expr e1, Expr e2)
@@ -328,7 +336,7 @@ namespace Microsoft.Boogie
         }
       }
 
-      return Unary(Token.NoToken, UnaryOperator.Opcode.Not, e1);
+      return Bool(Unary(Token.NoToken, UnaryOperator.Opcode.Not, e1));
     }
 
     public static Expr Neg(Expr e1)
@@ -343,7 +351,7 @@ namespace Microsoft.Boogie
       Contract.Requires(e2 != null);
       Contract.Requires(e1 != null);
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
-      return Binary(BinaryOperator.Opcode.Imp, e1, e2);
+      return Bool(Binary(BinaryOperator.Opcode.Imp, e1, e2));
     }
 
     public static NAryExpr Iff(Expr e1, Expr e2)
@@ -351,7 +359,7 @@ namespace Microsoft.Boogie
       Contract.Requires(e2 != null);
       Contract.Requires(e1 != null);
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
-      return Binary(BinaryOperator.Opcode.Iff, e1, e2);
+      return Bool(Binary(BinaryOperator.Opcode.Iff, e1, e2));
     }
 
     public static NAryExpr Add(Expr e1, Expr e2)
