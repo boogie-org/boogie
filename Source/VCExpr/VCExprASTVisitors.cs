@@ -94,8 +94,6 @@ namespace Microsoft.Boogie.VCExprAST
     Result VisitLeOp(VCExprNAry node, Arg arg);
     Result VisitGtOp(VCExprNAry node, Arg arg);
     Result VisitGeOp(VCExprNAry node, Arg arg);
-    Result VisitSubtypeOp(VCExprNAry node, Arg arg);
-    Result VisitSubtype3Op(VCExprNAry node, Arg arg);
     Result VisitToIntOp(VCExprNAry node, Arg arg);
     Result VisitToRealOp(VCExprNAry node, Arg arg);
     Result VisitBoogieFunctionOp(VCExprNAry node, Arg arg);
@@ -313,18 +311,6 @@ namespace Microsoft.Boogie.VCExprAST
     }
 
     public Result VisitGeOp(VCExprNAry node, Arg arg)
-    {
-      Contract.Requires(node != null);
-      throw new NotImplementedException();
-    }
-
-    public Result VisitSubtypeOp(VCExprNAry node, Arg arg)
-    {
-      Contract.Requires(node != null);
-      throw new NotImplementedException();
-    }
-
-    public Result VisitSubtype3Op(VCExprNAry node, Arg arg)
     {
       Contract.Requires(node != null);
       throw new NotImplementedException();
@@ -1465,16 +1451,6 @@ namespace Microsoft.Boogie.VCExprAST
     }
 
     public virtual Result VisitGeOp(VCExprNAry node, Arg arg)
-    {
-      return StandardResult(node, arg);
-    }
-
-    public virtual Result VisitSubtypeOp(VCExprNAry node, Arg arg)
-    {
-      return StandardResult(node, arg);
-    }
-
-    public virtual Result VisitSubtype3Op(VCExprNAry node, Arg arg)
     {
       return StandardResult(node, arg);
     }

@@ -266,14 +266,6 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
-  public override VCExpr VisitSubtypeOp(VCExprNAry node, VariableBindings bindings)
-  {
-    Contract.Requires((bindings != null));
-    Contract.Requires((node != null));
-    Contract.Ensures(Contract.Result<VCExpr>() != null);
-    return CastArguments(node, AxBuilder.U, bindings, 0);
-  }
-
   public override VCExpr VisitToIntOp(VCExprNAry node, VariableBindings bindings)
   {
     Contract.Requires((bindings != null));
