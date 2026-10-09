@@ -1,0 +1,7 @@
+BuiltinRenamesIncarnation.bpl(25,5): Error: this assertion could not be proved
+Execution trace:
+    BuiltinRenamesIncarnation.bpl(16,3): anon0
+    BuiltinRenamesIncarnation.bpl(18,3): A
+    BuiltinRenamesIncarnation.bpl(24,3): C
+
+Boogie program verifier finished with 0 verified, 1 error

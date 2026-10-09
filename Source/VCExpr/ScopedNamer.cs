@@ -16,7 +16,11 @@ namespace Microsoft.Boogie.VCExprAST
     public static void AddBoogieDeterminedName(string name) {
       boogieDeterminedNames.Add(name);
     }
-      
+
+    // Names never handed out, so that they still mean what the solver means by them. Shared, not copied, by
+    // the namers made from this one.
+    public ISet<string> ReservedNames = new HashSet<string>();
+
     public string Spacer = "@@";
     protected IDictionary<Object, string> GlobalNames;
 
@@ -43,6 +47,7 @@ namespace Microsoft.Boogie.VCExprAST
       Contract.Requires(namer != null);
 
       Spacer = namer.Spacer;
+      ReservedNames = namer.ReservedNames;
       GlobalNames = new Dictionary<Object, string>(namer.GlobalNames);
       LocalNames = new List<IDictionary<Object, string>>();
 
@@ -117,7 +122,7 @@ namespace Microsoft.Boogie.VCExprAST
         counter = 0;
       }
 
-      while (UsedNames.Contains(candidate))
+      while (UsedNames.Contains(candidate) || ReservedNames.Contains(candidate))
       {
         candidate = baseName + Spacer + counter;
         counter = counter + 1;

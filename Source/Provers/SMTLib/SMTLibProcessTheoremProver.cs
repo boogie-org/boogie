@@ -1067,6 +1067,13 @@ namespace Microsoft.Boogie.SMTLib
 
     ////////////////////////////////////////////////////////////////////////////
 
+    protected ScopedNamer NewNamer()
+    {
+      var namer = GetNamer(libOptions, options);
+      namer.ReservedNames = ctx.BuiltinNames;
+      return namer;
+    }
+
     private void InitializeGlobalInformation()
     {
       Contract.Ensures(backgroundPredicates != null);
@@ -1558,15 +1565,21 @@ namespace Microsoft.Boogie.SMTLib
     
     public readonly Dictionary<Function, VCExprNAry> DefinedFunctions = new Dictionary<Function, VCExprNAry>();
 
+    public readonly HashSet<string> BuiltinNames = new HashSet<string>();
+
+    private readonly SMTLibOptions libOptions;
+
     public SMTLibProverContext(VCExpressionGenerator gen,
       VCGenerationOptions genOptions, SMTLibOptions options)
       : base(gen, genOptions, options)
     {
+      libOptions = options;
     }
 
     protected SMTLibProverContext(SMTLibProverContext par)
       : base(par)
     {
+      libOptions = par.libOptions;
     }
 
     public override object Clone()
@@ -1592,7 +1605,36 @@ namespace Microsoft.Boogie.SMTLib
         DefinedFunctions.Add(f, (VCExprNAry) translator.Translate(f.DefinitionBody));
       }
 
+      ReserveBuiltinName(f);
       base.DeclareFunction(f, attributes);
+    }
+
+    // Boogie declares these, or reads them back from a model, under their fixed names, so the namer cannot move
+    // them. Nor can it move a coverage label.
+    private static readonly string[] LiteralNames =
+    {
+      VCExpressionGenerator.ControlFlowName, "tickleBool", "timeoutDiagnostics", "real_pow"
+    };
+
+    // A {:builtin} function's applications are printed as its string, so none of Boogie's own symbols may have
+    // that name: the namer steers around it, and a fixed name cannot.
+    private void ReserveBuiltinName(Function f)
+    {
+      var builtin = new SMTLibExprLineariser(libOptions).ExtractBuiltin(f);
+      if (builtin == null)
+      {
+        return;
+      }
+
+      // Neither surrounding blanks nor the bars of |x| change which symbol the string names.
+      var name = builtin.Trim();
+      name = name.Length > 1 && name[0] == '|' && name[^1] == '|' ? name[1..^1] : name;
+      if (LiteralNames.Contains(name) || name.StartsWith(TypeDeclCollector.CoverageLabelPrefix))
+      {
+        throw new ProverException($"{{:builtin \"{builtin}\"}} names a symbol Boogie declares itself");
+      }
+
+      BuiltinNames.Add(name);
     }
 
     public override void DeclareType(TypeCtorDecl t, string attributes)
