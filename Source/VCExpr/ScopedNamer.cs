@@ -16,9 +16,8 @@ namespace Microsoft.Boogie.VCExprAST
     public static void AddBoogieDeterminedName(string name) {
       boogieDeterminedNames.Add(name);
     }
-
-    // Names never handed out, so that they still mean what the solver means by them. Shared, not copied, by
-    // the namers made from this one.
+      
+    // Names never handed out.
     public ISet<string> ReservedNames = new HashSet<string>();
 
     public string Spacer = "@@";

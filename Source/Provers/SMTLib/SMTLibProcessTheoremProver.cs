@@ -72,14 +72,16 @@ namespace Microsoft.Boogie.SMTLib
         }
       }
     }
-    protected static ScopedNamer GetNamer(SMTLibOptions libOptions, ProverOptions options, ScopedNamer namer = null)
+    protected ScopedNamer GetNamer(SMTLibOptions libOptions, ProverOptions options, ScopedNamer namer = null)
     {
-      return (options.RandomSeed, libOptions.NormalizeNames) switch
+      ScopedNamer result = (options.RandomSeed, libOptions.NormalizeNames) switch
       {
         (0, true) => NormalizeNamer.Create(namer),
         (0, false) => KeepOriginalNamer.Create(namer),
         _ => RandomiseNamer.Create(new Random(options.RandomSeed), namer)
       };
+      result.ReservedNames = ctx.BuiltinNames;
+      return result;
     }
 
     protected ScopedNamer ResetNamer(ScopedNamer namer) {
@@ -1067,13 +1069,6 @@ namespace Microsoft.Boogie.SMTLib
 
     ////////////////////////////////////////////////////////////////////////////
 
-    protected ScopedNamer NewNamer()
-    {
-      var namer = GetNamer(libOptions, options);
-      namer.ReservedNames = ctx.BuiltinNames;
-      return namer;
-    }
-
     private void InitializeGlobalInformation()
     {
       Contract.Ensures(backgroundPredicates != null);
@@ -1567,24 +1562,26 @@ namespace Microsoft.Boogie.SMTLib
 
     public readonly HashSet<string> BuiltinNames = new HashSet<string>();
 
-    private readonly SMTLibOptions libOptions;
-
     public SMTLibProverContext(VCExpressionGenerator gen,
       VCGenerationOptions genOptions, SMTLibOptions options)
       : base(gen, genOptions, options)
     {
-      libOptions = options;
     }
 
     protected SMTLibProverContext(SMTLibProverContext par)
       : base(par)
     {
-      libOptions = par.libOptions;
     }
 
     public override object Clone()
     {
       return new SMTLibProverContext(this);
+    }
+
+    public override void Reset()
+    {
+      base.Reset();
+      BuiltinNames.Clear();
     }
 
     public override string Lookup(VCExprVar var)
@@ -1609,32 +1606,33 @@ namespace Microsoft.Boogie.SMTLib
       base.DeclareFunction(f, attributes);
     }
 
-    // Boogie declares these, or reads them back from a model, under their fixed names, so the namer cannot move
-    // them. Nor can it move a coverage label.
-    private static readonly string[] LiteralNames =
+    // Boogie constrains these under their fixed names, or reads them back to find an error trace, so the namer
+    // cannot move them. Nor can it move a coverage label, aux$$ followed by the tracked name.
+    private static readonly string[] FixedNames =
     {
-      VCExpressionGenerator.ControlFlowName, "tickleBool", "timeoutDiagnostics", "real_pow"
+      VCExpressionGenerator.ControlFlowName, "tickleBool", "timeoutDiagnostics"
     };
 
     // A {:builtin} function's applications are printed as its string, so none of Boogie's own symbols may have
-    // that name: the namer steers around it, and a fixed name cannot.
+    // that name.
     private void ReserveBuiltinName(Function f)
     {
-      var builtin = new SMTLibExprLineariser(libOptions).ExtractBuiltin(f);
+      var builtin = new SMTLibExprLineariser(options).ExtractBuiltin(f);
       if (builtin == null)
       {
         return;
       }
 
       // Neither surrounding blanks nor the bars of |x| change which symbol the string names.
-      var name = builtin.Trim();
-      name = name.Length > 1 && name[0] == '|' && name[^1] == '|' ? name[1..^1] : name;
-      if (LiteralNames.Contains(name) || name.StartsWith(TypeDeclCollector.CoverageLabelPrefix))
+      var name = builtin.Trim().Trim('|');
+      // The solver names the tester of a datatype constructor C is-C, so C must move too.
+      var names = name.StartsWith("is-") ? new[] { name, name["is-".Length..] } : new[] { name };
+      if (names.Any(n => FixedNames.Contains(n) || n.StartsWith("aux$$")))
       {
-        throw new ProverException($"{{:builtin \"{builtin}\"}} names a symbol Boogie declares itself");
+        throw new ProverException($"{{:builtin \"{builtin}\"}} names a symbol reserved for Boogie");
       }
 
-      BuiltinNames.Add(name);
+      BuiltinNames.UnionWith(names);
     }
 
     public override void DeclareType(TypeCtorDecl t, string attributes)

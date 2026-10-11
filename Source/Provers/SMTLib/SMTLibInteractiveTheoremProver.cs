@@ -30,7 +30,7 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    protected internal override ScopedNamer Namer => finalNamer ?? (commonNamer ??= NewNamer());
+    protected internal override ScopedNamer Namer => finalNamer ?? (commonNamer ??= GetNamer(libOptions, options));
 
     public override Task GoBackToIdle()
     {

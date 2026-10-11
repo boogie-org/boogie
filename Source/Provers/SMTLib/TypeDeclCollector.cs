@@ -28,9 +28,6 @@ namespace Microsoft.Boogie.SMTLib
     }
 
 
-    // A coverage label is this prefix and the tracked name, under which unsat cores are read back.
-    internal const string CoverageLabelPrefix = "aux$$";
-
     public TypeDeclCollector(SMTLibOptions options, UniqueNamer namer)
     {
       Contract.Requires(namer != null);
@@ -224,7 +221,7 @@ namespace Microsoft.Boogie.SMTLib
         AddDeclaration(string.Format("(declare-fun {0} () Bool)", printedName));
         if (options.TrackVerificationCoverage)
         {
-          AddDeclaration(string.Format("(assert (! {0} :named {1}))", printedName, CoverageLabelPrefix + exprVar.Name));
+          AddDeclaration(string.Format("(assert (! {0} :named {1}))", printedName, "aux$$" + exprVar.Name));
         }
 
         KnownVariables.Add(exprVar);

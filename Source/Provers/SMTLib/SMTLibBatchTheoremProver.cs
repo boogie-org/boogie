@@ -44,7 +44,7 @@ namespace Microsoft.Boogie.SMTLib
     public SMTLibBatchTheoremProver(SMTLibOptions libOptions, SMTLibSolverOptions options, VCExpressionGenerator gen,
       SMTLibProverContext ctx) : base(libOptions, options, gen, ctx)
     {
-      namer = NewNamer();
+      namer = GetNamer(libOptions, options);
       DeclCollector = new TypeDeclCollector(libOptions, new ProverNamer(this));
       if (usingUnsatCore) {
         throw new NotSupportedException("Batch mode solver interface does not support unsat cores.");
@@ -117,7 +117,7 @@ namespace Microsoft.Boogie.SMTLib
       SendThisVC("(reset)");
       common.Clear();
       SetupAxiomBuilder(gen);
-      namer = NewNamer();
+      namer = GetNamer(libOptions, options);
       Axioms.Clear();
       TypeDecls.Clear();
       AxiomsAreSetup = false;

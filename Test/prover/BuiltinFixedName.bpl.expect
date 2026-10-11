@@ -1,1 +1,5 @@
-Fatal Error: ProverException: {:builtin " |tickleBool|"} names a symbol Boogie declares itself
+Fatal Error: ProverException: {:builtin "ControlFlow"} names a symbol reserved for Boogie
+Fatal Error: ProverException: {:builtin "is-ControlFlow"} names a symbol reserved for Boogie
+Fatal Error: ProverException: {:builtin " |tickleBool|"} names a symbol reserved for Boogie
+Fatal Error: ProverException: {:builtin "timeoutDiagnostics"} names a symbol reserved for Boogie
+Fatal Error: ProverException: {:builtin "aux$$assume$$a"} names a symbol reserved for Boogie
