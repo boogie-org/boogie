@@ -72,14 +72,16 @@ namespace Microsoft.Boogie.SMTLib
         }
       }
     }
-    protected static ScopedNamer GetNamer(SMTLibOptions libOptions, ProverOptions options, ScopedNamer namer = null)
+    protected ScopedNamer GetNamer(SMTLibOptions libOptions, ProverOptions options, ScopedNamer namer = null)
     {
-      return (options.RandomSeed, libOptions.NormalizeNames) switch
+      ScopedNamer result = (options.RandomSeed, libOptions.NormalizeNames) switch
       {
         (0, true) => NormalizeNamer.Create(namer),
         (0, false) => KeepOriginalNamer.Create(namer),
         _ => RandomiseNamer.Create(new Random(options.RandomSeed), namer)
       };
+      result.ReservedNames = ctx.BuiltinNames;
+      return result;
     }
 
     protected ScopedNamer ResetNamer(ScopedNamer namer) {
@@ -1558,6 +1560,8 @@ namespace Microsoft.Boogie.SMTLib
     
     public readonly Dictionary<Function, VCExprNAry> DefinedFunctions = new Dictionary<Function, VCExprNAry>();
 
+    public readonly HashSet<string> BuiltinNames = new HashSet<string>();
+
     public SMTLibProverContext(VCExpressionGenerator gen,
       VCGenerationOptions genOptions, SMTLibOptions options)
       : base(gen, genOptions, options)
@@ -1572,6 +1576,12 @@ namespace Microsoft.Boogie.SMTLib
     public override object Clone()
     {
       return new SMTLibProverContext(this);
+    }
+
+    public override void Reset()
+    {
+      base.Reset();
+      BuiltinNames.Clear();
     }
 
     public override string Lookup(VCExprVar var)
@@ -1592,7 +1602,37 @@ namespace Microsoft.Boogie.SMTLib
         DefinedFunctions.Add(f, (VCExprNAry) translator.Translate(f.DefinitionBody));
       }
 
+      ReserveBuiltinName(f);
       base.DeclareFunction(f, attributes);
+    }
+
+    // Boogie constrains these under their fixed names, or reads them back to find an error trace, so the namer
+    // cannot move them. Nor can it move a coverage label, aux$$ followed by the tracked name.
+    private static readonly string[] FixedNames =
+    {
+      VCExpressionGenerator.ControlFlowName, "tickleBool", "timeoutDiagnostics"
+    };
+
+    // A {:builtin} function's applications are printed as its string, so none of Boogie's own symbols may have
+    // that name.
+    private void ReserveBuiltinName(Function f)
+    {
+      var builtin = new SMTLibExprLineariser(options).ExtractBuiltin(f);
+      if (builtin == null)
+      {
+        return;
+      }
+
+      // Neither surrounding blanks nor the bars of |x| change which symbol the string names.
+      var name = builtin.Trim().Trim('|');
+      // The solver names the tester of a datatype constructor C is-C, so C must move too.
+      var names = name.StartsWith("is-") ? new[] { name, name["is-".Length..] } : new[] { name };
+      if (names.Any(n => FixedNames.Contains(n) || n.StartsWith("aux$$")))
+      {
+        throw new ProverException($"{{:builtin \"{builtin}\"}} names a symbol reserved for Boogie");
+      }
+
+      BuiltinNames.UnionWith(names);
     }
 
     public override void DeclareType(TypeCtorDecl t, string attributes)
