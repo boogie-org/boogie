@@ -1,7 +1,0 @@
-IntervalComparisonFold.bpl(19,3): Error: this assertion could not be proved
-Execution trace:
-    IntervalComparisonFold.bpl(11,5): anon0
-    IntervalComparisonFold.bpl(13,3): anon3_LoopHead
-    IntervalComparisonFold.bpl(13,3): anon3_LoopDone
-
-Boogie program verifier finished with 0 verified, 1 error

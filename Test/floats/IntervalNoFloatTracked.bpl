@@ -3,7 +3,7 @@
 
 // Prints what -infer:j infers for a program that assigns, compares and assumes floats: no {:inferred}
 // element mentions a float, and what is known about the ints i and r survives every float statement.
-// Unlike the other Interval*.bpl files, this also catches a re-admission of float tracking that is sound.
+// Unlike a false assertion, this also catches a re-admission of float tracking that is sound.
 
 // A bool loop guard keeps the output independent of how a negated comparison prints.
 procedure Routes(w: float24e8, more: bool) returns (r: int)

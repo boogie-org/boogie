@@ -1,7 +1,0 @@
-IntervalNotANumber.bpl(20,3): Error: this assertion could not be proved
-Execution trace:
-    IntervalNotANumber.bpl(12,5): anon0
-    IntervalNotANumber.bpl(14,3): anon3_LoopHead
-    IntervalNotANumber.bpl(14,3): anon3_LoopDone
-
-Boogie program verifier finished with 0 verified, 1 error

@@ -1,7 +1,0 @@
-IntervalSumOfLiterals.bpl(20,3): Error: this assertion could not be proved
-Execution trace:
-    IntervalSumOfLiterals.bpl(12,5): anon0
-    IntervalSumOfLiterals.bpl(14,3): anon3_LoopHead
-    IntervalSumOfLiterals.bpl(14,3): anon3_LoopDone
-
-Boogie program verifier finished with 0 verified, 1 error
