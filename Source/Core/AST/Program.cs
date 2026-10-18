@@ -213,8 +213,7 @@ public class Program : Absy
   }
 
   /// <summary>
-  /// Reverses the negated guards of "if" and "while" that Expr.Not left negated, for want of a type, when
-  /// the implementation was built. A float's stays negated.
+  /// Reverses the guard negations that Expr.Not built before typechecking, where it now can.
   /// </summary>
   private void ReverseGuardNegations()
   {
@@ -227,7 +226,6 @@ public class Program : Absy
       if (cmd.Expr is NAryExpr { Fun: UnaryOperator { Op: UnaryOperator.Opcode.Not } } negation &&
           Expr.Not(negation.Args[0]) is NAryExpr { Fun: BinaryOperator } reversed)
       {
-        // Typed as the negation it replaces.
         reversed.Type = negation.Type;
         reversed.TypeParameters = negation.TypeParameters;
         cmd.Expr = reversed;
