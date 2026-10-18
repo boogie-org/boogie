@@ -47,7 +47,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
 
     public class Node
     {
-      public readonly Variable V; // variable has type bool or int
+      public readonly Variable V;
 
       // For an integer variable (Lo,Hi) indicates Lo <= V < Hi, where Lo==null means no lower bound and Hi==null means no upper bound.
       // For a real variable (Lo,Hi) indicates Lo <= V <= Hi, where Lo==null means no lower bound and Hi==null means no upper bound.
@@ -79,6 +79,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
       public Node(Variable v, BigInteger? lo, BigInteger? hi)
       {
         Contract.Requires(lo != null || hi != null); // don't accept empty constraints
+        Contract.Assert(!v.TypedIdent.Type.IsFloat);
         V = v;
         Lo = lo;
         Hi = hi;
@@ -289,31 +290,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
         }
         else
         {
-          Contract.Assert(V.TypedIdent.Type.IsFloat);
-          Expr e = Expr.True;
-          if (Lo != null && Hi != null && Lo == Hi)
-          {
-            // produce an equality
-            var ide = new IdentifierExpr(Token.NoToken, V);
-            e = Expr.And(e, BplEq(ide, NumberToExpr((BigInteger) Lo, V.TypedIdent.Type)));
-          }
-          else
-          {
-            // produce a (possibly empty) conjunction of inequalities
-            if (Lo != null)
-            {
-              var ide = new IdentifierExpr(Token.NoToken, V);
-              e = Expr.And(e, BplLe(NumberToExpr((BigInteger) Lo, V.TypedIdent.Type), ide));
-            }
-
-            if (Hi != null)
-            {
-              var ide = new IdentifierExpr(Token.NoToken, V);
-              e = Expr.And(e, BplLe(ide, NumberToExpr((BigInteger) Hi, V.TypedIdent.Type)));
-            }
-          }
-
-          return e;
+          throw new Cce.UnreachableException();
         }
       }
     }
@@ -323,10 +300,6 @@ namespace Microsoft.Boogie.AbstractInterpretation
       if (ty.IsReal)
       {
         return Expr.Literal(BaseTypes.BigDec.FromBigInt(n));
-      }
-      else if (ty.IsFloat)
-      {
-        return Expr.Literal(BaseTypes.BigFloat.FromBigInt(n, ty.FloatSignificand, ty.FloatExponent));
       }
       else
       {
@@ -956,21 +929,6 @@ namespace Microsoft.Boogie.AbstractInterpretation
           Lo = floor;
           Hi = ceiling;
         }
-        else if (node.Val is BigFloat)
-        {
-          var bf = (BigFloat) node.Val;
-          if (bf.TryFloorCeiling(out var floor, out var ceiling))
-          {
-            Lo = floor;
-            Hi = ceiling;
-          }
-          else
-          {
-            // NaN, an infinity, or bounds too wide to compute
-            Lo = null;
-            Hi = null;
-          }
-        }
         else if (node.Val is bool)
         {
           if ((bool) node.Val)
@@ -986,6 +944,9 @@ namespace Microsoft.Boogie.AbstractInterpretation
             Hi = one;
           }
         }
+
+        // No case for BigFloat: integer bounds cannot describe a float (see FloatType).
+        Contract.Assert(node.Val is not BigFloat || (Lo == null && Hi == null));
 
         return node;
       }
