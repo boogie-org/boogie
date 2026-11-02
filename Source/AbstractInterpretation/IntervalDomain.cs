@@ -1333,13 +1333,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
 
               break;
             case BinaryOperator.Opcode.Pow:
-              // this uses an incomplete approximation that could be tightened up
-              if (lo0 != null && lo1 != null && 0 <= (BigInteger) lo0 && 0 <= (BigInteger) lo1)
-              {
-                Lo = 1 <= (BigInteger) lo1 ? BigInteger.One : BigInteger.Zero;
-                Hi = hi1;
-              }
-
+              // the exponent's bounds do not carry over to x ** y
               break;
             default:
               break;
