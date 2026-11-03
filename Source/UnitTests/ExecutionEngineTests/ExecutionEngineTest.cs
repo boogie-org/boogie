@@ -308,6 +308,25 @@ Boogie program verifier finished with 0 verified, 1 error
     Assert.IsFalse(success);
   }
 
+  [Test]
+  public async Task ProcessFilesCancelledDuringTheFirstFileReturnsFalse() {
+    var options = CommandLineOptions.FromArguments(TextWriter.Null);
+    var cancellationSource = new CancellationTokenSource();
+    options.CreateSolver = (_, _) => new CancelOnCheckSatSolver(cancellationSource);
+    options.VerifySeparately = true;
+    var engine = ExecutionEngine.CreateWithoutSharedCache(options);
+
+    var directory = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+    Directory.CreateDirectory(directory);
+    var files = new List<string> { Path.Combine(directory, "first.bpl"), Path.Combine(directory, "second.bpl") };
+    foreach (var file in files) {
+      await File.WriteAllTextAsync(file, "procedure Foo(x: int) { assert true; }");
+    }
+
+    var success = await engine.ProcessFiles(TextWriter.Null, files, cancellationToken: cancellationSource.Token);
+    Assert.IsFalse(success);
+  }
+
   /// <summary>
   /// Cancels the given source when asked to check a VC, and never answers.
   /// </summary>
