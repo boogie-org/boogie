@@ -20,7 +20,7 @@ namespace Microsoft.Boogie.SMTLib
     private readonly int smtProcessId;
     private static int smtProcessIdSeq = 0;
     private ConsoleCancelEventHandler cancelEvent;
-    private SExprParser sexpParser = new();
+    private readonly SExprParser sexpParser = new();
 
     public SMTLibProcess(SMTLibOptions libOptions, SMTLibSolverOptions options)
     {
@@ -57,13 +57,11 @@ namespace Microsoft.Boogie.SMTLib
         solver = new Process();
         solver.StartInfo = psi;
         solver.EnableRaisingEvents = true;
-        solver.ErrorDataReceived += SolverErrorDataReceived;
-        solver.OutputDataReceived += SolverOutputDataReceived;
         solver.Exited += SolverExited;
         solver.Start();
         toProver = solver.StandardInput;
-        solver.BeginErrorReadLine();
-        solver.BeginOutputReadLine();
+        ReadLines(solver.StandardOutput, SolverOutputReceived, "OUT", sexpParser.EndInput);
+        ReadLines(solver.StandardError, SolverErrorReceived, "ERR");
       }
       catch (System.ComponentModel.Win32Exception e)
       {
@@ -334,35 +332,62 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    void SolverOutputDataReceived(object sender, DataReceivedEventArgs e)
+    /// <summary>
+    /// Reads the stream on a thread of its own. Process.BeginOutputReadLine and BeginErrorReadLine read on the
+    /// thread pool, where a busy pool holds back the solver's answers, and leaves the stream undrained until the
+    /// solver blocks on a full pipe. Nothing disposes these streams, so a read can only fail with an IOException,
+    /// which ends the reader as well.
+    /// </summary>
+    private void ReadLines(StreamReader stream, Action<string> handleLine, string streamName, Action handleEnd = null)
     {
-        if (e.Data == null)
+      new Thread(() =>
+      {
+        while (true)
         {
-          sexpParser.EndInput();
-          return;
+          string line;
+          try
+          {
+            line = stream.ReadLine();
+          }
+          catch (IOException)
+          {
+            break;
+          }
+
+          if (line == null)
+          {
+            break;
+          }
+
+          handleLine(line);
         }
 
-        if (options.Verbosity >= 2 || (options.Verbosity >= 1 && !e.Data.StartsWith("(:name ")))
-        {
-          Console.WriteLine("[SMT-OUT-{0}] {1}", smtProcessId, e.Data);
-        }
-
-        sexpParser.AddLine(e.Data);
+        handleEnd?.Invoke();
+      })
+      {
+        IsBackground = true,
+        Name = $"SMT-{streamName}-{smtProcessId} reader"
+      }.Start();
     }
 
-    void SolverErrorDataReceived(object sender, DataReceivedEventArgs e)
+    void SolverOutputReceived(string line)
     {
-      if (e.Data == null)
+      if (options.Verbosity >= 2 || (options.Verbosity >= 1 && !line.StartsWith("(:name ")))
       {
-        return;
+        Console.WriteLine("[SMT-OUT-{0}] {1}", smtProcessId, line);
       }
 
+      sexpParser.AddLine(line);
+    }
+
+    void SolverErrorReceived(string line)
+    {
       if (options.Verbosity >= 1)
       {
-        Console.WriteLine("[SMT-ERR-{0}] {1}", smtProcessId, e.Data);
+        Console.WriteLine("[SMT-ERR-{0}] {1}", smtProcessId, line);
       }
 
-      HandleError(e.Data);
+      HandleError(line);
     }
 
     #endregion
