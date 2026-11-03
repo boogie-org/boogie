@@ -197,6 +197,7 @@ namespace Microsoft.Boogie
           Options.Printer.WriteTrailer(output, stats);
           return true;
         case PipelineOutcome.FatalError:
+        case PipelineOutcome.Cancelled:
           return false;
         default:
           Debug.Assert(false, "Unreachable code");
@@ -563,6 +564,7 @@ namespace Microsoft.Boogie
     /// and then attempts to verify it.  Returns:
     ///  - Done if command line specified no verification
     ///  - FatalError if a fatal error occurred, in which case an error has been printed to console
+    ///  - Cancelled if the run was cancelled
     ///  - VerificationCompleted if inference and verification completed, in which the out
     ///    parameters contain meaningful values
     /// </summary>
