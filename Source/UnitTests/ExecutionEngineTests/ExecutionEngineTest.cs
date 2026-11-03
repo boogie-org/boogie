@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -24,6 +25,66 @@ public class FakeDescription : ProofObligationDescription
 
 [TestFixture]
 public class ExecutionEngineTest {
+
+  [Test]
+  public void SolverAnswersWhileTheThreadPoolIsStarved()
+  {
+    // The engine runs on threads of its own, so that only reading the answers of the solver could need the thread pool.
+    using var scheduler = new OwnThreadsScheduler(2);
+    var options = CommandLineOptions.FromArguments(TextWriter.Null);
+    using var engine = new ExecutionEngine(options, new VerificationResultCache(), scheduler);
+    Assert.AreEqual(0, Parser.Parse("procedure P(x: int) { assert x == x; }", "fakeFilename", out var program));
+
+    ThreadPool.GetMinThreads(out var minWorkers, out _);
+    ThreadPool.GetMaxThreads(out var maxWorkers, out var maxCompletionPorts);
+    // Not disposed: the pool may start some of the blocking work items only after the test is done.
+    var unblock = new ManualResetEventSlim();
+    // Capped at its minimum, the pool has no thread for anything queued after these work items until they end.
+    Assert.IsTrue(ThreadPool.SetMaxThreads(minWorkers, maxCompletionPorts));
+    try {
+      for (int i = 0; i < minWorkers; i++) {
+        ThreadPool.UnsafeQueueUserWorkItem(_ => unblock.Wait(), null);
+      }
+      var verified = engine.LargeThreadTaskFactory
+        .StartNew(() => engine.ProcessProgram(TextWriter.Null, program, "fakeFilename")).Unwrap();
+      Assert.IsTrue(verified.Wait(TimeSpan.FromSeconds(5)));
+      Assert.IsTrue(verified.Result);
+    } finally {
+      ThreadPool.SetMaxThreads(maxWorkers, maxCompletionPorts);
+      unblock.Set();
+    }
+  }
+
+  /// <summary>
+  /// Runs tasks on threads of its own, and hands each task to one of them directly.
+  /// </summary>
+  private sealed class OwnThreadsScheduler : TaskScheduler, IDisposable
+  {
+    private readonly BlockingCollection<Task> tasks = new();
+    private readonly CancellationTokenSource disposed = new();
+
+    public OwnThreadsScheduler(int threadCount)
+    {
+      for (int i = 0; i < threadCount; i++) {
+        new Thread(() => {
+          try {
+            foreach (var task in tasks.GetConsumingEnumerable(disposed.Token)) {
+              TryExecuteTask(task);
+            }
+          } catch (OperationCanceledException) {
+          }
+        }) { IsBackground = true }.Start();
+      }
+    }
+
+    protected override void QueueTask(Task task) => tasks.Add(task);
+
+    protected override bool TryExecuteTaskInline(Task task, bool taskWasPreviouslyQueued) => false;
+
+    protected override IEnumerable<Task> GetScheduledTasks() => tasks.ToArray();
+
+    public void Dispose() => disposed.Cancel();
+  }
 
   [Test]
   public async Task DisposeCleansUpThreads()
