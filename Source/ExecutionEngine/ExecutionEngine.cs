@@ -770,7 +770,7 @@ namespace Microsoft.Boogie
         foreach (var task in tasks) {
           task.Result.ProcessXml(this);
         }
-      } catch(TaskCanceledException) {
+      } catch(OperationCanceledException) {
         outcome = PipelineOutcome.Cancelled;
       } catch(ProverException e) {
         Options.Printer.ErrorWriteLine(outputWriter, "Fatal Error: ProverException: {0}", e.Message);

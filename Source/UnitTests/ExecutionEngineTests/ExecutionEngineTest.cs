@@ -274,11 +274,17 @@ Boogie program verifier finished with 0 verified, 1 error
     Assert.AreEqual(expected, output);
   }
 
-  [Test]
-  public async Task ProcessProgramCancelledDuringACheckReturnsFalse() {
+  [TestCase(false)]
+  [TestCase(true)] // The solver is created while the checker is prepared, before the check starts.
+  public async Task ProcessProgramCancelledDuringVerificationReturnsFalse(bool cancelOnSolverCreation) {
     var options = CommandLineOptions.FromArguments(TextWriter.Null);
     var cancellationSource = new CancellationTokenSource();
-    options.CreateSolver = (_, _) => new CancelOnCheckSatSolver(cancellationSource);
+    options.CreateSolver = (_, _) => {
+      if (cancelOnSolverCreation) {
+        cancellationSource.Cancel();
+      }
+      return new CancelOnCheckSatSolver(cancellationSource);
+    };
     var engine = ExecutionEngine.CreateWithoutSharedCache(options);
 
     var result = Parser.Parse("procedure Foo(x: int) { assert true; }", "fakeFilename1", out var program);
