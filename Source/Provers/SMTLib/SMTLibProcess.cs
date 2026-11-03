@@ -221,6 +221,9 @@ namespace Microsoft.Boogie.SMTLib
         var exprs = await sexpParser.ParseSExprs(true).ToListAsync();
         Contract.Assert(exprs.Count <= 1);
         if (exprs.Count == 0) {
+          if (sexpParser.EndOfInput) {
+            throw new ProverDiedException();
+          }
           return null;
         }
 
@@ -354,6 +357,7 @@ namespace Microsoft.Boogie.SMTLib
     {
         if (e.Data == null)
         {
+          sexpParser.EndInput();
           return;
         }
 
