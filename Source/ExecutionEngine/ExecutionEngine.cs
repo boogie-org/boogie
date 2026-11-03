@@ -586,7 +586,12 @@ namespace Microsoft.Boogie
 
       var start = DateTime.UtcNow;
 
-      var processedProgram = await PreProcessProgramVerification(program, cancellationToken);
+      ProcessedProgram processedProgram;
+      try {
+        processedProgram = await PreProcessProgramVerification(program, cancellationToken);
+      } catch (OperationCanceledException) {
+        return PipelineOutcome.Cancelled;
+      }
 
       foreach (var action in Options.UseResolvedProgram) {
         action(Options, processedProgram);

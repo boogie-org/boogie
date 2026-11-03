@@ -294,6 +294,20 @@ Boogie program verifier finished with 0 verified, 1 error
     Assert.IsFalse(success);
   }
 
+  [Test]
+  public async Task ProcessProgramCancelledBeforeVerificationReturnsFalse() {
+    var options = CommandLineOptions.FromArguments(TextWriter.Null);
+    var engine = ExecutionEngine.CreateWithoutSharedCache(options);
+    var cancellationSource = new CancellationTokenSource();
+    cancellationSource.Cancel();
+
+    var result = Parser.Parse("procedure Foo(x: int) { assert true; }", "fakeFilename1", out var program);
+    Assert.AreEqual(0, result);
+    var success = await engine.ProcessProgram(TextWriter.Null, program, "fakeFilename1",
+      cancellationToken: cancellationSource.Token);
+    Assert.IsFalse(success);
+  }
+
   /// <summary>
   /// Cancels the given source when asked to check a VC, and never answers.
   /// </summary>
