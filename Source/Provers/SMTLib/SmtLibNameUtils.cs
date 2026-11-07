@@ -53,7 +53,7 @@ namespace Microsoft.Boogie.SMTLib
       "lblneg", "lblpos", "lbl-lit",
       "if", "&&", "||", "equals", "equiv", "bool", "minimize", "maximize",
       // Boogie-defined
-      "real_pow", "UOrdering2", "UOrdering3",
+      "real_pow",
       // Floating point (final draft SMTLIB-v2.5)
       "NaN",
       "fp.abs", "fp.neg", "fp.add", "fp.sub", "fp.mul", "fp.div", "fp.fma", "fp.sqrt", "fp.rem", "fp.roundToIntegral",
