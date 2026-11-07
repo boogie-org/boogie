@@ -860,10 +860,6 @@ namespace Microsoft.Boogie.VCExprAST
             return visitor.VisitGtOp(expr, arg);
           case VCExpressionGenerator.SingletonOp.GeOp:
             return visitor.VisitGeOp(expr, arg);
-          case VCExpressionGenerator.SingletonOp.SubtypeOp:
-            return visitor.VisitSubtypeOp(expr, arg);
-          case VCExpressionGenerator.SingletonOp.Subtype3Op:
-            return visitor.VisitSubtype3Op(expr, arg);
           case VCExpressionGenerator.SingletonOp.BvConcatOp:
             return visitor.VisitBvConcatOp(expr, arg);
           case VCExpressionGenerator.SingletonOp.ToIntOp:

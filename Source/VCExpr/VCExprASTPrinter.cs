@@ -431,16 +431,6 @@ namespace Microsoft.Boogie.VCExprAST
       return PrintNAry(">=", node, wr);
     }
 
-    public bool VisitSubtypeOp(VCExprNAry node, TextWriter wr)
-    {
-      return PrintNAry("<:", node, wr);
-    }
-
-    public bool VisitSubtype3Op(VCExprNAry node, TextWriter wr)
-    {
-      return PrintNAry("<::", node, wr);
-    }
-
     public bool VisitToIntOp(VCExprNAry node, TextWriter wr)
     {
       return PrintNAry("int", node, wr);

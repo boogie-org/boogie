@@ -90,12 +90,6 @@ U_2_int -> {
   4 -> 4
   else -> 4
 }
-UOrdering2 -> {
-  else -> false
-}
-UOrdering3 -> {
-  else -> false
-}
 *** STATE <initial>
   x -> 
   y -> 
@@ -198,12 +192,6 @@ U_2_int -> {
   2 -> 2
   4 -> 4
   else -> 4
-}
-UOrdering2 -> {
-  else -> false
-}
-UOrdering3 -> {
-  else -> false
 }
 *** STATE <initial>
   x -> 

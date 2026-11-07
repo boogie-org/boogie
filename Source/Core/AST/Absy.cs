@@ -1319,30 +1319,6 @@ namespace Microsoft.Boogie
     }
   }
 
-  // class to specify the <:-parents of the values of constants
-  public class ConstantParent
-  {
-    public readonly IdentifierExpr
-      Parent;
-
-    [ContractInvariantMethod]
-    void ObjectInvariant()
-    {
-      Contract.Invariant(Parent != null);
-    }
-
-    // if true, the sub-dag underneath this constant-parent edge is
-    // disjoint from all other unique sub-dags
-    public readonly bool Unique;
-
-    public ConstantParent(IdentifierExpr parent, bool unique)
-    {
-      Contract.Requires(parent != null);
-      Parent = parent;
-      Unique = unique;
-    }
-  }
-
   public class Constant : Variable
   {
     // when true, the value of this constant is meant to be distinct
@@ -2138,6 +2114,16 @@ namespace Microsoft.Boogie
       // PR: why was the base call left out previously?
       base.Typecheck(tc);
       // TypecheckAttributes(tc);
+
+      // A {:builtin} or {:bvbuiltin} function already has the solver's meaning, so it cannot have a definition
+      // too: a body would become an axiom about the solver's symbol.
+      var builtin = new[] { "builtin", "bvbuiltin" }
+        .FirstOrDefault(attribute => QKeyValue.FindStringAttribute(Attributes, attribute) != null);
+      if (builtin != null && (Body != null || DefinitionBody != null || DefinitionAxiom != null))
+      {
+        tc.Error(this, "a function declared {{:{0} ...}} must not also have a definition", builtin);
+      }
+
       if (Body != null)
       {
         Contract.Assert(DefinitionBody == null);
