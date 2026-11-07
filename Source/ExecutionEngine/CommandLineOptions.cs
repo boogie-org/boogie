@@ -1632,6 +1632,7 @@ namespace Microsoft.Boogie
      {:builtin ""spec""}
      {:bvbuiltin ""spec""}
        Rewrite the function to built-in prover function symbol 'fn'.
+       Cannot have a body.
 
      {:define}
      {:define true}
