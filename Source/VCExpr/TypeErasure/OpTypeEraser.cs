@@ -166,8 +166,13 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBin
     Contract.Requires(bindings != null);
     Contract.Ensures(Contract.Result<VCExpr>() != null);
 
+    int polarity =
+      node.Op.Equals(VCExpressionGenerator.NamedAssumeOp) ||
+      node.Op.Equals(VCExpressionGenerator.NamedAssertOp)
+        ? Eraser.Polarity
+        : 0;
     List<VCExpr>
-      newArgs = MutateSeq(node, bindings, 0);
+      newArgs = MutateSeq(node, bindings, polarity);
     return Gen.Function(node.Op, newArgs);
   }
 
