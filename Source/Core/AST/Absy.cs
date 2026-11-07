@@ -2138,6 +2138,16 @@ namespace Microsoft.Boogie
       // PR: why was the base call left out previously?
       base.Typecheck(tc);
       // TypecheckAttributes(tc);
+
+      // A {:builtin} or {:bvbuiltin} function already has the solver's meaning, so it cannot have a definition
+      // too: a body would become an axiom about the solver's symbol.
+      var builtin = new[] { "builtin", "bvbuiltin" }
+        .FirstOrDefault(attribute => QKeyValue.FindStringAttribute(Attributes, attribute) != null);
+      if (builtin != null && (Body != null || DefinitionBody != null || DefinitionAxiom != null))
+      {
+        tc.Error(this, "a function declared {{:{0} ...}} must not also have a definition", builtin);
+      }
+
       if (Body != null)
       {
         Contract.Assert(DefinitionBody == null);
