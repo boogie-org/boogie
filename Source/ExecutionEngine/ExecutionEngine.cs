@@ -88,10 +88,15 @@ namespace Microsoft.Boogie
       string programId = null, CancellationToken cancellationToken = default) {
       Contract.Requires(Cce.NonNullElements(fileNames));
 
+      // Reached again for every file and every snapshot version, because the loops
+      // below re-enter this method.
+      if (cancellationToken.IsCancellationRequested) {
+        return false;
+      }
+
       if (Options.VerifySeparately && 1 < fileNames.Count) {
         var success = true;
         foreach (var fileName in fileNames) {
-          cancellationToken.ThrowIfCancellationRequested();
           success &= await ProcessFiles(output, new List<string> { fileName }, lookForSnapshots, fileName, cancellationToken: cancellationToken);
         }
         return success;
@@ -101,7 +106,6 @@ namespace Microsoft.Boogie
         var snapshotsByVersion = LookForSnapshots(fileNames);
         var success = true;
         foreach (var snapshots in snapshotsByVersion) {
-          cancellationToken.ThrowIfCancellationRequested();
           // BUG: Reusing checkers during snapshots doesn't work, even though it should. We create a new engine (and thus checker pool) to workaround this.
           using var engine = new ExecutionEngine(Options, Cache,
             CustomStackSizePoolTaskScheduler.Create(StackSize, Options.VcsCores), true);
@@ -197,6 +201,7 @@ namespace Microsoft.Boogie
           Options.Printer.WriteTrailer(output, stats);
           return true;
         case PipelineOutcome.FatalError:
+        case PipelineOutcome.Cancelled:
           return false;
         default:
           Debug.Assert(false, "Unreachable code");
@@ -563,6 +568,7 @@ namespace Microsoft.Boogie
     /// and then attempts to verify it.  Returns:
     ///  - Done if command line specified no verification
     ///  - FatalError if a fatal error occurred, in which case an error has been printed to console
+    ///  - Cancelled if the run was cancelled
     ///  - VerificationCompleted if inference and verification completed, in which the out
     ///    parameters contain meaningful values
     /// </summary>
@@ -584,7 +590,12 @@ namespace Microsoft.Boogie
 
       var start = DateTime.UtcNow;
 
-      var processedProgram = await PreProcessProgramVerification(program, cancellationToken);
+      ProcessedProgram processedProgram;
+      try {
+        processedProgram = await PreProcessProgramVerification(program, cancellationToken);
+      } catch (OperationCanceledException) {
+        return PipelineOutcome.Cancelled;
+      }
 
       foreach (var action in Options.UseResolvedProgram) {
         action(Options, processedProgram);
@@ -768,7 +779,7 @@ namespace Microsoft.Boogie
         foreach (var task in tasks) {
           task.Result.ProcessXml(this);
         }
-      } catch(TaskCanceledException) {
+      } catch(OperationCanceledException) {
         outcome = PipelineOutcome.Cancelled;
       } catch(ProverException e) {
         Options.Printer.ErrorWriteLine(outputWriter, "Fatal Error: ProverException: {0}", e.Message);
