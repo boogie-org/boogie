@@ -153,7 +153,7 @@ namespace Microsoft.Boogie
   {
     public static NAryExpr FunctionCall(Function f, List<Expr> args)
     {
-      return new NAryExpr(Token.NoToken, new FunctionCall(f), args);
+      return new NAryExpr(Token.NoToken, new FunctionCall(f), args) { Type = f.OutParams[0].TypedIdent.Type };
     }
 
     public static NAryExpr FunctionCall(IAppliable f, params Expr[] args)
@@ -163,7 +163,7 @@ namespace Microsoft.Boogie
 
     public static NAryExpr FunctionCall(Function f, params Expr[] args)
     {
-      return new NAryExpr(Token.NoToken, new FunctionCall(f), args);
+      return FunctionCall(f, args.ToList());
     }
     
     public static NAryExpr FieldAccess(Expr path, string fieldName)
