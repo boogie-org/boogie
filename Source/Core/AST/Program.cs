@@ -207,6 +207,29 @@ public class Program : Absy
       {
         seeker.Visit(d);
       }
+
+      ReverseGuardNegations();
+    }
+  }
+
+  /// <summary>
+  /// Reverses the guard negations that Expr.Not built before typechecking, where it now can.
+  /// </summary>
+  private void ReverseGuardNegations()
+  {
+    foreach (var cmd in Implementations
+               .SelectMany(impl => impl.Blocks)
+               .SelectMany(block => block.Cmds)
+               .OfType<AssumeCmd>()
+               .Where(cmd => cmd.Attributes.FindBoolAttribute("partition")))
+    {
+      if (cmd.Expr is NAryExpr { Fun: UnaryOperator { Op: UnaryOperator.Opcode.Not } } negation &&
+          Expr.Not(negation.Args[0]) is NAryExpr { Fun: BinaryOperator } reversed)
+      {
+        reversed.Type = negation.Type;
+        reversed.TypeParameters = negation.TypeParameters;
+        cmd.Expr = reversed;
+      }
     }
   }
 

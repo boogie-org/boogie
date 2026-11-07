@@ -26,4 +26,9 @@ procedure foo()
   } else if (a > b) {
     c := b;
   }
+
+  // With a literal on the left, the guard's type is known while parsing.
+  if (RNE < b) {
+    c := a;
+  }
 }
