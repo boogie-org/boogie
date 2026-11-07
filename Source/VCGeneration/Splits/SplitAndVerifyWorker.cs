@@ -120,22 +120,43 @@ namespace VC
     {
       var checker = await split.parent.CheckerPool.FindCheckerFor(split.parent.program, split, cancellationToken);
 
+      bool proverFailed;
+      Task beginCheckTask = null;
       try
       {
         cancellationToken.ThrowIfCancellationRequested();
-        await StartCheck(iteration, split, checker, cancellationToken);
-        await checker.ProverTask;
-        await ProcessResultAndReleaseChecker(iteration, split, checker, cancellationToken);
-        TotalProverElapsedTime += checker.ProverRunTime;
+        var timeout = KeepGoing && split.LastChance ? options.VcsFinalAssertTimeout :
+          KeepGoing ? options.VcsKeepGoingTimeout :
+          Implementation.GetTimeLimit(options);
+        await ReportCheckStart(iteration, split);
+        beginCheckTask = split.BeginCheck(run.OutputWriter, checker, callback, mvInfo, timeout,
+          Implementation.GetResourceLimit(options), cancellationToken);
+        var result = await split.WaitForBeginCheck(beginCheckTask, iteration, timeout, callback, cancellationToken);
+        if (result == null)
+        {
+          await checker.ProverTask;
+          result = split.ReadOutcome(iteration, checker, callback);
+          TotalProverElapsedTime += result.RunTime;
+        }
+        proverFailed = ProcessResult(split, result);
+        if (proverFailed && split.LastChance)
+        {
+          BlameLastChanceAssertion(split, checker);
+        }
       }
-      catch
+      finally
       {
-        await checker.GoBackToIdle();
-        throw;
+        await checker.GoBackToIdle(beginCheckTask);
+      }
+
+      if (proverFailed && !split.LastChance)
+      {
+        // After the checker is given back, so that the splits this one is split into can take it.
+        await HandleProverFailure(split, cancellationToken);
       }
     }
 
-    private async Task StartCheck(int iteration, Split split, Checker checker, CancellationToken cancellationToken)
+    private async Task ReportCheckStart(int iteration, Split split)
     {
       if (options.Trace && DoSplitting)
       {
@@ -150,23 +171,11 @@ namespace VC
 
       callback.OnProgress?.Invoke("VCprove", split.SplitIndex, total,
         provenCost / (remainingCost + provenCost));
-
-      var timeout = KeepGoing && split.LastChance ? options.VcsFinalAssertTimeout :
-        KeepGoing ? options.VcsKeepGoingTimeout :
-        run.Implementation.GetTimeLimit(options);
-      var beginCheckTask = split.BeginCheck(run.OutputWriter, checker, callback, mvInfo, timeout,
-        Implementation.GetResourceLimit(options), cancellationToken);
-      if (timeout != 0)
-      {
-        beginCheckTask = beginCheckTask.WaitAsync(TimeSpan.FromSeconds(timeout), cancellationToken);
-      }
-      await beginCheckTask;
     }
 
     private Implementation Implementation => run.Implementation;
 
-    private async Task ProcessResultAndReleaseChecker(int iteration, Split split, Checker checker,
-      CancellationToken cancellationToken)
+    private bool ProcessResult(Split split, VerificationRunResult result)
     {
       if (TrackingProgress)
       {
@@ -176,7 +185,6 @@ namespace VC
         }
       }
 
-      var result = split.ReadOutcome(iteration, checker, callback);
       lock (this)
       {
         vcOutcome = MergeOutcomes(vcOutcome, result.Outcome);
@@ -205,14 +213,7 @@ namespace VC
       callback.OnProgress?.Invoke("VCprove", splitNumber < 0 ? 0 : splitNumber, total,
         provenCost / (remainingCost + provenCost));
 
-      if (proverFailed)
-      {
-        await HandleProverFailure(split, checker, callback, result, cancellationToken);
-      }
-      else
-      {
-        await checker.GoBackToIdle();
-      }
+      return proverFailed;
     }
 
     public static bool IsProverFailed(SolverOutcome outcome)
@@ -275,32 +276,25 @@ namespace VC
       }
     }
 
-    private async Task HandleProverFailure(Split split, Checker checker, VerifierCallback callback,
-      VerificationRunResult verificationRunResult, CancellationToken cancellationToken)
+    /// <summary>
+    /// Reports the failure as a counterexample, to point at the single assertion the split is left with.
+    /// </summary>
+    private void BlameLastChanceAssertion(Split split, Checker checker)
     {
-      if (split.LastChance)
+      string msg = "some timeout";
+      if (split.reporter is { resourceExceededMessage: { } })
       {
-        string msg = "some timeout";
-        if (split.reporter is { resourceExceededMessage: { } })
-        {
-          msg = split.reporter.resourceExceededMessage;
-        }
-
-        var cex = split.ToCounterexample(checker.TheoremProver.Context);
-        callback.OnCounterexample(cex, msg);
-        split.Counterexamples.Add(cex);
-        // Update one last time the result with the dummy counter-example to indicate the position of the timeout
-        var result = verificationRunResult with
-        {
-          CounterExamples = split.Counterexamples
-        };
-        vcOutcome = VcOutcome.Errors;
-        await checker.GoBackToIdle();
-        return;
+        msg = split.reporter.resourceExceededMessage;
       }
 
-      await checker.GoBackToIdle();
+      var cex = split.ToCounterexample(checker.TheoremProver.Context);
+      callback.OnCounterexample(cex, msg);
+      split.Counterexamples.Add(cex);
+      vcOutcome = VcOutcome.Errors;
+    }
 
+    private async Task HandleProverFailure(Split split, CancellationToken cancellationToken)
+    {
       if (maxKeepGoingSplits > 1)
       {
         var newSplits = Split.DoSplit(split, maxVcCost, maxKeepGoingSplits);
