@@ -1,11 +1,11 @@
 // RUN: %parallel-boogie -noVerify "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-var m: []int;
-var p: <a>[]a;
+var m: []int;  // error: no arguments
+var p: <a>[int]a;
 
 type C _;
-var bad: <a,b>[]C a;  // error: b is not used
+var bad: <a,b>[int]C a;  // error: b is not used
 
 function F<a>(a, int) returns (bool) { true }
 

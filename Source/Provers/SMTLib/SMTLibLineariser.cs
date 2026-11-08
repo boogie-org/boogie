@@ -215,10 +215,6 @@ namespace Microsoft.Boogie.SMTLib
       {
         return "(Seq " + TypeToString(t.AsCtor.Arguments[0]) + ")";
       }
-      else if (t.IsMap && t.AsMap.Arguments.Count == 0)
-      {
-        return TypeToString(t.AsMap.Result);
-      }
       else
       {
         StringBuilder sb = new StringBuilder();

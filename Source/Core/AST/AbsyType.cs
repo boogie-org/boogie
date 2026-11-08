@@ -4129,6 +4129,11 @@ namespace Microsoft.Boogie
     public override Type ResolveType(ResolutionContext rc)
     {
       Contract.Ensures(Contract.Result<Type>() != null);
+      if (Arguments.Count == 0)
+      {
+        rc.Error(this, "map type must have at least one argument");
+      }
+
       int previousState = rc.TypeBinderState;
       try
       {
