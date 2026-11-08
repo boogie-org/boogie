@@ -120,22 +120,29 @@ namespace VC
     {
       var checker = await split.parent.CheckerPool.FindCheckerFor(split.parent.program, split, cancellationToken);
 
+      Task beginCheck = null;
       try
       {
         cancellationToken.ThrowIfCancellationRequested();
-        await StartCheck(iteration, split, checker, cancellationToken);
+        await ReportCheckStart(iteration, split);
+        var timeout = KeepGoing && split.LastChance ? options.VcsFinalAssertTimeout :
+          KeepGoing ? options.VcsKeepGoingTimeout :
+          run.Implementation.GetTimeLimit(options);
+        beginCheck = split.BeginCheck(run.OutputWriter, checker, callback, mvInfo, timeout,
+          Implementation.GetResourceLimit(options), cancellationToken);
+        await (timeout == 0 ? beginCheck : beginCheck.WaitAsync(TimeSpan.FromSeconds(timeout), cancellationToken));
         await checker.ProverTask;
         await ProcessResultAndReleaseChecker(iteration, split, checker, cancellationToken);
         TotalProverElapsedTime += checker.ProverRunTime;
       }
       catch
       {
-        await checker.GoBackToIdle();
+        await checker.GoBackToIdle(beginCheck);
         throw;
       }
     }
 
-    private async Task StartCheck(int iteration, Split split, Checker checker, CancellationToken cancellationToken)
+    private async Task ReportCheckStart(int iteration, Split split)
     {
       if (options.Trace && DoSplitting)
       {
@@ -150,17 +157,6 @@ namespace VC
 
       callback.OnProgress?.Invoke("VCprove", split.SplitIndex, total,
         provenCost / (remainingCost + provenCost));
-
-      var timeout = KeepGoing && split.LastChance ? options.VcsFinalAssertTimeout :
-        KeepGoing ? options.VcsKeepGoingTimeout :
-        run.Implementation.GetTimeLimit(options);
-      var beginCheckTask = split.BeginCheck(run.OutputWriter, checker, callback, mvInfo, timeout,
-        Implementation.GetResourceLimit(options), cancellationToken);
-      if (timeout != 0)
-      {
-        beginCheckTask = beginCheckTask.WaitAsync(TimeSpan.FromSeconds(timeout), cancellationToken);
-      }
-      await beginCheckTask;
     }
 
     private Implementation Implementation => run.Implementation;

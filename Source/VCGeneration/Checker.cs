@@ -60,11 +60,19 @@ namespace Microsoft.Boogie
       status = CheckerStatus.Ready;
     }
 
-    public async Task GoBackToIdle()
+    /// <param name="beginCheck">The check the caller began on this checker, if any. It may still be running if the
+    /// caller stopped waiting for it, on cancellation or a time limit.</param>
+    public async Task GoBackToIdle(Task beginCheck = null)
     {
       Contract.Requires(IsBusy);
 
       status = CheckerStatus.Idle;
+      // Test beginCheck first: only once it has completed is ProverTask the task it started.
+      if (beginCheck is { IsCompleted: false } || ProverTask is { IsCompleted: false }) {
+        Pool.CheckerDied();
+        Close();
+        return;
+      }
       try {
         await thmProver.GoBackToIdle().WaitAsync(TimeSpan.FromMilliseconds(100));
         Pool.AddChecker(this);
