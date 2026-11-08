@@ -412,6 +412,30 @@ procedure Foo(x: int) {
   }
 
   [Test]
+  public async Task FailedKeepGoingSplitReleasesTheCheckerOfItsParentOnce() {
+    // The first check times out, so its split is split in two, which are checked one after the other on its checker.
+    // The check of the second fails.
+    var harness = new BlockedSendHarness(timeOutFirstCheck: true, failingVC: 3,
+      configure: options => options.VcsMaxKeepGoingSplits = 2);
+    var stats = new PipelineStatistics();
+    Assert.AreEqual(PipelineOutcome.VerificationCompleted, await harness.Verify(CancellationToken.None, @"
+procedure Foo(x: int) {
+  if (x > 0) {
+    assert x > 1;
+  } else {
+    assert x < 1;
+  }
+}", stats));
+    Assert.AreEqual(1, stats.InconclusiveCount);
+    // The pool has one checker. Had it been given back twice, the pool would hand it out a second time.
+    var program = harness.Parse();
+    var split = (await harness.Engine.GetVerificationTasks(program))[0].Split;
+    var pool = harness.Engine.CheckerPool;
+    await pool.FindCheckerFor(program, split, CancellationToken.None);
+    Assert.IsFalse(pool.FindCheckerFor(program, split, CancellationToken.None).Wait(TimeSpan.FromSeconds(1)));
+  }
+
+  [Test]
   public async Task FromSeedResetsState() {
     var options = CommandLineOptions.FromArguments(TextWriter.Null);
     options.VcsCores = 1;
@@ -588,23 +612,34 @@ procedure easy() ensures 1 + 1 == 0; {
     private readonly SemaphoreSlim unblock = new(0);
     private readonly List<SendCountingSolver> solvers = new();
     private int matchingSends;
+    private int sentVCs;
 
     public ExecutionEngine Engine { get; }
     public SemaphoreSlim Blocked { get; } = new(0);
 
-    public BlockedSendHarness(string blockedPrefix, bool disposeScheduler = true) {
+    /// <param name="timeOutFirstCheck">Whether the first check of the first solver times out.</param>
+    /// <param name="failingVC">Sending the VC with this number, counting the VCs sent to any solver, fails.
+    /// 0 for none.</param>
+    public BlockedSendHarness(string blockedPrefix = null, bool disposeScheduler = true, bool timeOutFirstCheck = false,
+      int failingVC = 0, Action<CommandLineOptions> configure = null) {
       var options = CommandLineOptions.FromArguments(TextWriter.Null);
       options.VcsCores = 1;
       // With a time limit, a run stops waiting for its check as soon as it is cancelled.
       options.TimeLimit = 10;
+      configure?.Invoke(options);
       options.CreateSolver = (_, _) => {
         lock (solvers) {
           var solver = new SendCountingSolver(request => {
-            if (request.StartsWith(blockedPrefix) && Interlocked.Increment(ref matchingSends) == 1) {
+            if (request.StartsWith("(assert (not") && Interlocked.Increment(ref sentVCs) == failingVC) {
+              throw new IOException("Broken pipe");
+            }
+            if (blockedPrefix != null && request.StartsWith(blockedPrefix) &&
+                Interlocked.Increment(ref matchingSends) == 1) {
               Blocked.Release();
               unblock.Wait();
             }
           });
+          solver.TimeOutFirstCheck = timeOutFirstCheck && solvers.Count == 0;
           solvers.Add(solver);
           return solver;
         }
@@ -614,18 +649,20 @@ procedure easy() ensures 1 + 1 == 0; {
         CustomStackSizePoolTaskScheduler.Create(ExecutionEngine.StackSize, 2), disposeScheduler);
     }
 
-    public Program Parse() {
-      Assert.AreEqual(0, Parser.Parse("procedure Foo(x: int) {\n  assert true;\n}", "fakeFilename1", out var program));
+    public Program Parse(string source = "procedure Foo(x: int) {\n  assert true;\n}") {
+      Assert.AreEqual(0, Parser.Parse(source, "fakeFilename1", out var program));
       return program;
     }
 
     /// <summary>
     /// Verify a fresh copy of the program as the command line does, by splitting it into VCs and verifying those.
     /// </summary>
-    public Task<PipelineOutcome> Verify(CancellationToken cancellationToken) {
-      var program = Parse();
+    public Task<PipelineOutcome> Verify(CancellationToken cancellationToken, string source = null,
+      PipelineStatistics stats = null) {
+      var program = source == null ? Parse() : Parse(source);
       Assert.AreEqual(PipelineOutcome.ResolvedAndTypeChecked, Engine.ResolveAndTypecheck(program, "fakeFilename1", out _));
-      return Engine.InferAndVerify(TextWriter.Null, program, new PipelineStatistics(), cancellationToken: cancellationToken);
+      return Engine.InferAndVerify(TextWriter.Null, program, stats ?? new PipelineStatistics(),
+        cancellationToken: cancellationToken);
     }
 
     public void Unblock() => unblock.Release();
@@ -665,12 +702,24 @@ procedure easy() ensures 1 + 1 == 0; {
       base.Close();
     }
 
+    public bool TimeOutFirstCheck { get; set; }
+    private volatile bool answeredFirstCheck;
+
     public override void Send(string request) {
       if (Interlocked.Increment(ref activeSends) > 1) {
         Interlocked.Increment(ref overlappingSends);
       }
       try {
         beforeSend(request);
+        if (TimeOutFirstCheck && !answeredFirstCheck && request == "(check-sat)") {
+          responses.Enqueue(new SExpr("unknown"));
+          return;
+        }
+        if (TimeOutFirstCheck && !answeredFirstCheck && request == "(get-info :reason-unknown)") {
+          answeredFirstCheck = true;
+          responses.Enqueue(new SExpr(":reason-unknown", new SExpr("timeout")));
+          return;
+        }
         base.Send(request);
       } finally {
         Interlocked.Decrement(ref activeSends);
