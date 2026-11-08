@@ -1,7 +1,7 @@
 // RUN: %parallel-boogie -noVerify "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-var m: [int]int;
+var m: []int;  // error: no arguments
 var p: <a>[int]a;
 
 type C _;

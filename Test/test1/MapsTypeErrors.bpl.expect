@@ -13,4 +13,5 @@ MapsTypeErrors.bpl(106,2): Error: mismatched types in assignment command (cannot
 MapsTypeErrors.bpl(112,56): Error: invalid type for argument 1 in application of Same: bv18 (expected: T)
 MapsTypeErrors.bpl(122,4): Error: mismatched types in assignment command (cannot assign [?, ?]? to [int,int]bool)
 MapsTypeErrors.bpl(124,4): Error: mismatched types in assignment command (cannot assign [?, ?]? to <a>[ref,Field a]a)
-15 type checking errors detected in MapsTypeErrors.bpl
+MapsTypeErrors.bpl(129,15): Error: map select must have at least one argument
+16 type checking errors detected in MapsTypeErrors.bpl

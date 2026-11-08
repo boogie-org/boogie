@@ -1,3 +1,4 @@
+MapsResolutionErrors.bpl(4,7): Error: map type must have at least one argument
 MapsResolutionErrors.bpl(8,9): Error: type variable must occur in map arguments: b
 MapsResolutionErrors.bpl(22,10): Error: type variable must occur in procedure arguments: a
-2 name resolution errors detected in MapsResolutionErrors.bpl
+3 name resolution errors detected in MapsResolutionErrors.bpl

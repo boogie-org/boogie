@@ -126,4 +126,5 @@ procedure Mmm() returns (a: [int,int]bool, b: HeapType, c: int)
   c := Gimmie()[Gimmie() := 10][null];
   c := Gimmie()[Gimmie() := Gimmie()][null];
   c := Gimmie()[Gimmie() := false][null];
+  c := Gimmie()[];  // error
 }
