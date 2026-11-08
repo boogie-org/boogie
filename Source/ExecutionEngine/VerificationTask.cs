@@ -131,10 +131,12 @@ public class VerificationTask : IVerificationTask {
       var collector = new VerificationResultCollector(Split.Options);
       beginCheckTask = engine.LargeThreadTaskFactory.StartNew(() => Split.BeginCheck(Split.Run.OutputWriter, checker, collector,
         modelViewInfo, timeout, Split.Run.Implementation.GetResourceLimit(Split.Options), cancellationToken), cancellationToken).Unwrap();
-      await (timeout == 0 ? beginCheckTask : beginCheckTask.WaitAsync(TimeSpan.FromSeconds(timeout), cancellationToken));
-
-      await checker.ProverTask.WaitAsync(cancellationToken);
-      var result = Split.ReadOutcome(0, checker, collector);
+      var result = await Split.WaitForBeginCheck(beginCheckTask, 0, timeout, collector, cancellationToken);
+      if (result == null)
+      {
+        await checker.ProverTask.WaitAsync(cancellationToken);
+        result = Split.ReadOutcome(0, checker, collector);
+      }
 
       CacheStatus = new Completed(result);
       yield return CacheStatus;
