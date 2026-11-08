@@ -1,0 +1,6 @@
+NullaryMaps.bpl(5,9): error: invalid Type
+NullaryMaps.bpl(6,12): error: invalid Type
+NullaryMaps.bpl(10,10): error: invalid UnaryExpression
+NullaryMaps.bpl(11,10): error: invalid UnaryExpression
+NullaryMaps.bpl(12,5): error: invalid UnaryExpression
+5 parse errors detected in NullaryMaps.bpl

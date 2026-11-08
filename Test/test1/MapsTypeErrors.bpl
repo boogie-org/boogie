@@ -1,44 +1,44 @@
 // RUN: %parallel-boogie -noVerify "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-var m: []int;
-var p: <a>[]a;
+var m: [int]int;
+var p: <a>[int]a;
 
 type ref;
 const null: ref;
 
 procedure P()
-  requires m[] == 5;
+  requires m[0] == 5;
   modifies m;
   modifies p;
-  ensures m[] == 30;
-  ensures p[] + p[] == 24;
-  ensures p[] == null;
+  ensures m[0] == 30;
+  ensures p[0] + p[0] == 24;
+  ensures p[0] == null;
 {
-  m[] := 12;
-  p[] := 12;
-  p[] := true;
-  assert p[] == m[];
-  assert p[];
-  m := m[:= 30];
-  p := p[:=null];
+  m[0] := 12;
+  p[0] := 12;
+  p[0] := true;
+  assert p[0] == m[0];
+  assert p[0];
+  m := m[0 := 30];
+  p := p[0 := null];
 }
 
 procedure A()
 {
-  m[] := 12;  // error: illegal assignment, because m is not in modifies clause
+  m[0] := 12;  // error: illegal assignment, because m is not in modifies clause
 }
 
 procedure B()
   modifies m;
 {
-  m := m[];  // type error
-  m[] := m;  // type error
+  m := m[0];  // type error
+  m[0] := m;  // type error
 }
 
 procedure C()
   modifies m;
 {
-  m[] := true;  // type error
+  m[0] := true;  // type error
 }
 
 // -----

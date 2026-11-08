@@ -1,6 +1,6 @@
-MapsTypeErrors.bpl(28,6): Error: command assigns to a global variable that is not in the enclosing procedure's modifies clause: m
-MapsTypeErrors.bpl(34,2): Error: mismatched types in assignment command (cannot assign int to []int)
-MapsTypeErrors.bpl(35,3): Error: mismatched types in assignment command (cannot assign []int to int)
+MapsTypeErrors.bpl(28,7): Error: command assigns to a global variable that is not in the enclosing procedure's modifies clause: m
+MapsTypeErrors.bpl(34,2): Error: mismatched types in assignment command (cannot assign int to [int]int)
+MapsTypeErrors.bpl(35,3): Error: mismatched types in assignment command (cannot assign [int]int to int)
 MapsTypeErrors.bpl(41,3): Error: mismatched types in assignment command (cannot assign bool to int)
 MapsTypeErrors.bpl(69,14): Error: invalid argument types (Field int and Field bool) to binary operator ==
 MapsTypeErrors.bpl(72,27): Error: invalid type for argument 1 in application of StrictEqual: Field bool (expected: a)

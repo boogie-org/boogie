@@ -382,7 +382,7 @@ MapType<out Bpl.Type ty>
    .)
   [ TypeParams<out nnTok, out typeParameters> (. tok = nnTok; .) ]
   "["                                         (.  if (tok == null) tok = t;  .)
-    [ Types<arguments> ]
+    Types<arguments>
   "]"
   Type<out result>
   (.
@@ -1285,12 +1285,10 @@ MapAssignIndex<.out IToken x, out List<Expr> indexes.>
      Expr e;
   .)
   "["                        (. x = t; .)
-    [
+    Expression<out e>        (. indexes.Add(e); .)
+    { ","
       Expression<out e>      (. indexes.Add(e); .)
-      { ","
-        Expression<out e>    (. indexes.Add(e); .)
-      }
-    ]
+    }
   "]"
   .
 
@@ -1599,26 +1597,23 @@ ArrayExpression<out Expr e>
   { "["        (. x = t; allArgs = new List<Expr> ();
                   allArgs.Add(e);
                   store = false; bvExtract = false; .)
-      [
-        Expression<out index0>
-               (. if (index0 is BvBounds)
-                    bvExtract = true;
-                  else
-                    allArgs.Add(index0);
-               .)
-        { "," Expression<out e1>
-               (. if (bvExtract || e1 is BvBounds)
-                    this.SemErr("bitvectors only have one dimension");
-                  allArgs.Add(e1);
-               .)
-        }
-        [ ":=" Expression<out e1>
-               (. if (bvExtract || e1 is BvBounds)
-                    this.SemErr("assignment to bitvectors is not possible");
-                  allArgs.Add(e1); store = true;
-               .)
-        ]
-      | ":=" Expression<out e1>       (. allArgs.Add(e1); store = true; .)
+      Expression<out index0>
+             (. if (index0 is BvBounds)
+                  bvExtract = true;
+                else
+                  allArgs.Add(index0);
+             .)
+      { "," Expression<out e1>
+             (. if (bvExtract || e1 is BvBounds)
+                  this.SemErr("bitvectors only have one dimension");
+                allArgs.Add(e1);
+             .)
+      }
+      [ ":=" Expression<out e1>
+             (. if (bvExtract || e1 is BvBounds)
+                  this.SemErr("assignment to bitvectors is not possible");
+                allArgs.Add(e1); store = true;
+             .)
       ]
     "]"
     (. if (store)
