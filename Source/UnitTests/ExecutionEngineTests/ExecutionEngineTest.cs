@@ -354,6 +354,33 @@ procedure Foo(x: int) {
   }
 
   [Test]
+  public async Task TimedOutSplitGivesItsCheckerBackOnceWhenAPartThrows() {
+    var options = CommandLineOptions.FromArguments(TextWriter.Null);
+    options.VcsCores = 1;
+    options.VcsMaxKeepGoingSplits = 2;
+    options.CreateSolver = (_, _) => new TimeOutThenBreakSolver();
+    var engine = ExecutionEngine.CreateWithoutSharedCache(options);
+    Parser.Parse(@"
+procedure Foo(x: int) {
+  if (x > 0) {
+    assert x > 1;
+  } else {
+    assert x < 1;
+  }
+}", "fakeFilename1", out var program);
+    engine.ResolveAndTypecheck(program, "fakeFilename1", out _);
+    var stats = new PipelineStatistics();
+    // Foo's check times out, so Foo is split in two, and sending the VC of the second part breaks the pipe.
+    await engine.InferAndVerify(TextWriter.Null, program, stats);
+    Assert.AreEqual(1, stats.InconclusiveCount);
+
+    var split = (await engine.GetVerificationTasks(program))[0].Split;
+    await engine.CheckerPool.FindCheckerFor(program, split, CancellationToken.None);
+    Assert.IsFalse(engine.CheckerPool.FindCheckerFor(program, split, CancellationToken.None).IsCompleted,
+      "The pool handed out its one checker twice.");
+  }
+
+  [Test]
   public async Task FromSeedResetsState() {
     var options = CommandLineOptions.FromArguments(TextWriter.Null);
     options.VcsCores = 1;
@@ -520,5 +547,22 @@ procedure easy() ensures 1 + 1 == 0; {
     engine.CoalesceBlocks(program);
     engine.Inline(program);
     return program;
+  }
+
+  private class TimeOutThenBreakSolver : UnsatSolver {
+    private int vcs;
+
+    public override void Send(string request) {
+      if (request.StartsWith("(assert (not") && ++vcs == 3) {
+        throw new IOException("Broken pipe");
+      }
+      if (request == "(check-sat)" && vcs == 1) {
+        responses.Enqueue(new SExpr("unknown"));
+      } else if (request == "(get-info :reason-unknown)") {
+        responses.Enqueue(new SExpr(":reason-unknown", new SExpr("timeout")));
+      } else {
+        base.Send(request);
+      }
+    }
   }
 }

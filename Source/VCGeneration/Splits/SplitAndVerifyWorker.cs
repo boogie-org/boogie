@@ -111,12 +111,18 @@ namespace VC
     {
       int currentSplitNumber = DoSplitting ? Interlocked.Increment(ref splitNumber) - 1 : -1;
       split.SplitIndex = currentSplitNumber;
-      var tasks = Enumerable.Range(0, options.RandomizeVcIterations).Select(iteration =>
-        DoWork(iteration, split, cancellationToken));
+      var tasks = Enumerable.Range(0, options.RandomizeVcIterations).Select(async iteration =>
+      {
+        var proverFailed = await DoWork(iteration, split, cancellationToken);
+        if (proverFailed && !split.LastChance)
+        {
+          await HandleProverFailure(split, cancellationToken);
+        }
+      });
       await Task.WhenAll(tasks);
     }
 
-    async Task DoWork(int iteration, Split split, CancellationToken cancellationToken)
+    async Task<bool> DoWork(int iteration, Split split, CancellationToken cancellationToken)
     {
       var checker = await split.parent.CheckerPool.FindCheckerFor(split.parent.program, split, cancellationToken);
 
@@ -125,13 +131,13 @@ namespace VC
         cancellationToken.ThrowIfCancellationRequested();
         await StartCheck(iteration, split, checker, cancellationToken);
         await checker.ProverTask;
-        await ProcessResultAndReleaseChecker(iteration, split, checker, cancellationToken);
+        var proverFailed = ProcessResult(iteration, split, checker);
         TotalProverElapsedTime += checker.ProverRunTime;
+        return proverFailed;
       }
-      catch
+      finally
       {
         await checker.GoBackToIdle();
-        throw;
       }
     }
 
@@ -165,8 +171,7 @@ namespace VC
 
     private Implementation Implementation => run.Implementation;
 
-    private async Task ProcessResultAndReleaseChecker(int iteration, Split split, Checker checker,
-      CancellationToken cancellationToken)
+    private bool ProcessResult(int iteration, Split split, Checker checker)
     {
       if (TrackingProgress)
       {
@@ -205,14 +210,11 @@ namespace VC
       callback.OnProgress?.Invoke("VCprove", splitNumber < 0 ? 0 : splitNumber, total,
         provenCost / (remainingCost + provenCost));
 
-      if (proverFailed)
+      if (proverFailed && split.LastChance)
       {
-        await HandleProverFailure(split, checker, callback, result, cancellationToken);
+        BlameLastChanceAssertion(split, checker);
       }
-      else
-      {
-        await checker.GoBackToIdle();
-      }
+      return proverFailed;
     }
 
     public static bool IsProverFailed(SolverOutcome outcome)
@@ -275,32 +277,22 @@ namespace VC
       }
     }
 
-    private async Task HandleProverFailure(Split split, Checker checker, VerifierCallback callback,
-      VerificationRunResult verificationRunResult, CancellationToken cancellationToken)
+    private void BlameLastChanceAssertion(Split split, Checker checker)
     {
-      if (split.LastChance)
+      string msg = "some timeout";
+      if (split.reporter is { resourceExceededMessage: { } })
       {
-        string msg = "some timeout";
-        if (split.reporter is { resourceExceededMessage: { } })
-        {
-          msg = split.reporter.resourceExceededMessage;
-        }
-
-        var cex = split.ToCounterexample(checker.TheoremProver.Context);
-        callback.OnCounterexample(cex, msg);
-        split.Counterexamples.Add(cex);
-        // Update one last time the result with the dummy counter-example to indicate the position of the timeout
-        var result = verificationRunResult with
-        {
-          CounterExamples = split.Counterexamples
-        };
-        vcOutcome = VcOutcome.Errors;
-        await checker.GoBackToIdle();
-        return;
+        msg = split.reporter.resourceExceededMessage;
       }
 
-      await checker.GoBackToIdle();
+      var cex = split.ToCounterexample(checker.TheoremProver.Context);
+      callback.OnCounterexample(cex, msg);
+      split.Counterexamples.Add(cex);
+      vcOutcome = VcOutcome.Errors;
+    }
 
+    private async Task HandleProverFailure(Split split, CancellationToken cancellationToken)
+    {
       if (maxKeepGoingSplits > 1)
       {
         var newSplits = Split.DoSplit(split, maxVcCost, maxKeepGoingSplits);
