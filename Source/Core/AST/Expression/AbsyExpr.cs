@@ -3124,6 +3124,12 @@ namespace Microsoft.Boogie
         tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
         return null;
       }
+      else if (indexes.Count == 0)
+      {
+        tc.Error(typeCheckingSubject, "{0} must have at least one argument", opName);
+        tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
+        return null;
+      }
       else if (!mapType.Unify(new MapTypeProxy(map.tok, "select", indexes.Count)))
       {
         tc.Error(map.tok, "{0} applied to a non-map: {1}", opName, map);

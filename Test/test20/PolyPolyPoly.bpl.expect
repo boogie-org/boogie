@@ -1,4 +1,4 @@
-PolyPolyPoly.bpl(14,26): Error: invalid argument types ([]? and <a>[]C a) to binary operator ==
-PolyPolyPoly.bpl(17,23): Error: invalid argument types ([]? and <a>[]C a) to binary operator ==
-PolyPolyPoly.bpl(23,57): Error: invalid type for argument 1 in map select: b (expected: a)
+PolyPolyPoly.bpl(14,31): Error: invalid argument types ([?]? and <a>[int]C a) to binary operator ==
+PolyPolyPoly.bpl(17,28): Error: invalid argument types ([?]? and <a>[int]C a) to binary operator ==
+PolyPolyPoly.bpl(23,62): Error: invalid type for argument 1 in map select: b (expected: a)
 3 type checking errors detected in PolyPolyPoly.bpl

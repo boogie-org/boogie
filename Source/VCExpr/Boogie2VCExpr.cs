@@ -1303,19 +1303,11 @@ namespace Microsoft.Boogie.VCExprAST
 
     public VCExpr Visit(MapSelect mapSelect)
     {
-      if (GenerationOptions.Options.TypeEncodingMethod == CoreOptions.TypeEncoding.Monomorphic && args.Count == 1 && typeArgs.Count == 0)
-      {
-        return args[0];
-      }
       return Gen.Select(this.args, this.typeArgs);
     }
 
     public VCExpr Visit(MapStore mapStore)
     {
-      if (GenerationOptions.Options.TypeEncodingMethod == CoreOptions.TypeEncoding.Monomorphic && args.Count == 2 && typeArgs.Count == 0)
-      {
-        return args[1];
-      }
       return Gen.Store(this.args, this.typeArgs);
     }
 
