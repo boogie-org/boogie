@@ -36,23 +36,6 @@ public class AsyncQueue<T>
     }
   }
 
-  public IEnumerable<T> Items
-  {
-    get
-    {
-      lock (myLock)
-      {
-        return items.ToArray();
-      }
-    }
-  }
-
-  public void CancelWaitsAndClear() {
-    while (customers.TryDequeue(out var customer)) {
-      customer.TrySetCanceled();
-    }
-  }
-
   public int Size => items.Count;
 
   public Task<T> Dequeue()
