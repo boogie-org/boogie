@@ -353,6 +353,64 @@ procedure Foo(x: int) {
     Assert.AreEqual(expected2, statusList2.Where(s => s is not Queued));
   }
 
+  // The first check is cancelled while it sends its VC, or, after the solver has answered, the commands that follow.
+  [TestCase("(assert (not")]
+  [TestCase("(pop 1)")]
+  public async Task CancelledCheckDoesNotShareItsSolverWithTheNextCheck(string blockedPrefix) {
+    var harness = new BlockedSendHarness(blockedPrefix);
+    var task = (await harness.Engine.GetVerificationTasks(harness.Parse()))[0];
+    try {
+      var firstStatuses = task.TryRun()!;
+      await harness.Blocked.WaitAsync();
+      task.Cancel();
+      Assert.IsTrue(await firstStatuses.ToTask() is Stale);
+
+      Assert.IsTrue(await task.TryRun()!.ToTask() is Completed);
+    } finally {
+      harness.Unblock();
+    }
+    Assert.AreEqual(0, harness.OverlappingSends);
+  }
+
+  [Test]
+  public async Task CancelledCommandLineCheckDoesNotShareItsSolverWithTheNextRun() {
+    var harness = new BlockedSendHarness("(assert (not");
+    var cancellationSource = new CancellationTokenSource();
+    try {
+      var firstRun = harness.Verify(cancellationSource.Token);
+      await harness.Blocked.WaitAsync();
+      cancellationSource.Cancel();
+      try {
+        await firstRun;
+      } catch (OperationCanceledException) {
+      }
+
+      // The first check is still sending its VC.
+      Assert.AreEqual(PipelineOutcome.VerificationCompleted, await harness.Verify(CancellationToken.None));
+    } finally {
+      harness.Unblock();
+    }
+    Assert.AreEqual(0, harness.OverlappingSends);
+  }
+
+  [Test]
+  public async Task CancelledCheckOfADisposedEngineClosesItsSolver() {
+    // As in Dafny's language server, which disposes the engine of a document's previous version while the checks of
+    // that version still run, the engine does not own its scheduler.
+    var harness = new BlockedSendHarness("(assert (not", disposeScheduler: false);
+    var task = (await harness.Engine.GetVerificationTasks(harness.Parse()))[0];
+    try {
+      var statuses = task.TryRun()!;
+      await harness.Blocked.WaitAsync();
+      harness.Engine.Dispose();
+      task.Cancel();
+      Assert.IsTrue(await statuses.ToTask() is Stale);
+    } finally {
+      harness.Unblock();
+    }
+    Assert.IsTrue(harness.SolversAreClosed);
+  }
+
   [Test]
   public async Task FromSeedResetsState() {
     var options = CommandLineOptions.FromArguments(TextWriter.Null);
@@ -520,5 +578,108 @@ procedure easy() ensures 1 + 1 == 0; {
     engine.CoalesceBlocks(program);
     engine.Inline(program);
     return program;
+  }
+
+  /// <summary>
+  /// An engine whose solvers count overlapping Sends, and block the first Send that starts with a given prefix
+  /// until <see cref="Unblock"/> is called.
+  /// </summary>
+  private class BlockedSendHarness {
+    private readonly SemaphoreSlim unblock = new(0);
+    private readonly List<SendCountingSolver> solvers = new();
+    private int matchingSends;
+
+    public ExecutionEngine Engine { get; }
+    public SemaphoreSlim Blocked { get; } = new(0);
+
+    public BlockedSendHarness(string blockedPrefix, bool disposeScheduler = true) {
+      var options = CommandLineOptions.FromArguments(TextWriter.Null);
+      options.VcsCores = 1;
+      // With a time limit, a run stops waiting for its check as soon as it is cancelled.
+      options.TimeLimit = 10;
+      options.CreateSolver = (_, _) => {
+        lock (solvers) {
+          var solver = new SendCountingSolver(request => {
+            if (request.StartsWith(blockedPrefix) && Interlocked.Increment(ref matchingSends) == 1) {
+              Blocked.Release();
+              unblock.Wait();
+            }
+          });
+          solvers.Add(solver);
+          return solver;
+        }
+      };
+      // More than one thread, so the next check can begin while a blocked one still occupies the thread it began on.
+      Engine = new ExecutionEngine(options, new VerificationResultCache(),
+        CustomStackSizePoolTaskScheduler.Create(ExecutionEngine.StackSize, 2), disposeScheduler);
+    }
+
+    public Program Parse() {
+      Assert.AreEqual(0, Parser.Parse("procedure Foo(x: int) {\n  assert true;\n}", "fakeFilename1", out var program));
+      return program;
+    }
+
+    /// <summary>
+    /// Verify a fresh copy of the program as the command line does, by splitting it into VCs and verifying those.
+    /// </summary>
+    public Task<PipelineOutcome> Verify(CancellationToken cancellationToken) {
+      var program = Parse();
+      Assert.AreEqual(PipelineOutcome.ResolvedAndTypeChecked, Engine.ResolveAndTypecheck(program, "fakeFilename1", out _));
+      return Engine.InferAndVerify(TextWriter.Null, program, new PipelineStatistics(), cancellationToken: cancellationToken);
+    }
+
+    public void Unblock() => unblock.Release();
+
+    public int OverlappingSends {
+      get {
+        lock (solvers) {
+          return solvers.Sum(solver => solver.OverlappingSends);
+        }
+      }
+    }
+
+    public bool SolversAreClosed {
+      get {
+        lock (solvers) {
+          return solvers.All(solver => solver.Closed);
+        }
+      }
+    }
+  }
+
+  private class SendCountingSolver : UnsatSolver {
+    private readonly Action<string> beforeSend;
+    private int activeSends;
+    private int overlappingSends;
+
+    public SendCountingSolver(Action<string> beforeSend) {
+      this.beforeSend = beforeSend;
+    }
+
+    public int OverlappingSends => overlappingSends;
+
+    public bool Closed { get; private set; }
+
+    public override void Close() {
+      Closed = true;
+      base.Close();
+    }
+
+    public override void Send(string request) {
+      if (Interlocked.Increment(ref activeSends) > 1) {
+        Interlocked.Increment(ref overlappingSends);
+      }
+      try {
+        beforeSend(request);
+        base.Send(request);
+      } finally {
+        Interlocked.Decrement(ref activeSends);
+      }
+    }
+
+    // Answer asynchronously, as a solver process does, so a check that waits for an answer returns to its caller.
+    public override async Task PingPong() {
+      await Task.Yield();
+    }
   }
 }
