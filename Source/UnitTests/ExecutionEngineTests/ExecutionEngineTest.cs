@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -436,6 +437,52 @@ procedure Foo(x: int) {
   }
 
   [Test]
+  public async Task CheckThatTakesItsTimeLimitToBeginTimesOut() {
+    var harness = new BlockedSendHarness("(assert (not", timeLimit: 1);
+    var tasks = await harness.Engine.GetVerificationTasks(harness.Parse(@"
+procedure Foo(x: int) {
+  assert true;
+}
+procedure Bar(x: int) {
+  assert true;
+}"));
+    try {
+      // The time limit passes while the check of Foo is still sending its VC.
+      Assert.AreEqual(SolverOutcome.TimeOut, ((Completed)await tasks[0].TryRun()!.ToTask()).Result.Outcome);
+
+      Assert.AreEqual(SolverOutcome.Valid, ((Completed)await tasks[1].TryRun()!.ToTask()).Result.Outcome);
+    } finally {
+      harness.Unblock();
+    }
+    Assert.AreEqual(0, harness.OverlappingSends);
+  }
+
+  [Test]
+  public async Task CommandLineCheckThatTakesItsTimeLimitToBeginTimesOut() {
+    var harness = new BlockedSendHarness("(assert (not", timeLimit: 1);
+    var stats = new PipelineStatistics();
+    try {
+      // Sending the VC of Foo takes longer than the time limit of its check. With two assertions, the split is not its
+      // own last chance, whose time out would be reported as a failure of its assertion instead. Bar is checked while
+      // the abandoned check of Foo still sends to its solver.
+      Assert.AreEqual(PipelineOutcome.VerificationCompleted, await harness.Verify(CancellationToken.None, @"
+procedure Foo(x: int) {
+  assert x > 0 || x <= 0;
+  assert true;
+}
+procedure Bar(x: int) {
+  assert true;
+}", stats));
+    } finally {
+      harness.Unblock();
+    }
+    Assert.AreEqual(1, stats.TimeoutCount);
+    Assert.AreEqual(1, stats.VerifiedCount);
+    Assert.AreEqual(SolverOutcome.TimeOut, harness.Printer.Results["Foo"].RunResults.Single().Outcome);
+    Assert.AreEqual(0, harness.OverlappingSends);
+  }
+
+  [Test]
   public async Task FromSeedResetsState() {
     var options = CommandLineOptions.FromArguments(TextWriter.Null);
     options.VcsCores = 1;
@@ -616,16 +663,17 @@ procedure easy() ensures 1 + 1 == 0; {
 
     public ExecutionEngine Engine { get; }
     public SemaphoreSlim Blocked { get; } = new(0);
+    public ResultRecordingPrinter Printer { get; } = new();
 
     /// <param name="timeOutFirstCheck">Whether the first check of the first solver times out.</param>
     /// <param name="failingVC">Sending the VC with this number, counting the VCs sent to any solver, fails.
     /// 0 for none.</param>
     public BlockedSendHarness(string blockedPrefix = null, bool disposeScheduler = true, bool timeOutFirstCheck = false,
-      int failingVC = 0, Action<CommandLineOptions> configure = null) {
-      var options = CommandLineOptions.FromArguments(TextWriter.Null);
+      int failingVC = 0, Action<CommandLineOptions> configure = null, uint timeLimit = 10) {
+      var options = CommandLineOptions.FromArguments(TextWriter.Null, Printer);
       options.VcsCores = 1;
-      // With a time limit, a run stops waiting for its check as soon as it is cancelled.
-      options.TimeLimit = 10;
+      // With a time limit, a run stops waiting for its check as soon as it is cancelled or the limit passes.
+      options.TimeLimit = timeLimit;
       configure?.Invoke(options);
       options.CreateSolver = (_, _) => {
         lock (solvers) {
@@ -681,6 +729,14 @@ procedure easy() ensures 1 + 1 == 0; {
           return solvers.All(solver => solver.Closed);
         }
       }
+    }
+  }
+
+  private class ResultRecordingPrinter : NullPrinter, OutputPrinter {
+    public ConcurrentDictionary<string, ImplementationRunResult> Results { get; } = new();
+
+    void OutputPrinter.ReportEndVerifyImplementation(Implementation implementation, ImplementationRunResult result) {
+      Results[implementation.Name] = result;
     }
   }
 

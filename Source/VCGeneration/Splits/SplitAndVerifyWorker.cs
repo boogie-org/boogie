@@ -131,10 +131,14 @@ namespace VC
           run.Implementation.GetTimeLimit(options);
         beginCheck = split.BeginCheck(run.OutputWriter, checker, callback, mvInfo, timeout,
           Implementation.GetResourceLimit(options), cancellationToken);
-        await (timeout == 0 ? beginCheck : beginCheck.WaitAsync(TimeSpan.FromSeconds(timeout), cancellationToken));
-        await checker.ProverTask;
-        proverFailed = ProcessResult(iteration, split, checker);
-        TotalProverElapsedTime += checker.ProverRunTime;
+        var result = await split.WaitForBeginCheck(beginCheck, iteration, timeout, callback, cancellationToken);
+        if (result == null)
+        {
+          await checker.ProverTask;
+          result = split.ReadOutcome(iteration, checker, callback);
+          TotalProverElapsedTime += checker.ProverRunTime;
+        }
+        proverFailed = ProcessResult(split, checker, result);
       }
       finally
       {
@@ -167,7 +171,7 @@ namespace VC
 
     private Implementation Implementation => run.Implementation;
 
-    private bool ProcessResult(int iteration, Split split, Checker checker)
+    private bool ProcessResult(Split split, Checker checker, VerificationRunResult result)
     {
       if (TrackingProgress)
       {
@@ -177,7 +181,6 @@ namespace VC
         }
       }
 
-      var result = split.ReadOutcome(iteration, checker, callback);
       lock (this)
       {
         vcOutcome = MergeOutcomes(vcOutcome, result.Outcome);
