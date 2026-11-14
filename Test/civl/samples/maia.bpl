@@ -58,6 +58,15 @@ The published semaphore starts with empty done, mem, and imm_mem_shares maps and
 Publish returns the removed signal permissions for distribution to signaling threads.
 */
 
+yield invariant {:layer 1} SemaphorePublishInv({:linear} one_sem_id: One SemId);
+preserves (forall tid: Tid:: Set_Contains(sem_signals->dom, One(SemSignal(one_sem_id->val, tid))));
+
+yield invariant {:layer 1} SemaphoreInv();
+preserves (forall one_sem_id: One SemId:: Map_Contains(semaphores, one_sem_id) ==> 
+    (forall tid: Tid:: Set_Contains(
+        Set_Union(Map_At(semaphores, one_sem_id)->awaited, sem_signals->dom),
+        One(SemSignal(one_sem_id->val, tid)))));
+
 atomic action {:layer 1} Publish({:linear_in} one_sem_id: One SemId,
                                awaited: [One SemSignal]bool)
     returns ({:linear} signals: UnitMap (One SemSignal))
@@ -128,6 +137,15 @@ When doing this transfer, the set of sharers is initialized.
 A sharer must present a capability belonging to this set of sharers to read the value.
 To remove ownership from imm_mem, all the capabilities must be presented as evidence.
 */
+
+yield invariant {:layer 1} ImmMemPublishInv({:linear} one_mem_id: One MemId);
+preserves (forall tid: Tid:: Set_Contains(imm_mem_shares->dom, One(MemShare(one_mem_id->val, tid))));
+
+yield invariant {:layer 1} ImmMemInv();
+preserves (forall one_mem_id: One MemId:: Map_Contains(imm_mem, one_mem_id) ==>
+    (forall tid: Tid:: Set_Contains(
+        Set_Union(Map_At(imm_mem, one_mem_id)->imm_mem_shares, imm_mem_shares->dom),
+        One(MemShare(one_mem_id->val, tid)))));
 
 atomic action {:layer 1} MoveToShared({:linear_in} one_mem_id: One MemId, val: Value,
                                     ord_shares: [One MemShare]bool)
