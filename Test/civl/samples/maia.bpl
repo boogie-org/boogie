@@ -1,7 +1,7 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type Value;
+type Value = int;
 type SemId = int;
 type MemId = int;
 type Tid = int;
@@ -61,16 +61,19 @@ Publish returns the removed signal permissions for distribution to signaling thr
 yield invariant {:layer 1} SemaphorePublishInv({:linear} one_sem_id: One SemId);
 preserves (forall tid: Tid:: Set_Contains(sem_signals->dom, One(SemSignal(one_sem_id->val, tid))));
 
+yield invariant {:layer 1} SemaphoreWaitInv({:linear} wait: One SemWait);
+preserves Map_Contains(semaphores, One(wait->val->sem_id));
+
 yield invariant {:layer 1} SemaphoreInv();
 preserves (forall one_sem_id: One SemId:: Map_Contains(semaphores, one_sem_id) ==> 
     (forall tid: Tid:: Set_Contains(
         Set_Union(Map_At(semaphores, one_sem_id)->awaited, sem_signals->dom),
         One(SemSignal(one_sem_id->val, tid)))));
 
-atomic action {:layer 1} Publish({:linear_in} one_sem_id: One SemId,
+yield procedure {:layer 0} Publish({:linear_in} one_sem_id: One SemId,
                                awaited: [One SemSignal]bool)
-    returns ({:linear} signals: UnitMap (One SemSignal))
-modifies semaphores, sem_signals;
+    returns ({:linear} signals: UnitMap (One SemSignal));
+refines atomic action {:layer 1} _
 {
     var sem: Semaphore;
     var done: UnitMap (One SemSignal);
@@ -93,9 +96,9 @@ This thread must demonstrate that its signal capability is in the awaited set.
 Thus, semaphores provide a mechanism for transferring ownership of memory cells back and forth.
 */
 
-atomic action {:layer 1} Signal({:linear_in} x: One SemSignal, {:linear_in} m: Map (One MemId) Value,
-                              {:linear_in} s: UnitMap (One MemShare))
-modifies semaphores;
+yield procedure {:layer 0} Signal({:linear_in} x: One SemSignal, {:linear_in} m: Map (One MemId) Value,
+                              {:linear_in} s: UnitMap (One MemShare));
+refines atomic action {:layer 1} _
 {
     var one_sem_id: One SemId;
 
@@ -113,17 +116,16 @@ Upon success, ownership of mem and mem_shares is returned.
 Completed signal capabilities are returned to sem_signals.
 */
 
-atomic action {:layer 1} Wait({:linear} x: One SemWait)
+yield procedure {:layer 0} Wait({:linear} x: One SemWait)
     returns ({:linear} one_sem_id: One SemId, {:linear} mem: Map (One MemId) Value,
-             {:linear} mem_shares: UnitMap (One MemShare))
-modifies semaphores, sem_signals;
+             {:linear} mem_shares: UnitMap (One MemShare));
+refines atomic action {:layer 1} _
 {
     var sem: Semaphore;
     var done: UnitMap (One SemSignal);
     var awaited: [One SemSignal]bool;
 
     one_sem_id := One(x->val->sem_id);
-    assert Map_Contains(semaphores, one_sem_id);
     call sem := Map_Get(semaphores, one_sem_id);
     Semaphore(done, awaited, mem, mem_shares) := sem;
     assume Set_IsSubset(awaited, done->dom);
@@ -147,10 +149,10 @@ preserves (forall one_mem_id: One MemId:: Map_Contains(imm_mem, one_mem_id) ==>
         Set_Union(Map_At(imm_mem, one_mem_id)->imm_mem_shares, imm_mem_shares->dom),
         One(MemShare(one_mem_id->val, tid)))));
 
-atomic action {:layer 1} MoveToShared({:linear_in} one_mem_id: One MemId, val: Value,
+yield procedure {:layer 0} MoveToShared({:linear_in} one_mem_id: One MemId, val: Value,
                                     ord_shares: [One MemShare]bool)
-    returns ({:linear} lin_shares: UnitMap (One MemShare))
-modifies imm_mem, imm_mem_shares;
+    returns ({:linear} lin_shares: UnitMap (One MemShare));
+refines atomic action {:layer 1} _
 {
     var shared_value: SharedValue;
 
@@ -167,9 +169,9 @@ It returns all supplied capabilities to imm_mem_shares for reuse, removes the ce
 from imm_mem, and returns ownership of the cell and its value.
 */
 
-atomic action {:layer 1} MoveFromShared(mem_id: MemId, {:linear_in} lin_shares: UnitMap (One MemShare))
-    returns ({:linear} one_mem_id: One MemId, val: Value)
-modifies imm_mem, imm_mem_shares;
+yield procedure {:layer 0} MoveFromShared(mem_id: MemId, {:linear_in} lin_shares: UnitMap (One MemShare))
+    returns ({:linear} one_mem_id: One MemId, val: Value);
+refines atomic action {:layer 1} _
 {
     var shared_value: SharedValue;
 
@@ -180,7 +182,8 @@ modifies imm_mem, imm_mem_shares;
     val := shared_value->val;
 }
 
-atomic action {:layer 1} ReadFromShared({:linear} share: One MemShare) returns (val: Value)
+yield procedure {:layer 0} ReadFromShared({:linear} share: One MemShare) returns (val: Value);
+refines atomic action {:layer 1} _
 {
     assert Map_Contains(imm_mem, One(share->val->mem_id));
     assert Set_Contains(Map_At(imm_mem, One(share->val->mem_id))->imm_mem_shares, share);
