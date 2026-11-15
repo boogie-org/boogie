@@ -37,7 +37,9 @@ datatype Semaphore {
         done: UnitMap (One SemSignal), // done signals
         awaited: [One SemSignal]bool,  // all awaited signals
         mem: Map (One MemId) Value,    // memory cells returned via a signal
-        imm_mem_shares: UnitMap (One MemShare)) // immutable memory shares returned via a signal
+        expected_mem_ids: Map SemSignal ([One MemId]bool),
+        imm_mem_shares: UnitMap (One MemShare), // immutable memory shares returned via a signal
+        expected_mem_shares: Map SemSignal ([One MemShare]bool))
 }
 
 var {:layer 0,1} {:linear} semaphores: Map (One SemId) Semaphore;
@@ -46,6 +48,20 @@ var {:layer 0,1} {:linear} semaphores: Map (One SemId) Semaphore;
 // Retrieved when a semaphore is published into semaphores
 // Returned when a semaphore wait succeeds
 var {:layer 0,1} {:linear} sem_signals: UnitMap (One SemSignal);
+
+yield invariant {:layer 1} SemaphoreInv();
+preserves (forall one_sem_id: One SemId:: Map_Contains(semaphores, one_sem_id) ==>
+    (var sem := Map_At(semaphores, one_sem_id);
+     (forall tid: Tid:: Set_Contains(
+        Set_Union(sem->awaited, sem_signals->dom), One(SemSignal(one_sem_id->val, tid))))));
+preserves (forall one_sem_id: One SemId:: Map_Contains(semaphores, one_sem_id) ==>
+    (var sem := Map_At(semaphores, one_sem_id);
+     (forall signal: One SemSignal:: Map_Contains(sem->done, signal) && Map_Contains(sem->expected_mem_ids, signal->val) ==>
+        Set_IsSubset(Map_At(sem->expected_mem_ids, signal->val), sem->mem->dom))));
+preserves (forall one_sem_id: One SemId:: Map_Contains(semaphores, one_sem_id) ==>
+    (var sem := Map_At(semaphores, one_sem_id);
+     (forall signal: One SemSignal:: Map_Contains(sem->done, signal) && Map_Contains(sem->expected_mem_shares, signal->val) ==>
+        Set_IsSubset(Map_At(sem->expected_mem_shares, signal->val), sem->imm_mem_shares->dom))));
 
 /*
 A thread starting a MAIA kernel receives a linear map containing wait capability for each semaphore,
@@ -61,17 +77,10 @@ Publish returns the removed signal permissions for distribution to signaling thr
 yield invariant {:layer 1} SemaphorePublishInv({:linear} one_sem_id: One SemId);
 preserves (forall tid: Tid:: Set_Contains(sem_signals->dom, One(SemSignal(one_sem_id->val, tid))));
 
-yield invariant {:layer 1} SemaphoreWaitInv({:linear} wait: One SemWait);
-preserves Map_Contains(semaphores, One(wait->val->sem_id));
-
-yield invariant {:layer 1} SemaphoreInv();
-preserves (forall one_sem_id: One SemId:: Map_Contains(semaphores, one_sem_id) ==> 
-    (forall tid: Tid:: Set_Contains(
-        Set_Union(Map_At(semaphores, one_sem_id)->awaited, sem_signals->dom),
-        One(SemSignal(one_sem_id->val, tid)))));
-
 yield procedure {:layer 0} Publish({:linear_in} one_sem_id: One SemId,
-                               awaited: [One SemSignal]bool)
+                               awaited: [One SemSignal]bool,
+                               expected_mem_ids: Map SemSignal ([One MemId]bool),
+                               expected_mem_shares: Map SemSignal ([One MemShare]bool))
     returns ({:linear} signals: UnitMap (One SemSignal));
 refines atomic action {:layer 1} _
 {
@@ -86,7 +95,7 @@ refines atomic action {:layer 1} _
     call done := Map_MakeEmpty();
     call mem := Map_MakeEmpty();
     call shares := Map_MakeEmpty();
-    sem := Semaphore(done, awaited, mem, shares);
+    sem := Semaphore(done, awaited, mem, expected_mem_ids, shares, expected_mem_shares);
     call Map_Put(semaphores, one_sem_id, sem);
 }
 
@@ -96,16 +105,20 @@ This thread must demonstrate that its signal capability is in the awaited set.
 Thus, semaphores provide a mechanism for transferring ownership of memory cells back and forth.
 */
 
-yield procedure {:layer 0} Signal({:linear_in} x: One SemSignal, {:linear_in} m: Map (One MemId) Value,
+yield invariant {:layer 1} SemaphoreSignalInv({:linear} signal: One SemSignal);
+preserves Map_Contains(semaphores, One(signal->val->sem_id));
+preserves Set_Contains(Map_At(semaphores, One(signal->val->sem_id))->awaited, signal);
+
+yield procedure {:layer 0} Signal({:linear_in} signal: One SemSignal, {:linear_in} m: Map (One MemId) Value,
                               {:linear_in} s: UnitMap (One MemShare));
 refines atomic action {:layer 1} _
 {
     var one_sem_id: One SemId;
 
-    one_sem_id := One(x->val->sem_id);
+    one_sem_id := One(signal->val->sem_id);
     assert Map_Contains(semaphores, one_sem_id);
-    assert Set_Contains(Map_At(semaphores, one_sem_id)->awaited, x);
-    call One_Put(semaphores->val[one_sem_id]->done, x);
+    assert Set_Contains(Map_At(semaphores, one_sem_id)->awaited, signal);
+    call One_Put(semaphores->val[one_sem_id]->done, signal);
     call Map_Join(semaphores->val[one_sem_id]->mem, m);
     call Map_Join(semaphores->val[one_sem_id]->imm_mem_shares, s);
 }
@@ -116,7 +129,10 @@ Upon success, ownership of mem and mem_shares is returned.
 Completed signal capabilities are returned to sem_signals.
 */
 
-yield procedure {:layer 0} Wait({:linear} x: One SemWait)
+yield invariant {:layer 1} SemaphoreWaitInv({:linear} wait: One SemWait);
+preserves Map_Contains(semaphores, One(wait->val->sem_id));
+
+yield procedure {:layer 0} Wait({:linear} wait: One SemWait)
     returns ({:linear} one_sem_id: One SemId, {:linear} mem: Map (One MemId) Value,
              {:linear} mem_shares: UnitMap (One MemShare));
 refines atomic action {:layer 1} _
@@ -124,10 +140,12 @@ refines atomic action {:layer 1} _
     var sem: Semaphore;
     var done: UnitMap (One SemSignal);
     var awaited: [One SemSignal]bool;
+    var expected_mem_ids: Map SemSignal ([One MemId]bool);
+    var expected_mem_shares: Map SemSignal ([One MemShare]bool);
 
-    one_sem_id := One(x->val->sem_id);
+    one_sem_id := One(wait->val->sem_id);
     call sem := Map_Get(semaphores, one_sem_id);
-    Semaphore(done, awaited, mem, mem_shares) := sem;
+    Semaphore(done, awaited, mem, expected_mem_ids, mem_shares, expected_mem_shares) := sem;
     assume Set_IsSubset(awaited, done->dom);
     call Map_Join(sem_signals, done);
 }
