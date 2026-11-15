@@ -108,6 +108,7 @@ Thus, semaphores provide a mechanism for transferring ownership of memory cells 
 yield invariant {:layer 1} SemaphoreSignalInv({:linear} signal: One SemSignal);
 preserves Map_Contains(semaphores, One(signal->val->sem_id));
 preserves Set_Contains(Map_At(semaphores, One(signal->val->sem_id))->awaited, signal);
+//free preserves !Map_Contains(Map_At(semaphores, One(signal->val->sem_id))->done, signal);
 
 yield procedure {:layer 0} Signal({:linear_in} signal: One SemSignal, {:linear_in} m: Map (One MemId) Value,
                               {:linear_in} s: UnitMap (One MemShare));

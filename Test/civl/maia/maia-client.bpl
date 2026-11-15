@@ -64,6 +64,7 @@ preserves Map_Contains(Map_At(semaphores, One(signal->val->sem_id))->expected_me
 preserves Map_At(Map_At(semaphores, One(signal->val->sem_id))->expected_mem_ids, signal->val) == mem->dom;
 preserves Map_Contains(Map_At(semaphores, One(signal->val->sem_id))->expected_mem_shares, signal->val);
 preserves Map_At(Map_At(semaphores, One(signal->val->sem_id))->expected_mem_shares, signal->val) == Set_Empty();
+//free preserves !Map_Contains(Map_At(semaphores, One(signal->val->sem_id))->done, signal);
 
 yield procedure {:layer 1} Child(
     {:linear_in} signal: One SemSignal, {:linear_in} initial_mem: Map (One MemId) Value,
