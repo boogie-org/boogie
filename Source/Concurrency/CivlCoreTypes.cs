@@ -94,7 +94,7 @@ namespace Microsoft.Boogie
           Substitution callFormalsToActuals = Substituter.SubstitutionFromDictionary(yieldInvariant.InParams
               .Zip(callCmd.Ins)
               .ToDictionary(x => x.Item1, x => x.Item2));
-          yieldInvariant.Preserves.ForEach(req =>
+          yieldInvariant.Preserves.Where(req => !req.Free).ForEach(req =>
             cmds.Add(CmdHelper.AssertCmd(req.tok,
                   Substituter.Apply(subst, Substituter.Apply(callFormalsToActuals, req.Condition)), errorMessage)));
         }

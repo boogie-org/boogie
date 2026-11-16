@@ -649,10 +649,11 @@ InvariantDecl<out YieldInvariantDecl yieldInvariant>
   .
 
 Invariant<.List<Requires> invariants.>
-= (. Expr e; IToken tok = null; QKeyValue kv = null; .)
+= (. Expr e; IToken tok = null; QKeyValue kv = null; bool isFree = false;.)
+  [ "free" (. isFree = true;.) ]
   ( "preserves"              (. tok = t; .)
     { Attribute<ref kv> }
-    Proposition<out e> ";"  (. invariants.Add(new Requires(tok, false, e, null, kv)); .)
+    Proposition<out e> ";"  (. invariants.Add(new Requires(tok, isFree, e, null, kv));.)
   )
   .
 
