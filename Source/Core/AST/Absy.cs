@@ -2829,9 +2829,10 @@ namespace Microsoft.Boogie
 
     protected override void EmitEnd(TokenTextWriter stream, int level)
     {
-      foreach (Requires e in this.Requires)
+      foreach (Requires e in this.Preserves)
       {
-        stream.Write(this, level, "invariant ");
+        stream.Write(e, level, "{0}preserves ", e.Free ? "free " : "");
+        Cmd.EmitAttributes(stream, e.Attributes);
         e.Condition.Emit(stream);
         stream.WriteLine(";");
       }
