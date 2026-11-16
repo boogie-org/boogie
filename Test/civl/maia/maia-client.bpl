@@ -4,6 +4,9 @@
 const unique mem_id_0: MemId;
 const unique mem_id_1: MemId;
 
+const unique tid_0: Tid;
+const unique tid_1: Tid;
+
 yield invariant {:layer 1} Yield();
 
 yield invariant {:layer 1} MainExpectedMemInv(
@@ -26,8 +29,8 @@ ensures call SemaphorePublishInv(sem_id);
 {
     var signals: UnitMap (One SemSignal);
     var awaited: [One SemSignal]bool;
-    var first_signal, second_signal: One SemSignal;
-    var first_mem, second_mem: Map (One MemId) Value;
+    var signal_0, signal_1: One SemSignal;
+    var mem_0, mem_1: Map (One MemId) Value;
     var mem_shares: UnitMap (One MemShare);
     var expected_mem_ids: Map SemSignal ([One MemId]bool);
     var expected_mem_shares: Map SemSignal ([One MemShare]bool);
@@ -36,21 +39,21 @@ ensures call SemaphorePublishInv(sem_id);
     mem := initial_mem;
     call mem, observed := AccessMemory(mem, mem_id_0);
     call mem, observed := AccessMemory(mem, mem_id_1);
-    first_signal := One(SemSignal(initial_sem_id->val, 0));
-    second_signal := One(SemSignal(initial_sem_id->val, 1));
-    expected_mem_ids := Map_Singleton(first_signal->val, Set_Singleton(One(mem_id_0)));
-    expected_mem_ids := Map_Update(expected_mem_ids, second_signal->val, Set_Singleton(One(mem_id_1)));
-    expected_mem_shares := Map_Singleton(first_signal->val, Set_Empty());
-    expected_mem_shares := Map_Update(expected_mem_shares, second_signal->val, Set_Empty());
-    awaited := Set_Add(Set_Singleton(first_signal), second_signal);
+    signal_0 := One(SemSignal(initial_sem_id->val, tid_0));
+    signal_1 := One(SemSignal(initial_sem_id->val, tid_1));
+    expected_mem_ids := Map_Singleton(signal_0->val, Set_Singleton(One(mem_id_0)));
+    expected_mem_ids := Map_Update(expected_mem_ids, signal_1->val, Set_Singleton(One(mem_id_1)));
+    expected_mem_shares := Map_Singleton(signal_0->val, Set_Empty());
+    expected_mem_shares := Map_Update(expected_mem_shares, signal_1->val, Set_Empty());
+    awaited := Set_Add(Set_Singleton(signal_0), signal_1);
     call signals := Publish(initial_sem_id, awaited,
                             expected_mem_ids, expected_mem_shares);
-    call One_Get(signals, first_signal);
-    call One_Get(signals, second_signal);
-    call first_mem := Map_Split(mem, Set_Singleton(One(mem_id_0)));
-    call second_mem := Map_Split(mem, Set_Singleton(One(mem_id_1)));
-    async call Child(first_signal, first_mem, mem_id_0);
-    async call Child(second_signal, second_mem, mem_id_1);
+    call One_Get(signals, signal_0);
+    call One_Get(signals, signal_1);
+    call mem_0 := Map_Split(mem, Set_Singleton(One(mem_id_0)));
+    call mem_1 := Map_Split(mem, Set_Singleton(One(mem_id_1)));
+    async call Child(signal_0, mem_0, mem_id_0);
+    async call Child(signal_1, mem_1, mem_id_1);
     call SemaphoreInv() | SemaphoreWaitInv(wait) | MainExpectedMemInv(wait, expected_mem_ids, awaited);
     call sem_id, mem, mem_shares := Wait(wait);
     call mem, observed := AccessMemory(mem, mem_id_0);
@@ -64,7 +67,7 @@ preserves Map_Contains(Map_At(semaphores, One(signal->val->sem_id))->expected_me
 preserves Map_At(Map_At(semaphores, One(signal->val->sem_id))->expected_mem_ids, signal->val) == mem->dom;
 preserves Map_Contains(Map_At(semaphores, One(signal->val->sem_id))->expected_mem_shares, signal->val);
 preserves Map_At(Map_At(semaphores, One(signal->val->sem_id))->expected_mem_shares, signal->val) == Set_Empty();
-//free preserves !Map_Contains(Map_At(semaphores, One(signal->val->sem_id))->done, signal);
+free preserves !Map_Contains(Map_At(semaphores, One(signal->val->sem_id))->done, signal);
 
 yield procedure {:layer 1} Child(
     {:linear_in} signal: One SemSignal, {:linear_in} initial_mem: Map (One MemId) Value,
