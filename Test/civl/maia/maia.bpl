@@ -63,7 +63,6 @@ A thread starting a MAIA kernel receives a linear map containing wait capability
 and and a linear map containing memory values.
 A semaphore is published into the global semaphores map by the Publish operation.
 The published semaphore starts with empty done, mem, and imm_mem_shares maps and the awaited set.
-Publish returns the removed signal permissions for distribution to signaling threads.
 */
 
 function {:inline} SemaphorePublishInv(sem_id: One SemId, signals: UnitMap (One SemSignal)): bool {
@@ -117,7 +116,7 @@ refines atomic action {:layer 1} _
 
 /*
 Waiting on a semaphore uses the wait permission and blocks on awaited becoming a subset of done.
-Upon success, ownership of mem and mem_shares is returned.
+Upon success, ownership of sem_id, done, mem, and imm_mem_shares is returned.
 */
 
 yield invariant {:layer 1} SemaphoreWaitInv({:linear} wait: One SemWait);
