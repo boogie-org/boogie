@@ -19,11 +19,6 @@ datatype SharedValue {
 // Reading a cell requires a capability in its imm_mem_shares set.
 var {:layer 0,1} {:linear} imm_mem: Map (One MemId) SharedValue;
 
-// Capabilities to enable immutable sharing of memory locations
-// Retrieved when a memory location is published into imm_mem
-// Returned when the memory location extracted from imm_mem
-var {:layer 0,1} {:linear} imm_mem_shares: UnitMap (One MemShare);
-
 datatype SemWait {
     SemWait(sem_id: SemId)
 }
@@ -152,15 +147,19 @@ A sharer must present a capability belonging to this set of sharers to read the 
 To remove ownership from imm_mem, all the capabilities must be presented as evidence.
 */
 
+function {:inline} ImmMemPublishInv(mem_id: One MemId, shares: UnitMap (One MemShare)): bool {
+    (forall tid: Tid:: Set_Contains(shares->dom, One(MemShare(mem_id->val, tid))))
+}
+
 yield invariant {:layer 1} SharedReadInv({:linear} share: One MemShare);
 preserves Map_Contains(imm_mem, One(share->val->mem_id));
 preserves Set_Contains(Map_At(imm_mem, One(share->val->mem_id))->imm_mem_shares, share);
 
 yield invariant {:layer 1} ExpectedSharesInv(
-    {:linear} share: One MemShare, imm_mem_shares: [One MemShare]bool);
-preserves imm_mem_shares[share];
+    {:linear} share: One MemShare, shares: [One MemShare]bool);
+preserves shares[share];
 preserves Map_Contains(imm_mem, One(share->val->mem_id));
-preserves Map_At(imm_mem, One(share->val->mem_id))->imm_mem_shares == imm_mem_shares;
+preserves Map_At(imm_mem, One(share->val->mem_id))->imm_mem_shares == shares;
 
 yield invariant {:layer 1} ReclaimInv(
     mem_id: MemId, {:linear} shares: UnitMap (One MemShare));
@@ -168,36 +167,24 @@ preserves Map_Contains(imm_mem, One(mem_id));
 preserves Map_At(imm_mem, One(mem_id))->imm_mem_shares != Set_Empty();
 preserves Set_IsSubset(Map_At(imm_mem, One(mem_id))->imm_mem_shares, shares->dom);
 
-yield invariant {:layer 1} ImmMemPublishInv({:linear} one_mem_id: One MemId);
-preserves (forall tid: Tid:: Set_Contains(imm_mem_shares->dom, One(MemShare(one_mem_id->val, tid))));
-
-yield invariant {:layer 1} ImmMemInv();
-preserves (forall one_mem_id: One MemId:: Map_Contains(imm_mem, one_mem_id) ==>
-    (forall tid: Tid:: Set_Contains(
-        Set_Union(Map_At(imm_mem, one_mem_id)->imm_mem_shares, imm_mem_shares->dom),
-        One(MemShare(one_mem_id->val, tid)))));
-
 yield procedure {:layer 0} MoveToShared({:linear_in} one_mem_id: One MemId, val: Value,
-                                    ord_shares: [One MemShare]bool)
-    returns ({:linear} lin_shares: UnitMap (One MemShare));
+                                    ord_shares: [One MemShare]bool);
 refines atomic action {:layer 1} _
 {
     var shared_value: SharedValue;
 
     assert (forall share: One MemShare ::
         ord_shares[share] ==> share->val->mem_id == one_mem_id->val);
-    call lin_shares := Map_Split(imm_mem_shares, ord_shares);
     shared_value := SharedValue(val, ord_shares);
     call Map_Put(imm_mem, one_mem_id, shared_value);
 }
 
 /*
 MoveFromShared requires all of the cell's read capabilities in the supplied shares map.
-It returns all supplied capabilities to imm_mem_shares for reuse, removes the cell
-from imm_mem, and returns ownership of the cell and its value.
+It removes the cell from imm_mem and returns ownership of the cell and its value.
 */
 
-yield procedure {:layer 0} MoveFromShared(mem_id: MemId, {:linear_in} lin_shares: UnitMap (One MemShare))
+yield procedure {:layer 0} MoveFromShared(mem_id: MemId, {:linear} shares: UnitMap (One MemShare))
     returns ({:linear} one_mem_id: One MemId, val: Value);
 refines atomic action {:layer 1} _
 {
@@ -205,8 +192,7 @@ refines atomic action {:layer 1} _
 
     one_mem_id := One(mem_id);
     call shared_value := Map_Get(imm_mem, one_mem_id);
-    assert Set_IsSubset(shared_value->imm_mem_shares, lin_shares->dom);
-    call Map_Join(imm_mem_shares, lin_shares);
+    assert Set_IsSubset(shared_value->imm_mem_shares, shares->dom);
     val := shared_value->val;
 }
 

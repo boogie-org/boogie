@@ -15,20 +15,21 @@ free preserves !Map_Contains(Map_At(semaphores, One(signal->val->sem_id))->done,
 yield procedure {:layer 1} Main(
     {:linear_in} init_sem_id: One SemId, {:linear_in} init_signals: UnitMap (One SemSignal),
     {:linear} wait: One SemWait,
-    {:linear_in} init_mem_id: One MemId)
-    returns ({:linear} sem_id: One SemId, {:linear} signals: UnitMap (One SemSignal), {:linear} one_mem_id: One MemId)
+    {:linear_in} init_mem_id: One MemId, {:linear_in} init_shares: UnitMap (One MemShare))
+    returns ({:linear} sem_id: One SemId, {:linear} signals: UnitMap (One SemSignal),
+    {:linear} one_mem_id: One MemId, {:linear} shares: UnitMap (One MemShare))
 requires {:layer 1} wait->val->sem_id == init_sem_id->val;
 requires {:layer 1} SemaphorePublishInv(init_sem_id, init_signals);
-requires call ImmMemPublishInv(init_mem_id);
+requires {:layer 1} ImmMemPublishInv(init_mem_id, init_shares);
 preserves call SemaphoreInv();
-preserves call ImmMemInv();
 ensures {:layer 1} sem_id == init_sem_id;
 ensures {:layer 1} SemaphorePublishInv(sem_id, signals);
-ensures call ImmMemPublishInv(one_mem_id);
+ensures {:layer 1} ImmMemPublishInv(one_mem_id, shares);
+ensures {:layer 1} one_mem_id == init_mem_id;
 {
     var mem_id: MemId;
     var value: Value;
-    var shares, returned_shares: UnitMap (One MemShare);
+    var returned_shares: UnitMap (One MemShare);
     var share, share_0, share_1: One MemShare;
     var ord_shares: [One MemShare]bool;
     var done: UnitMap (One SemSignal);
@@ -46,7 +47,8 @@ ensures call ImmMemPublishInv(one_mem_id);
     share_1 := One(MemShare(mem_id, tid_1));
     ord_shares := Set_Add(Set_Singleton(share_0), share_1);
     ord_shares := Set_Add(ord_shares, share);
-    call shares := MoveToShared(one_mem_id, value, ord_shares);
+    call MoveToShared(one_mem_id, value, ord_shares);
+    shares := init_shares;
     call One_Get(shares, share);
     call One_Get(shares, share_0);
     call One_Get(shares, share_1);
@@ -58,7 +60,7 @@ ensures call ImmMemPublishInv(one_mem_id);
     expected_mem_ids := Map_Update(expected_mem_ids, signal_1->val, Set_Empty());
     expected_mem_shares := Map_Singleton(signal_0->val, Set_Singleton(share_0));
     expected_mem_shares := Map_Update(expected_mem_shares, signal_1->val, Set_Singleton(share_1));
-    call SemaphoreInv() | ImmMemInv() |
+    call SemaphoreInv() |
          SharedReadInv(share_0) | SharedReadInv(share_1) |
          ExpectedSharesInv(share, ord_shares);
     call Publish(init_sem_id, awaited, expected_mem_ids, expected_mem_shares);
@@ -67,15 +69,15 @@ ensures call ImmMemPublishInv(one_mem_id);
     call One_Get(signals, signal_1);
     async call Child(signal_0, share_0);
     async call Child(signal_1, share_1);
-    call SemaphoreInv() | ImmMemInv() | SemaphoreWaitInv(wait) |
+    call SemaphoreInv() | SemaphoreWaitInv(wait) |
          ExpectedInv(wait, awaited, expected_mem_ids, expected_mem_shares) |
          ExpectedSharesInv(share, ord_shares);
     call sem_id, done, returned_mem, returned_shares := Wait(wait);
     call Map_Join(signals, done);
-    call One_Put(returned_shares, share);
-    call SemaphoreInv() | ImmMemInv() |
-         ReclaimInv(mem_id, returned_shares);
-    call one_mem_id, value := MoveFromShared(mem_id, returned_shares);
+    call Map_Join(shares, returned_shares);
+    call One_Put(shares, share);
+    call SemaphoreInv() | ReclaimInv(mem_id, shares);
+    call one_mem_id, value := MoveFromShared(mem_id, shares);
     value := 0;
 }
 
@@ -85,14 +87,13 @@ requires call SemaphoreSignalInv(signal);
 requires call SharedReadInv(share);
 requires call ChildSharesInv(signal, share);
 preserves call SemaphoreInv();
-preserves call ImmMemInv();
 {
     var value: Value;
     var mem: Map (One MemId) Value;
     var shares: UnitMap (One MemShare);
 
     call value := ReadFromShared(share);
-    call SemaphoreInv() | ImmMemInv() | SemaphoreSignalInv(signal) |
+    call SemaphoreInv() | SemaphoreSignalInv(signal) |
          SharedReadInv(share) | ChildSharesInv(signal, share);
     call mem := Map_MakeEmpty();
     call shares := Map_MakeEmpty();
