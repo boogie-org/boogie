@@ -49,6 +49,15 @@ var {:layer 0,1} {:linear} semaphores: Map (One SemId) Semaphore;
 // Returned when a semaphore wait succeeds
 var {:layer 0,1} {:linear} sem_signals: UnitMap (One SemSignal);
 
+yield invariant {:layer 1} ExpectedInv(
+    {:linear} wait: One SemWait, awaited: [One SemSignal]bool,
+    expected_mem_ids: Map SemSignal ([One MemId]bool),
+    expected_mem_shares: Map SemSignal ([One MemShare]bool));
+preserves Map_Contains(semaphores, One(wait->val->sem_id));
+preserves Map_At(semaphores, One(wait->val->sem_id))->awaited == awaited;
+preserves Map_At(semaphores, One(wait->val->sem_id))->expected_mem_ids == expected_mem_ids;
+preserves Map_At(semaphores, One(wait->val->sem_id))->expected_mem_shares == expected_mem_shares;
+
 yield invariant {:layer 1} SemaphoreInv();
 preserves (forall one_sem_id: One SemId:: Map_Contains(semaphores, one_sem_id) ==>
     (var sem := Map_At(semaphores, one_sem_id);
@@ -158,6 +167,21 @@ When doing this transfer, the set of sharers is initialized.
 A sharer must present a capability belonging to this set of sharers to read the value.
 To remove ownership from imm_mem, all the capabilities must be presented as evidence.
 */
+
+yield invariant {:layer 1} SharedReadInv({:linear} share: One MemShare);
+preserves Map_Contains(imm_mem, One(share->val->mem_id));
+preserves Set_Contains(Map_At(imm_mem, One(share->val->mem_id))->imm_mem_shares, share);
+
+yield invariant {:layer 1} ExpectedSharesInv({:linear} share: One MemShare, imm_mem_shares: [One MemShare]bool);
+preserves imm_mem_shares[share];
+preserves Map_Contains(imm_mem, One(share->val->mem_id));
+preserves Map_At(imm_mem, One(share->val->mem_id))->imm_mem_shares == imm_mem_shares;
+
+yield invariant {:layer 1} ReclaimInv(
+    mem_id: MemId, {:linear} shares: UnitMap (One MemShare));
+preserves Map_Contains(imm_mem, One(mem_id));
+preserves Map_At(imm_mem, One(mem_id))->imm_mem_shares != Set_Empty();
+preserves Set_IsSubset(Map_At(imm_mem, One(mem_id))->imm_mem_shares, shares->dom);
 
 yield invariant {:layer 1} ImmMemPublishInv({:linear} one_mem_id: One MemId);
 preserves (forall tid: Tid:: Set_Contains(imm_mem_shares->dom, One(MemShare(one_mem_id->val, tid))));

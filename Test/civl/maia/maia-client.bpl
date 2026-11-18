@@ -7,15 +7,6 @@ const unique mem_id_1: MemId;
 const unique tid_0: Tid;
 const unique tid_1: Tid;
 
-yield invariant {:layer 1} Yield();
-
-yield invariant {:layer 1} MainExpectedMemInv(
-    {:linear} wait: One SemWait, expected_mem_ids: Map SemSignal ([One MemId]bool),
-    awaited: [One SemSignal]bool);
-preserves Map_Contains(semaphores, One(wait->val->sem_id));
-preserves Map_At(semaphores, One(wait->val->sem_id))->expected_mem_ids == expected_mem_ids;
-preserves Map_At(semaphores, One(wait->val->sem_id))->awaited == awaited;
-
 yield procedure {:layer 1} Main(
     {:linear_in} initial_sem_id: One SemId, {:linear} wait: One SemWait,
     {:linear_in} initial_mem: Map (One MemId) Value)
@@ -54,7 +45,8 @@ ensures call SemaphorePublishInv(sem_id);
     call mem_1 := Map_Split(mem, Set_Singleton(One(mem_id_1)));
     async call Child(signal_0, mem_0, mem_id_0);
     async call Child(signal_1, mem_1, mem_id_1);
-    call SemaphoreInv() | SemaphoreWaitInv(wait) | MainExpectedMemInv(wait, expected_mem_ids, awaited);
+    call SemaphoreInv() | SemaphoreWaitInv(wait) |
+         ExpectedInv(wait, awaited, expected_mem_ids, expected_mem_shares);
     call sem_id, mem, mem_shares := Wait(wait);
     call mem, observed := AccessMemory(mem, mem_id_0);
     call mem, observed := AccessMemory(mem, mem_id_1);
