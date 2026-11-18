@@ -8,17 +8,19 @@ const unique tid_0: Tid;
 const unique tid_1: Tid;
 
 yield procedure {:layer 1} Main(
-    {:linear_in} initial_sem_id: One SemId, {:linear} wait: One SemWait,
-    {:linear_in} initial_mem: Map (One MemId) Value)
-    returns ({:linear} sem_id: One SemId, {:linear} mem: Map (One MemId) Value)
-requires {:layer 1} wait->val->sem_id == initial_sem_id->val;
-requires {:layer 1} Map_Contains(initial_mem, One(mem_id_0));
-requires {:layer 1} Map_Contains(initial_mem, One(mem_id_1));
-requires call SemaphorePublishInv(initial_sem_id);
+    {:linear_in} init_sem_id: One SemId, {:linear_in} init_signals: UnitMap (One SemSignal),
+    {:linear} wait: One SemWait,
+    {:linear_in} init_mem: Map (One MemId) Value)
+    returns ({:linear} sem_id: One SemId, {:linear} signals: UnitMap (One SemSignal), {:linear} mem: Map (One MemId) Value)
+requires {:layer 1} wait->val->sem_id == init_sem_id->val;
+requires {:layer 1} Map_Contains(init_mem, One(mem_id_0));
+requires {:layer 1} Map_Contains(init_mem, One(mem_id_1));
+requires {:layer 1} SemaphorePublishInv(init_sem_id, init_signals);
 preserves call SemaphoreInv();
-ensures call SemaphorePublishInv(sem_id);
+ensures {:layer 1} sem_id == init_sem_id;
+ensures {:layer 1} SemaphorePublishInv(sem_id, signals);
 {
-    var signals: UnitMap (One SemSignal);
+    var done: UnitMap (One SemSignal);
     var awaited: [One SemSignal]bool;
     var signal_0, signal_1: One SemSignal;
     var mem_0, mem_1: Map (One MemId) Value;
@@ -27,18 +29,18 @@ ensures call SemaphorePublishInv(sem_id);
     var expected_mem_shares: Map SemSignal ([One MemShare]bool);
     var observed: Value;
 
-    mem := initial_mem;
+    mem := init_mem;
     call mem, observed := AccessMemory(mem, mem_id_0);
     call mem, observed := AccessMemory(mem, mem_id_1);
-    signal_0 := One(SemSignal(initial_sem_id->val, tid_0));
-    signal_1 := One(SemSignal(initial_sem_id->val, tid_1));
+    signal_0 := One(SemSignal(init_sem_id->val, tid_0));
+    signal_1 := One(SemSignal(init_sem_id->val, tid_1));
     expected_mem_ids := Map_Singleton(signal_0->val, Set_Singleton(One(mem_id_0)));
     expected_mem_ids := Map_Update(expected_mem_ids, signal_1->val, Set_Singleton(One(mem_id_1)));
     expected_mem_shares := Map_Singleton(signal_0->val, Set_Empty());
     expected_mem_shares := Map_Update(expected_mem_shares, signal_1->val, Set_Empty());
     awaited := Set_Add(Set_Singleton(signal_0), signal_1);
-    call signals := Publish(initial_sem_id, awaited,
-                            expected_mem_ids, expected_mem_shares);
+    call Publish(init_sem_id, awaited, expected_mem_ids, expected_mem_shares);
+    signals := init_signals;
     call One_Get(signals, signal_0);
     call One_Get(signals, signal_1);
     call mem_0 := Map_Split(mem, Set_Singleton(One(mem_id_0)));
@@ -47,7 +49,8 @@ ensures call SemaphorePublishInv(sem_id);
     async call Child(signal_1, mem_1, mem_id_1);
     call SemaphoreInv() | SemaphoreWaitInv(wait) |
          ExpectedInv(wait, awaited, expected_mem_ids, expected_mem_shares);
-    call sem_id, mem, mem_shares := Wait(wait);
+    call sem_id, done, mem, mem_shares := Wait(wait);
+    call Map_Join(signals, done);
     call mem, observed := AccessMemory(mem, mem_id_0);
     call mem, observed := AccessMemory(mem, mem_id_1);
 }
@@ -62,26 +65,26 @@ preserves Map_At(Map_At(semaphores, One(signal->val->sem_id))->expected_mem_shar
 free preserves !Map_Contains(Map_At(semaphores, One(signal->val->sem_id))->done, signal);
 
 yield procedure {:layer 1} Child(
-    {:linear_in} signal: One SemSignal, {:linear_in} initial_mem: Map (One MemId) Value,
+    {:linear_in} signal: One SemSignal, {:linear_in} init_mem: Map (One MemId) Value,
     location: MemId)
-requires {:layer 1} Map_Contains(initial_mem, One(location));
+requires {:layer 1} Map_Contains(init_mem, One(location));
 requires call SemaphoreSignalInv(signal);
-requires call ChildExpectedMemInv(signal, initial_mem);
+requires call ChildExpectedMemInv(signal, init_mem);
 {
     var mem: Map (One MemId) Value;
     var shares: UnitMap (One MemShare);
     var observed: Value;
 
-    call mem, observed := AccessMemory(initial_mem, location);
+    call mem, observed := AccessMemory(init_mem, location);
     call shares := Map_MakeEmpty();
     call Signal(signal, mem, shares);
 }
 
-pure action AccessMemory({:linear_in} initial_mem: Map (One MemId) Value,
+pure action AccessMemory({:linear_in} init_mem: Map (One MemId) Value,
                          location: MemId)
     returns ({:linear} mem: Map (One MemId) Value, observed: Value)
 {
-    mem := initial_mem;
+    mem := init_mem;
     assert Map_Contains(mem, One(location));
     call observed := Path_Load(mem->val[One(location)]);
     call Path_Store(mem->val[One(location)], 0);
