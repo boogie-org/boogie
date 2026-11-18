@@ -15,10 +15,10 @@ yield procedure {:layer 1} Main(
 requires {:layer 1} wait->val->sem_id == init_sem_id->val;
 requires {:layer 1} Map_Contains(init_mem, One(mem_id_0));
 requires {:layer 1} Map_Contains(init_mem, One(mem_id_1));
-requires {:layer 1} SemaphorePublishInv(init_sem_id, init_signals);
+requires {:layer 1} AllSemaphoreSignals(init_sem_id, init_signals);
 preserves call SemaphoreInv();
 ensures {:layer 1} sem_id == init_sem_id;
-ensures {:layer 1} SemaphorePublishInv(sem_id, signals);
+ensures {:layer 1} AllSemaphoreSignals(sem_id, signals);
 {
     var done: UnitMap (One SemSignal);
     var awaited: [One SemSignal]bool;
@@ -48,7 +48,7 @@ ensures {:layer 1} SemaphorePublishInv(sem_id, signals);
     async call Child(signal_0, mem_0, mem_id_0);
     async call Child(signal_1, mem_1, mem_id_1);
     call SemaphoreInv() | SemaphoreWaitInv(wait) |
-         ExpectedInv(wait, awaited, expected_mem_ids, expected_mem_shares);
+         ExpectedSemaphoreContentsInv(wait, awaited, expected_mem_ids, expected_mem_shares);
     call sem_id, done, mem, mem_shares := Wait(wait);
     call Map_Join(signals, done);
     call mem, observed := AccessMemory(mem, mem_id_0);

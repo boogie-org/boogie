@@ -19,12 +19,12 @@ yield procedure {:layer 1} Main(
     returns ({:linear} sem_id: One SemId, {:linear} signals: UnitMap (One SemSignal),
     {:linear} mem_id: One MemId, {:linear} shares: UnitMap (One MemShare))
 requires {:layer 1} wait->val->sem_id == init_sem_id->val;
-requires {:layer 1} SemaphorePublishInv(init_sem_id, init_signals);
-requires {:layer 1} ImmMemPublishInv(init_mem_id, init_shares);
+requires {:layer 1} AllSemaphoreSignals(init_sem_id, init_signals);
+requires {:layer 1} AllMemShares(init_mem_id, init_shares);
 preserves call SemaphoreInv();
 ensures {:layer 1} sem_id == init_sem_id;
-ensures {:layer 1} SemaphorePublishInv(sem_id, signals);
-ensures {:layer 1} ImmMemPublishInv(mem_id, shares);
+ensures {:layer 1} AllSemaphoreSignals(sem_id, signals);
+ensures {:layer 1} AllMemShares(mem_id, shares);
 ensures {:layer 1} mem_id == init_mem_id;
 {
     var value: Value;
@@ -59,7 +59,7 @@ ensures {:layer 1} mem_id == init_mem_id;
     expected_mem_shares := Map_Update(expected_mem_shares, signal_1->val, Set_Singleton(share_1));
     call SemaphoreInv() |
          SharedReadInv(share_0) | SharedReadInv(share_1) |
-         ExpectedSharesInv(share, ord_shares);
+         ExpectedImmMemContentsInv(share, ord_shares);
     call Publish(init_sem_id, awaited, expected_mem_ids, expected_mem_shares);
     signals := init_signals;
     call One_Get(signals, signal_0);
@@ -67,13 +67,13 @@ ensures {:layer 1} mem_id == init_mem_id;
     async call Child(signal_0, share_0);
     async call Child(signal_1, share_1);
     call SemaphoreInv() | SemaphoreWaitInv(wait) |
-         ExpectedInv(wait, awaited, expected_mem_ids, expected_mem_shares) |
-         ExpectedSharesInv(share, ord_shares);
+         ExpectedSemaphoreContentsInv(wait, awaited, expected_mem_ids, expected_mem_shares) |
+         ExpectedImmMemContentsInv(share, ord_shares);
     call sem_id, done, returned_mem, returned_shares := Wait(wait);
     call Map_Join(signals, done);
     call Map_Join(shares, returned_shares);
     call One_Put(shares, share);
-    call SemaphoreInv() | ReclaimInv(init_mem_id->val, shares);
+    call SemaphoreInv() | ReclaimMemIdInv(init_mem_id->val, shares);
     call mem_id, value := MoveFromShared(init_mem_id->val, shares);
 }
 
