@@ -17,17 +17,16 @@ yield procedure {:layer 1} Main(
     {:linear} wait: One SemWait,
     {:linear_in} init_mem_id: One MemId, {:linear_in} init_shares: UnitMap (One MemShare))
     returns ({:linear} sem_id: One SemId, {:linear} signals: UnitMap (One SemSignal),
-    {:linear} one_mem_id: One MemId, {:linear} shares: UnitMap (One MemShare))
+    {:linear} mem_id: One MemId, {:linear} shares: UnitMap (One MemShare))
 requires {:layer 1} wait->val->sem_id == init_sem_id->val;
 requires {:layer 1} SemaphorePublishInv(init_sem_id, init_signals);
 requires {:layer 1} ImmMemPublishInv(init_mem_id, init_shares);
 preserves call SemaphoreInv();
 ensures {:layer 1} sem_id == init_sem_id;
 ensures {:layer 1} SemaphorePublishInv(sem_id, signals);
-ensures {:layer 1} ImmMemPublishInv(one_mem_id, shares);
-ensures {:layer 1} one_mem_id == init_mem_id;
+ensures {:layer 1} ImmMemPublishInv(mem_id, shares);
+ensures {:layer 1} mem_id == init_mem_id;
 {
-    var mem_id: MemId;
     var value: Value;
     var returned_shares: UnitMap (One MemShare);
     var share, share_0, share_1: One MemShare;
@@ -39,15 +38,13 @@ ensures {:layer 1} one_mem_id == init_mem_id;
     var expected_mem_shares: Map SemSignal ([One MemShare]bool);
     var returned_mem: Map (One MemId) Value;
 
-    one_mem_id := init_mem_id;
-    value := 0;
-    mem_id := one_mem_id->val;
-    share := One(MemShare(mem_id, tid));
-    share_0 := One(MemShare(mem_id, tid_0));
-    share_1 := One(MemShare(mem_id, tid_1));
+    mem_id := init_mem_id;
+    share := One(MemShare(init_mem_id->val, tid));
+    share_0 := One(MemShare(init_mem_id->val, tid_0));
+    share_1 := One(MemShare(init_mem_id->val, tid_1));
     ord_shares := Set_Add(Set_Singleton(share_0), share_1);
     ord_shares := Set_Add(ord_shares, share);
-    call MoveToShared(one_mem_id, value, ord_shares);
+    call MoveToShared(mem_id, 0 /* arbitrary value */, ord_shares);
     shares := init_shares;
     call One_Get(shares, share);
     call One_Get(shares, share_0);
@@ -76,9 +73,8 @@ ensures {:layer 1} one_mem_id == init_mem_id;
     call Map_Join(signals, done);
     call Map_Join(shares, returned_shares);
     call One_Put(shares, share);
-    call SemaphoreInv() | ReclaimInv(mem_id, shares);
-    call one_mem_id, value := MoveFromShared(mem_id, shares);
-    value := 0;
+    call SemaphoreInv() | ReclaimInv(init_mem_id->val, shares);
+    call mem_id, value := MoveFromShared(init_mem_id->val, shares);
 }
 
 yield procedure {:layer 1} Child(
