@@ -1,0 +1,8 @@
+inst2.bpl(7,3): Error: this assertion could not be proved
+Execution trace:
+    inst2.bpl(6,3): anon0
+inst2.bpl(14,3): Error: this assertion could not be proved
+Execution trace:
+    inst2.bpl(13,3): anon0
+
+Boogie program verifier finished with 0 verified, 2 errors
