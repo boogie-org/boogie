@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,7 +12,7 @@ namespace Microsoft.Boogie;
 /// </summary>
 public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
 {
-  private readonly AsyncQueue<Task> queue = new();
+  private readonly BlockingCollection<Task> queue = new();
   private readonly HashSet<Thread> threads;
   private readonly CancellationTokenSource disposeTokenSource = new();
 
@@ -39,7 +40,7 @@ public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
 
   protected override void QueueTask(Task task)
   {
-    queue.Enqueue(task);
+    queue.Add(task);
   }
 
   protected override bool TryExecuteTaskInline(Task task, bool taskWasPreviouslyQueued)
@@ -55,57 +56,46 @@ public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
 
   protected override IEnumerable<Task> GetScheduledTasks()
   {
-    return queue.Items;
+    return queue.ToArray();
   }
   
   private void WorkLoop()
   {
-    while (!disposeTokenSource.IsCancellationRequested)
-    {
-      /*
-       * Previously the code from RunItem was inlined, but that caused something akin to a memory leak.
-       * It seems that variables declared inside the loop are not cleared across loop iterations
-       * So values assigned in iteration X can only be garbage collected until they have been reassigned
-       * in iteration X+1. If there is a long pause between that reassignment, which is the case here,
-       * then it may take a long time before dead memory can be garbage collected.
-       *
-       * Inlining RunItem and manually setting variables to null at the end of the loop body does not work,
-       * probably because such assignments are removed during C# compilation since they seem unused.
-       */
-      RunItem();
-    }
-  }
-
-  private void RunItem()
-  {
     try
     {
-      var task = queue.Dequeue().Result;
-      TryExecuteTask(task);
-    }
-    catch (ThreadInterruptedException)
-    {
-    }
-    catch (Exception e)
-    {
-      if (e.GetBaseException() is OperationCanceledException)
+      while (true)
       {
-        // Async queue cancels tasks when it is disposed, which happens when this scheduler is disposed
+        RunItem();
       }
-      else
-      {
-        throw;
-      }
+    }
+    catch (OperationCanceledException)
+    {
+      // Take observing the dispose token is the only way out of the loop.
     }
   }
 
+  /*
+   * Previously the code from RunItem was inlined, but that caused something akin to a memory leak.
+   * It seems that variables declared inside the loop are not cleared across loop iterations
+   * So values assigned in iteration X can only be garbage collected until they have been reassigned
+   * in iteration X+1. If there is a long pause between that reassignment, which is the case here,
+   * then it may take a long time before dead memory can be garbage collected.
+   *
+   * Inlining RunItem and manually setting variables to null at the end of the loop body does not work,
+   * probably because such assignments are removed during C# compilation since they seem unused.
+   */
+  private void RunItem()
+  {
+    var task = queue.Take(disposeTokenSource.Token);
+    TryExecuteTask(task);
+  }
+
+  /// <summary>
+  /// Stops the threads from taking tasks: an idle thread ends at once, and a busy one once its task is done.
+  /// A task that is still queued is not run.
+  /// </summary>
   public void Dispose()
   {
     disposeTokenSource.Cancel();
-    queue.CancelWaitsAndClear();
-    foreach (var thread in threads)
-    {
-      thread.Interrupt();
-    }
   }
 }
