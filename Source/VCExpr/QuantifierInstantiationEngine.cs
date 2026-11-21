@@ -258,11 +258,11 @@ namespace Microsoft.Boogie.VCExprAST
          * Each iteration of this loop
          * (1) moves the contents of labelToInstances into accLabelToInstances
          * (2) moves the contents of lambdaToInstances into accLambdaToInstances
-         * (3) instantiates quantifiers in quantifierBinding against accLabelToInstances
-         * (4) instantiates lambdas in lambdaDefinition against accLabelToInstances and accLambdaToInstances
-         * Steps (3) and (4) could add more entries to quantifierBinding and lambdaDefinition.
-         * These entries are handled in the same iteration of this top-level loop.
-         * Steps (3) and (4) could also re-populate labelToInstances and lambdaToInstances;
+         * (3) instantiates lambdas in lambdaDefinition against accLabelToInstances and accLambdaToInstances
+         *     and quantifiers in quantifierBinding against accLabelToInstances to a shared inner fixpoint.
+         * Step (3) could add more entries to quantifierBinding and lambdaDefinition.
+         * These entries are handled by the inner fixpoint using the accumulated instances.
+         * Step (3) could also re-populate labelToInstances and lambdaToInstances;
          * these new entries are handled in the next iteration of this top-level loop.
          */
         AddDictionary(labelToInstances, accLabelToInstances);
@@ -271,13 +271,25 @@ namespace Microsoft.Boogie.VCExprAST
         AddDictionary(lambdaToInstances, accLambdaToInstances);
         lambdaToInstances = new Dictionary<Function, HashSet<List<VCExpr>>>();
 
-        var visitedQuantifierBindings = new HashSet<VCExprVar>();
-        while (visitedQuantifierBindings.Count < quantifierBinding.Count)
+        var visitedQuantifierBindings = new HashSet<VCExprVar>(ReferenceEqualityComparer.Instance);
+        var visitedLambdaFunctions = new HashSet<Function>(ReferenceEqualityComparer.Instance);
+        while (visitedQuantifierBindings.Count < quantifierBinding.Count ||
+               visitedLambdaFunctions.Count < lambdaDefinition.Count)
         {
-          /*
-           * quantifierBinding may be modified in each iteration of the following loop.
-           * Therefore, take a snapshot of quantifierBinding.Keys to start the loop.
-           */
+          // Instantiation can register new lambdas and quantifiers, so iterate over snapshots.
+          foreach (var lambdaFunction in lambdaDefinition.Keys.ToList())
+          {
+            if (visitedLambdaFunctions.Contains(lambdaFunction))
+            {
+              continue;
+            }
+            visitedLambdaFunctions.Add(lambdaFunction);
+            if (accLambdaToInstances.TryGetValue(lambdaFunction, out var instances) && instances.Count > 0)
+            {
+              InstantiateLambdaDefinition(lambdaFunction);
+            }
+          }
+
           foreach (var v in quantifierBinding.Keys.ToList())
           {
             if (visitedQuantifierBindings.Contains(v))
@@ -290,30 +302,6 @@ namespace Microsoft.Boogie.VCExprAST
             if (quantifierInfo.relevantLabels.Overlaps(accLabelToInstances.Keys))
             {
               InstantiateQuantifier(quantifierExpr);
-            }
-          }
-        }
-
-        var visitedLambdaFunctions = new HashSet<Function>();
-        while (visitedLambdaFunctions.Count < lambdaDefinition.Count)
-        {
-          /*
-           * lambdaDefinition may be modified in each iteration of the following loop.
-           * Therefore, take a snapshot of lambdaDefinition.Keys to start the loop.
-           */
-          foreach (var lambdaFunction in lambdaDefinition.Keys.ToList())
-          {
-            if (visitedLambdaFunctions.Contains(lambdaFunction))
-            {
-              continue;
-            }
-            visitedLambdaFunctions.Add(lambdaFunction);
-            var quantifierExpr = lambdaDefinition[lambdaFunction];
-            var quantifierInfo = quantifierInstantiationInfo[quantifierExpr];
-            if (quantifierInfo.relevantLabels.Overlaps(accLabelToInstances.Keys) ||
-                (accLambdaToInstances.ContainsKey(lambdaFunction) && accLambdaToInstances[lambdaFunction].Count > 0))
-            {
-              InstantiateLambdaDefinition(lambdaFunction);
             }
           }
         }
@@ -685,15 +673,17 @@ namespace Microsoft.Boogie.VCExprAST
     protected override VCExpr UpdateModifiedNode(VCExprNAry originalNode,
       List<VCExpr> newSubExprs, bool changed, bool arg)
     {
-      if (originalNode.Op.Equals(VCExpressionGenerator.EqOp) && originalNode[0].Type.IsBool)
+      if ((originalNode.Op.Equals(VCExpressionGenerator.EqOp) ||
+           originalNode.Op.Equals(VCExpressionGenerator.NeqOp)) && originalNode[0].Type.IsBool)
       {
         var duplicator = new SubstitutingVCExprVisitor(Gen);
         VCExpr Copy(VCExpr expr) => duplicator.Mutate(expr, new VCExprSubstitution());
 
         // Separate quantifier nodes keep the polarities of the two implications independent.
-        return Gen.And(
+        var equality = Gen.And(
           Gen.Implies(Copy(newSubExprs[0]), Copy(newSubExprs[1])),
           Gen.Implies(Copy(newSubExprs[1]), Copy(newSubExprs[0])));
+        return originalNode.Op.Equals(VCExpressionGenerator.NeqOp) ? Gen.Not(equality) : equality;
       }
       return base.UpdateModifiedNode(originalNode, newSubExprs, changed, arg);
     }
@@ -703,7 +693,8 @@ namespace Microsoft.Boogie.VCExprAST
   {
     /*
      * The method Skolemize performs best-effort skolemization of the input expression expr.
-     * Boolean equalities are expanded into conjunctions of implications first.
+     * Boolean equalities and disequalities are expanded into conjunctions of implications
+     * and their negations first.
      * Factorization is performed on the resulting expression.
      */
     public static VCExpr Skolemize(QuantifierInstantiationEngine qiEngine, Polarity polarity, VCExpr vcExpr)

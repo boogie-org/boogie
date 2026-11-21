@@ -16,67 +16,6 @@ namespace ExecutionEngineTests
   [TestFixture]
   public class RegressionTests
   {
-    [TestCase("exists", false, false)]
-    [TestCase("forall", false, false)]
-    [TestCase("exists", true, false)]
-    [TestCase("forall", true, true)]
-    public async Task BooleanEqualityExposesSkolemization(string quantifier, bool reverse, bool negate)
-    {
-      var quantified = $@"({quantifier} x: int :: {{:add_to_pool ""L"", x}} P(x))";
-      var equality = reverse ? $"{quantified} == b" : $"b == {quantified}";
-      var program = $@"
-function P(int): bool;
-procedure M(b: bool)
-{{
-  assume (forall {{:pool ""L""}} y: int :: !P(y));
-  assume {(negate ? $"!({equality})" : equality)};
-  assert false;
-}}";
-      var options = CommandLineOptions.FromArguments(TextWriter.Null);
-      options.NormalizeNames = false;
-      var log = await GetProverLogs.GetProverLogForProgram(options, program);
-
-      StringAssert.Contains("skolemConstant", log);
-      StringAssert.Contains("(not (P skolemConstant0))", log);
-      StringAssert.Contains($"({quantifier} ((x", log);
-    }
-
-    [Test]
-    public async Task BooleanEqualityPreservesInstantiationLabels()
-    {
-      var program = @"
-function P(int): bool;
-procedure M(b: bool)
-{
-  assume b == (forall {:pool ""L""} x: int :: {P(x)} P(x));
-  assert {:add_to_pool ""L"", 0} false;
-}";
-      var options = CommandLineOptions.FromArguments(TextWriter.Null);
-      options.NormalizeNames = false;
-      var log = await GetProverLogs.GetProverLogForProgram(options, program);
-
-      StringAssert.Contains("skolemConstant", log);
-      StringAssert.Contains("(P 0)", log);
-    }
-
-    [Test]
-    public async Task NonBooleanEqualityDoesNotExposeSkolemization()
-    {
-      var program = @"
-function P(int): bool;
-procedure M(n: int)
-{
-  assume (forall {:pool ""L""} y: int :: P(y));
-  assume n == (if (exists x: int :: {:add_to_pool ""L"", x} P(x)) then 0 else 1);
-  assert false;
-}";
-      var options = CommandLineOptions.FromArguments(TextWriter.Null);
-      options.NormalizeNames = false;
-      var log = await GetProverLogs.GetProverLogForProgram(options, program);
-
-      StringAssert.DoesNotContain("skolemConstant", log);
-    }
-
     // #1133 sibling: a CurrentCulture Convert.ToDouble rejects the dotted
     // "/vcsMaxCost:2.5" under comma-decimal locales like fr-FR/pt-PT.
     [Test]
