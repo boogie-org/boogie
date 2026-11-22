@@ -81,3 +81,12 @@ procedure B1()
     assume (exists x: int :: {:add_to_pool "B", x+1} (forall {:pool "A"} y: int :: P(x,y)));
     assert (forall y: int :: {:add_to_pool "A", y} (exists {:pool "B"} x: int :: P(x-1,y)));
 }
+
+procedure NestedPoolSources(offset: int)
+{
+    assume (forall {:pool "NestedSource"} x: int ::
+        (exists y: int :: {:add_to_pool "NestedTarget", x + offset} true));
+    assume (forall {:pool "NestedTarget"} z: int :: F(z));
+    assert {:add_to_pool "NestedSource", 1, 2}
+        F(1 + offset) && F(2 + offset);
+}

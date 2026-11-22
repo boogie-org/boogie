@@ -18,13 +18,13 @@ namespace Microsoft.Boogie.VCExprAST
      * are installed.
      *
      * Execute: Repeatedly, instantiate quantifiers based on existing instances, skolemize and install new quantifiers
-     * that are discovered, and install new instances discovered.
+     * that are discovered, instantiate set extensionality axioms, and install new instances discovered.
      *
      * Finish:
      *   - Rewrite quantifiers based on the discovered instances. Forall quantifiers are rewritten as a conjunction of
      *     the original quantifier and the instances. Exists quantifiers are rewritten as a disjunction of the original
      *     quantifier and the instances. Dropping the original requires a suitable polarity.
-     *   - Add instances of the axioms for lambdas as assume statements in the starting block of impl.
+     *   - Add instances of the axioms for lambdas and set extensionality as assumptions.
      */
 
     private class QuantifierInstantiationInfo
@@ -49,6 +49,9 @@ namespace Microsoft.Boogie.VCExprAST
     private Dictionary<string, HashSet<VCExpr>> accLabelToInstances;
     private Dictionary<Function, HashSet<List<VCExpr>>> lambdaToInstances;
     private Dictionary<Function, HashSet<List<VCExpr>>> accLambdaToInstances;
+    private readonly Dictionary<(VCExpr Left, VCExpr Right), VCExpr> setEqualityAxioms = new(new SetEqualityComparer());
+    private readonly Queue<(VCExpr Left, VCExpr Right)> pendingSetEqualities = new();
+    private readonly Dictionary<Type, HashSet<VCExprVar>> setEqualityWitnesses = new();
     private string quantifierBindingNamePrefix;
     private string skolemConstantNamePrefix;
     internal VCExpressionGenerator vcExprGen;
@@ -131,6 +134,47 @@ namespace Microsoft.Boogie.VCExprAST
       return skolemConstant;
     }
 
+    internal static bool IsSetType(Type type)
+    {
+      return type.IsMap && type.AsMap.TypeParameters.Count == 0 &&
+             type.AsMap.Arguments.Count == 1 && type.AsMap.Result.IsBool;
+    }
+
+    internal void AddSetEquality(VCExprNAry equality)
+    {
+      var pair = (Left: equality[0], Right: equality[1]);
+      if (setEqualityAxioms.ContainsKey(pair))
+      {
+        return;
+      }
+      var indexType = pair.Left.Type.AsMap.Arguments[0];
+      var witness = FreshSkolemConstant(vcExprGen.Variable("setEqualityWitness", indexType));
+      setEqualityAxioms.Add(pair, vcExprGen.Or(vcExprGen.Eq(pair.Left, pair.Right),
+        vcExprGen.Neq(vcExprGen.Select(pair.Left, witness), vcExprGen.Select(pair.Right, witness))));
+      pendingSetEqualities.Enqueue(pair);
+      if (!setEqualityWitnesses.TryGetValue(indexType, out var witnesses))
+      {
+        witnesses = new HashSet<VCExprVar>(ReferenceEqualityComparer.Instance);
+        setEqualityWitnesses.Add(indexType, witnesses);
+      }
+      witnesses.Add(witness);
+    }
+
+    private class SetEqualityComparer : IEqualityComparer<(VCExpr Left, VCExpr Right)>
+    {
+      public bool Equals((VCExpr Left, VCExpr Right) first, (VCExpr Left, VCExpr Right) second)
+      {
+        return first.Left.Equals(second.Left) && first.Right.Equals(second.Right) ||
+               first.Left.Equals(second.Right) && first.Right.Equals(second.Left);
+      }
+
+      public int GetHashCode((VCExpr Left, VCExpr Right) pair)
+      {
+        return pair.Left.GetHashCode() ^ pair.Right.GetHashCode();
+      }
+
+    }
+
     public bool BindLambdaFunction(Function lambdaFunction)
     {
       if (lambdaDefinition.ContainsKey(lambdaFunction))
@@ -144,13 +188,6 @@ namespace Microsoft.Boogie.VCExprAST
       }
       var translatedExpr = exprTranslator.Translate(lambdaDefinitionExpr) as VCExprQuantifier;
       var boundVariableToLabels = translatedExpr.Info.instantiationLabels;
-      var numParametersInLambdaDefinition = lambdaDefinitionExpr.Dummies.Count - lambdaFunction.InParams.Count;
-      if (boundVariableToLabels.Count < numParametersInLambdaDefinition ||
-          Enumerable.Range(lambdaFunction.InParams.Count, numParametersInLambdaDefinition)
-            .Any(i => boundVariableToLabels[translatedExpr.BoundVars[i]].Count == 0))
-      {
-        return false;
-      }
       lambdaDefinition[lambdaFunction] = translatedExpr;
       quantifierInstantiationInfo[translatedExpr] = new QuantifierInstantiationInfo(boundVariableToLabels, Polarity.Positive);
       lambdaToInstances[lambdaFunction] = new HashSet<List<VCExpr>>(new ListComparer<VCExpr>());
@@ -252,17 +289,19 @@ namespace Microsoft.Boogie.VCExprAST
         AddDictionary(FindInstantiationSources(predicateCmd, exprTranslator), labelToInstances);
       }));
       vcExpr = Skolemizer.Skolemize(this, Polarity.Negative, vcExpr);
-      while (labelToInstances.Count > 0 || lambdaToInstances.Count > 0)
+      while (labelToInstances.Count > 0 || lambdaToInstances.Count > 0 || pendingSetEqualities.Count > 0)
       {
         /*
          * Each iteration of this loop
          * (1) moves the contents of labelToInstances into accLabelToInstances
          * (2) moves the contents of lambdaToInstances into accLambdaToInstances
-         * (3) instantiates lambdas in lambdaDefinition against accLabelToInstances and accLambdaToInstances
+         * (3) processes pending set extensionality instances and their index witnesses
+         * (4) instantiates lambdas in lambdaDefinition against accLabelToInstances, accLambdaToInstances,
+         *     and the set equality witnesses
          *     and quantifiers in quantifierBinding against accLabelToInstances to a shared inner fixpoint.
-         * Step (3) could add more entries to quantifierBinding and lambdaDefinition.
+         * Steps (3) and (4) could add more entries to quantifierBinding and lambdaDefinition.
          * These entries are handled by the inner fixpoint using the accumulated instances.
-         * Step (3) could also re-populate labelToInstances and lambdaToInstances;
+         * Steps (3) and (4) could also discover set equalities or re-populate labelToInstances and lambdaToInstances;
          * these new entries are handled in the next iteration of this top-level loop.
          */
         AddDictionary(labelToInstances, accLabelToInstances);
@@ -270,6 +309,12 @@ namespace Microsoft.Boogie.VCExprAST
 
         AddDictionary(lambdaToInstances, accLambdaToInstances);
         lambdaToInstances = new Dictionary<Function, HashSet<List<VCExpr>>>();
+
+        while (pendingSetEqualities.Count > 0)
+        {
+          var pair = pendingSetEqualities.Dequeue();
+          setEqualityAxioms[pair] = Skolemizer.Skolemize(this, Polarity.Positive, setEqualityAxioms[pair]);
+        }
 
         var visitedQuantifierBindings = new HashSet<VCExprVar>(ReferenceEqualityComparer.Instance);
         var visitedLambdaFunctions = new HashSet<Function>(ReferenceEqualityComparer.Instance);
@@ -307,10 +352,11 @@ namespace Microsoft.Boogie.VCExprAST
         }
       }
 
-      var lambdaAxioms = vcExprGen.NAry(VCExpressionGenerator.AndOp, lambdaDefinition.Values
+      var generatedAxioms = vcExprGen.NAry(VCExpressionGenerator.AndOp, lambdaDefinition.Values
         .SelectMany(quantifierExpr =>
-          quantifierInstantiationInfo[quantifierExpr].instances.Values.ToList()).ToList());
-      return LetConvert(vcExprGen.Implies(lambdaAxioms, vcExpr));
+          quantifierInstantiationInfo[quantifierExpr].instances.Values.ToList())
+        .Concat(setEqualityAxioms.Values).ToList());
+      return LetConvert(vcExprGen.Implies(generatedAxioms, vcExpr));
     }
     
     private VCExpr LetConvert(VCExpr vcExpr)
@@ -363,12 +409,20 @@ namespace Microsoft.Boogie.VCExprAST
     {
       var quantifierExpr = lambdaDefinition[lambdaFunction];
       var boundVariableToLabels = quantifierExpr.Info.instantiationLabels;
-      var boundVariableToExprs = boundVariableToLabels.Keys.ToDictionary(
+      var boundVariableToExprs = quantifierExpr.BoundVars.ToDictionary(
         boundVariable => boundVariable,
         boundVariable =>
-          boundVariableToLabels[boundVariable]
+          boundVariableToLabels.TryGetValue(boundVariable, out var labels) ? labels
             .SelectMany(label =>
-              accLabelToInstances.ContainsKey(label) ? accLabelToInstances[label] : new HashSet<VCExpr>()).ToHashSet());
+              accLabelToInstances.ContainsKey(label) ? accLabelToInstances[label] : new HashSet<VCExpr>()).ToHashSet()
+            : new HashSet<VCExpr>());
+      var resultType = lambdaFunction.OutParams[0].TypedIdent.Type;
+      if (IsSetType(resultType) &&
+          setEqualityWitnesses.TryGetValue(resultType.AsMap.Arguments[0], out var witnesses))
+      {
+        var indexVariable = quantifierExpr.BoundVars[lambdaFunction.InParams.Count];
+        boundVariableToExprs[indexVariable].UnionWith(witnesses);
+      }
       foreach (var instance in accLambdaToInstances[lambdaFunction])
       {
         ConstructInstances(quantifierExpr, boundVariableToExprs, lambdaFunction.InParams.Count, instance);
@@ -569,8 +623,8 @@ namespace Microsoft.Boogie.VCExprAST
   {
     /*
      * Collect polarities, then dependencies on enclosing quantifiers, then select skolemizable
-     * quantifiers with their dependencies selected first. Let bindings are resolved during
-     * dependency collection but are not nodes in the dependency graph.
+     * quantifiers with their dependencies selected first. Dependencies include pool-source expressions.
+     * Let bindings are resolved during dependency collection but are not nodes in the dependency graph.
      */
     public static HashSet<VCExprQuantifier> CollectQuantifiers(VCExpr vcExpr, Polarity polarity)
     {
@@ -649,6 +703,10 @@ namespace Microsoft.Boogie.VCExprAST
         variableDependencies.Add(variable, new HashSet<VCExprQuantifier>(ReferenceEqualityComparer.Instance) { node });
       }
       var result = node.Body.Accept(this, arg);
+      foreach (var expression in node.Info.instantiationExprs.Values.SelectMany(expressions => expressions))
+      {
+        result.UnionWith(expression.Accept(this, arg));
+      }
       foreach (var variable in node.BoundVars)
       {
         variableDependencies.Remove(variable);
@@ -664,6 +722,39 @@ namespace Microsoft.Boogie.VCExprAST
     }
   }
   
+  class SetEqualityCollector : BoundVarTraversingVCExprVisitor<bool, bool>
+  {
+    private readonly List<VCExprNAry> equalities = new();
+
+    public static List<VCExprNAry> Collect(VCExpr expression)
+    {
+      var collector = new SetEqualityCollector();
+      collector.Traverse(expression, true);
+      return collector.equalities;
+    }
+
+    public override bool Visit(VCExprNAry node, bool arg)
+    {
+      if ((node.Op.Equals(VCExpressionGenerator.EqOp) || node.Op.Equals(VCExpressionGenerator.NeqOp)) &&
+          QuantifierInstantiationEngine.IsSetType(node[0].Type))
+      {
+        var freeVariables = new FreeVariableCollector();
+        freeVariables.Collect(node);
+        if (!freeVariables.FreeTermVars.Any(BoundTermVars.ContainsKey) &&
+            !freeVariables.FreeTypeVars.Any(BoundTypeVars.Contains))
+        {
+          equalities.Add(node);
+        }
+      }
+      return base.Visit(node, arg);
+    }
+
+    protected override bool StandardResult(VCExpr node, bool arg)
+    {
+      return true;
+    }
+  }
+
   class BooleanEqualityExpander : MutatingVCExprVisitor<bool>
   {
     public BooleanEqualityExpander(VCExpressionGenerator gen) : base(gen)
@@ -702,7 +793,11 @@ namespace Microsoft.Boogie.VCExprAST
       vcExpr = new BooleanEqualityExpander(qiEngine.vcExprGen).Mutate(vcExpr, true);
       var skolemizer = new Skolemizer(qiEngine, polarity, vcExpr);
       var skolemizedExpr = skolemizer.Mutate(vcExpr, true);
-      LambdaInstanceCollector.CollectInstances(qiEngine, vcExpr);
+      foreach (var equality in SetEqualityCollector.Collect(skolemizedExpr))
+      {
+        qiEngine.AddSetEquality(equality);
+      }
+      LambdaInstanceCollector.CollectInstances(qiEngine, skolemizedExpr);
       return Factorizer.Factorize(qiEngine, skolemizedExpr, polarity);
     }
 

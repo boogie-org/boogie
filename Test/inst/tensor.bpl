@@ -1,3 +1,6 @@
+// RUN: %parallel-boogie -lib:base -timeLimit:0 "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
 datatype Tensor1D {
     Tensor1D(start: int, dim0: int, stride0: int)
 }
@@ -16,33 +19,54 @@ function {:inline} Slice2D(tensor: Tensor2D, pos0: int, pos1: int, dim0: int, di
 }
 
 function {:inline} Tensor1DAddrs(tensor: Tensor1D): [int]bool {
-    (lambda {:pool "Tensor1DAddress"} x: int ::
-        (exists {:pool "Tensor1DIndex"} i: int ::
+    (lambda x: int ::
+        (exists {:pool "Tensor1DIndex"} i: int :: {:add_to_pool "A", i}
         0 <= i && i < tensor->dim0 && x == tensor->start + i * tensor->stride0))
 }
 
 procedure Tensor1DSliceSubset(tensor: Tensor1D, k: int)
 requires 0 <= k && k <= tensor->dim0;
-requires tensor->stride0 == 1;
+requires tensor->stride0 > 0;
 {
-    var slice: Tensor1D;
+    var piece: Tensor1D;
 
-    slice := Slice1D(tensor, k, tensor->dim0 - k);
-    assert (forall x: int ::
-        {:add_to_pool "Tensor1DAddress", x}
-        (exists {:pool "Tensor1DIndex"} i: int :: 
-        {:add_to_pool "Tensor1DIndex", k + i}
-        0 <= i && i < slice->dim0 && x == slice->start + i * slice->stride0)
-        /*Tensor1DAddrs(slice)[x]*/ ==> Tensor1DAddrs(tensor)[x]);
-    assert Set_IsSubset((lambda {:pool "Tensor1DAddress"} x: int ::
-        (exists {:pool "Tensor1DIndex"} i: int ::
-        {:add_to_pool "Tensor1DIndex", k + i}
-        0 <= i && i < slice->dim0 && x == slice->start + i * slice->stride0)), 
-        (lambda {:pool "Tensor1DAddress"} x: int ::
-        (exists {:pool "Tensor1DIndex"} i: int ::
-        {:add_to_pool "Tensor1DIndex", k + i}
-        0 <= i && i < tensor->dim0 && x == tensor->start + i * tensor->stride0)));
-    //assert Set_IsSubset(Tensor1DAddrs(slice), Tensor1DAddrs(tensor));
+    piece := Slice1D(tensor, k, tensor->dim0 - k);
+    assume (forall {:pool "A"} x: int :: (exists y: int:: {:add_to_pool "Tensor1DIndex", x + k} true));
+    assert Set_IsSubset(Tensor1DAddrs(piece), Tensor1DAddrs(tensor));
+}
+
+procedure Tensor1DRepeatedSlices(tensor: Tensor1D)
+requires 0 <= tensor->dim0;
+requires tensor->stride0 > 0;
+{
+    var processed, remaining, piece: Tensor1D;
+    var consumed, size: int;
+
+    consumed := 0;
+    processed := Slice1D(tensor, 0, consumed);
+    remaining := tensor;
+    while (0 < remaining->dim0)
+    invariant 0 <= consumed && consumed <= tensor->dim0;
+    invariant remaining == Slice1D(tensor, consumed, tensor->dim0 - consumed);
+    invariant processed == Slice1D(tensor, 0, consumed);
+    {
+        havoc size;
+        assume 0 < size && size <= remaining->dim0;
+
+        // Supply index translations without adding mathematical assumptions.
+        assume (forall {:pool "A"} x: int :: (exists y: int :: {:add_to_pool "Tensor1DIndex", x,  x + consumed} true));
+
+        piece := Slice1D(remaining, 0, size);
+        assert Set_IsSubset(Tensor1DAddrs(piece), Tensor1DAddrs(remaining));
+        assert Set_IsDisjoint(Tensor1DAddrs(processed), Tensor1DAddrs(piece));
+        
+        remaining := Slice1D(remaining, size, remaining->dim0 - size);
+        consumed := consumed + size;
+        processed := Slice1D(tensor, 0, consumed);
+        assert Set_IsSubset(Tensor1DAddrs(piece), Tensor1DAddrs(processed));
+    }
+    assert consumed == tensor->dim0;
+    assert processed == tensor;
 }
 
 procedure Tensor1DSplitDisjoint(tensor: Tensor1D, k: int)
