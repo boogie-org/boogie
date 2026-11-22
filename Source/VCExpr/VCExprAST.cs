@@ -1914,7 +1914,8 @@ namespace Microsoft.Boogie.VCExprAST
 
     // When the quantifier to which this info is attached is skolemized,
     // each expression in instantiationExprs[L] is added to the pool of
-    // expressions for label L.
+    // expressions for label L. These expressions participate in dependency
+    // collection and are substituted along with the quantifier body.
     public readonly Dictionary<string, HashSet<VCExpr>> instantiationExprs;
     
     public VCQuantifierInfo(string qid, int uniqueId)

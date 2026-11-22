@@ -2019,7 +2019,7 @@ namespace Microsoft.Boogie
   /keepQuantifier
                 If pool-based quantifier instantiation creates instances of a quantifier
                 then keep the quantifier along with the instances. By default, the quantifier
-                is dropped if any instances are created.
+                is dropped when its polarity permits dropping, even if no instances are created.
 
   ---- Verification-condition splitting --------------------------------------
 
