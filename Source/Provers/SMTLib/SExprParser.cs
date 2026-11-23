@@ -16,14 +16,32 @@ public class SExprParser
 
   public event Action<string> ErrorHandler;
 
+  public bool EndOfInput { get; private set; }
+
   public void AddLine(string line)
   {
     sexpLines.Enqueue(line);
   }
 
-  Task<string> ReadLine()
+  public void EndInput()
   {
-    return sexpLines.Dequeue();
+    sexpLines.Enqueue(null);
+  }
+
+  async Task<string> ReadLine()
+  {
+    if (EndOfInput)
+    {
+      return null;
+    }
+
+    var line = await sexpLines.Dequeue();
+    if (line == null)
+    {
+      EndOfInput = true;
+    }
+
+    return line;
   }
   
   async Task<char> SkipWs()
