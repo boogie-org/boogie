@@ -2020,6 +2020,8 @@ namespace Microsoft.Boogie
                 If pool-based quantifier instantiation creates instances of a quantifier
                 then keep the quantifier along with the instances. By default, the quantifier
                 is dropped when its polarity permits dropping, even if no instances are created.
+                Background axioms containing pool-annotated quantifiers that produced instances
+                are also omitted by default; this option retains those axioms.
 
   ---- Verification-condition splitting --------------------------------------
 

@@ -269,10 +269,10 @@ namespace Microsoft.Boogie
     }
 
 
-    private async Task Check(string descriptiveName, VCExpr vc, CancellationToken cancellationToken) {
+    private async Task Check(string descriptiveName, VCExpr vc, CancellationToken cancellationToken, VCExpr queryAxioms) {
       try {
         outcome = await thmProver.Check(descriptiveName, vc, Cce.NonNull(handler), Options.ErrorLimit,
-          cancellationToken);
+          cancellationToken, queryAxioms);
       }
       catch (OperationCanceledException) {
         throw;
@@ -318,7 +318,8 @@ namespace Microsoft.Boogie
       proverRunTime = ProverStopwatch.Elapsed;
     }
 
-    public async Task BeginCheck(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler, uint timeout, uint rlimit, CancellationToken cancellationToken)
+    public async Task BeginCheck(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler, uint timeout,
+      uint rlimit, CancellationToken cancellationToken, VCExpr queryAxioms = null)
     {
       Contract.Requires(descriptiveName != null);
       Contract.Requires(vc != null);
@@ -330,13 +331,13 @@ namespace Microsoft.Boogie
       outputExn = null;
       this.handler = handler;
 
-      await thmProver.Reset(gen);
+      await thmProver.Reset(gen, queryAxioms);
       SetTimeout(timeout);
       SetRlimit(rlimit);
 
       ProverStart = DateTime.UtcNow;
       ProverStopwatch.Restart();
-      ProverTask = Check(descriptiveName, vc, cancellationToken);
+      ProverTask = Check(descriptiveName, vc, cancellationToken, queryAxioms);
     }
 
     public SolverOutcome ReadOutcome()
@@ -388,11 +389,11 @@ namespace Microsoft.Boogie
     }
 
     public override Task<SolverOutcome> Check(string descriptiveName, VCExpr vc, ErrorHandler handler, int errorLimit,
-      CancellationToken cancellationToken) {
+      CancellationToken cancellationToken, VCExpr queryAxioms = null) {
       throw new NotImplementedException();
     }
 
-    public override Task Reset(VCExpressionGenerator gen)
+    public override Task Reset(VCExpressionGenerator gen, VCExpr queryAxioms = null)
     {
       throw new NotImplementedException();
     }

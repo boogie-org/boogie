@@ -63,7 +63,7 @@ requires Vec_Concat(Vec_Slice(A, 0, i), Vec_Slice(A, i + 1, Vec_Len(A))) == Vec_
     A' := Vec_Append(A, e);
     B' := Vec_Swap(Vec_Append(B, e), Vec_Len(B) - 1, Vec_Len(B));
 
-    assert (forall x: int :: {:add_to_pool "Slice", x}
+    assert (forall x: int :: {:add_to_pool "Slice", x, x - i}
     Vec_Nth(Vec_Concat(Vec_Slice(A', 0, i), Vec_Slice(A', i + 1, Vec_Len(A'))), x) == Vec_Nth(Vec_Slice(B', 0, Vec_Len(B') - 1), x));
 }
 
@@ -94,7 +94,7 @@ requires Vec_Concat(Vec_Slice(A, 0, i), Vec_Slice(A, i + 1, Vec_Len(A))) == Vec_
     B' := Vec_Swap(Vec_Append(B, e), Vec_Len(B) - 1, Vec_Len(B));
 
     call x := Vec_Ext(Vec_Concat(Vec_Slice(A', 0, i), Vec_Slice(A', i + 1, Vec_Len(A'))), Vec_Slice(B', 0, Vec_Len(B') - 1));
-    assert {:add_to_pool "Slice", x}
+    assert {:add_to_pool "Slice", x, x - i}
     Vec_Concat(Vec_Slice(A', 0, i), Vec_Slice(A', i + 1, Vec_Len(A'))) == Vec_Slice(B', 0, Vec_Len(B') - 1);
 }
 
@@ -244,12 +244,14 @@ ensures Vec_Slice(B, j+1, Vec_Len(B)) == Vec_Slice(A, j+1, Vec_Len(B));
 ensures Vec_Len(B) == Vec_Len(A) - 1;
 ensures j < Vec_Len(B) ==> Vec_Nth(B, j) == Vec_Nth(A, Vec_Len(A) - 1);
 {
-    var last_idx: int;
+    var last_idx, x, y: int;
 
     last_idx := Vec_Len(A) - 1;
     B := Vec_Swap(A, j, last_idx);
     B := Vec_Remove(B);
-    assume {:add_to_pool "Slice", j, j + 1} true;
+    call x := Vec_Ext(Vec_Slice(B, 0, j), Vec_Slice(A, 0, j));
+    call y := Vec_Ext(Vec_Slice(B, j + 1, Vec_Len(B)), Vec_Slice(A, j + 1, Vec_Len(B)));
+    assume {:add_to_pool "Slice", x, y} true;
 }
 
 procedure reverse(A: Vec Element) returns (B: Vec Element)
