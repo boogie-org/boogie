@@ -151,7 +151,7 @@ namespace Microsoft.Boogie.SMTLib
 
     public override void LogComment(string comment)
     {
-      SendCommon("; " + comment);
+      SendThisVC("; " + comment);
     }
 
     private void SendCommon(string s)
@@ -334,7 +334,7 @@ namespace Microsoft.Boogie.SMTLib
       generatedFuncDefs.ForEach(SendCommon); // Flush function definitions
     }
 
-    protected virtual void PrepareCommon()
+    protected virtual void PrepareCommon(VCExpr queryAxioms = null)
     {
       if (common.Length == 0)
       {
@@ -387,8 +387,8 @@ namespace Microsoft.Boogie.SMTLib
         PrepareFunctionDefinitions();
       }
 
-      if (!AxiomsAreSetup) {
-        SetupAxioms();
+      if (queryAxioms != null || !AxiomsAreSetup) {
+        SetupAxioms(queryAxioms);
       }
     }
 
@@ -397,9 +397,9 @@ namespace Microsoft.Boogie.SMTLib
       return options.SmtOptions.Concat(additionalSmtOptions);
     }
 
-    private void SetupAxioms()
+    private void SetupAxioms(VCExpr queryAxioms)
     {
-      var axioms = ctx.Axioms;
+      var axioms = queryAxioms ?? ctx.Axioms;
       if (axioms is VCExprNAry nary && nary.Op == VCExpressionGenerator.AndOp) {
         foreach (var expr in nary.UniformArguments) {
           var str = VCExpr2String(expr, -1);

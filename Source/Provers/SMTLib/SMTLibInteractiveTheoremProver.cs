@@ -63,8 +63,10 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     private bool hasReset = true;
-    public override async Task<SolverOutcome> Check(string descriptiveName, VCExpr vc, ErrorHandler handler, int errorLimit, CancellationToken cancellationToken)
+    public override async Task<SolverOutcome> Check(string descriptiveName, VCExpr vc, ErrorHandler handler, int errorLimit,
+      CancellationToken cancellationToken, VCExpr queryAxioms = null)
     {
+      var baseline = queryAxioms == null ? null : SaveAndResetBackground();
       currentErrorHandler = handler;
       try
       {
@@ -85,7 +87,7 @@ namespace Microsoft.Boogie.SMTLib
           processNeedsRestart = true;
         }
 
-        PrepareCommon();
+        PrepareCommon(queryAxioms);
         FlushAndCacheCommons();
 
         OptimizationRequests.Clear();
@@ -131,15 +133,66 @@ namespace Microsoft.Boogie.SMTLib
       finally
       {
         currentErrorHandler = null;
+        if (baseline != null)
+        {
+          RestoreBackground(baseline);
+        }
       }
     }
 
-    public override async Task Reset(VCExpressionGenerator generator)
+    private sealed record BackgroundState(
+      StringBuilder Common, string CachedCommon,
+      TypeAxiomBuilder AxBuilder, TypeAxiomBuilder CachedAxBuilder,
+      ScopedNamer CommonNamer, ScopedNamer FinalNamer,
+      TypeDeclCollector DeclCollector, bool AxiomsAreSetup, bool HasReset,
+      string[] Axioms, string[] TypeDecls, VCExprVar[] NamedAssumes);
+
+    private BackgroundState SaveAndResetBackground()
+    {
+      var baseline = new BackgroundState(common, CachedCommon, AxBuilder, CachedAxBuilder,
+        commonNamer, finalNamer, DeclCollector, AxiomsAreSetup, hasReset,
+        Axioms.ToArray(), TypeDecls.ToArray(), NamedAssumes.ToArray());
+      // Isolate naming and declaration tracking as well as the serialized background.
+      common = new StringBuilder();
+      CachedCommon = null;
+      commonNamer = null;
+      finalNamer = null;
+      DeclCollector = new TypeDeclCollector(libOptions, new ProverNamer(this));
+      SetupAxiomBuilder(gen);
+      CachedAxBuilder = null;
+      AxiomsAreSetup = false;
+      hasReset = true;
+      Axioms.Clear();
+      TypeDecls.Clear();
+      NamedAssumes.Clear();
+      return baseline;
+    }
+
+    private void RestoreBackground(BackgroundState baseline)
+    {
+      common = baseline.Common;
+      CachedCommon = baseline.CachedCommon;
+      AxBuilder = baseline.AxBuilder;
+      CachedAxBuilder = baseline.CachedAxBuilder;
+      commonNamer = baseline.CommonNamer;
+      finalNamer = baseline.FinalNamer;
+      DeclCollector = baseline.DeclCollector;
+      AxiomsAreSetup = baseline.AxiomsAreSetup;
+      hasReset = baseline.HasReset;
+      Axioms.Clear();
+      Axioms.AddRange(baseline.Axioms);
+      TypeDecls.Clear();
+      TypeDecls.AddRange(baseline.TypeDecls);
+      NamedAssumes.Clear();
+      NamedAssumes.UnionWith(baseline.NamedAssumes);
+    }
+
+    public override async Task Reset(VCExpressionGenerator generator, VCExpr queryAxioms = null)
     {
       gen = generator;
       SendThisVC("(reset)");
       await RecoverIfProverCrashedAfterReset();
-      if (0 < common.Length)
+      if (queryAxioms == null && 0 < common.Length)
       {
         var c = common.ToString();
         Process.Send(c);
@@ -660,10 +713,10 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    protected override void PrepareCommon() {
+    protected override void PrepareCommon(VCExpr queryAxioms = null) {
       var currentNamer = finalNamer;
       finalNamer = null;
-      base.PrepareCommon();
+      base.PrepareCommon(queryAxioms);
       finalNamer = currentNamer;
     }
 

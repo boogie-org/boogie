@@ -25,6 +25,7 @@ namespace Microsoft.Boogie.VCExprAST
      *     the original quantifier and the instances. Exists quantifiers are rewritten as a disjunction of the original
      *     quantifier and the instances. Dropping the original requires a suitable polarity.
      *   - Add instances of the axioms for lambdas and set extensionality as assumptions.
+     *   - Omit background axioms containing pool quantifiers that produced instances, unless KeepQuantifier is set.
      */
 
     private class QuantifierInstantiationInfo
@@ -52,20 +53,58 @@ namespace Microsoft.Boogie.VCExprAST
     private readonly Dictionary<(VCExpr Left, VCExpr Right), VCExpr> setEqualityAxioms = new(new SetEqualityComparer());
     private readonly Queue<(VCExpr Left, VCExpr Right)> pendingSetEqualities = new();
     private readonly Dictionary<Type, HashSet<VCExprVar>> setEqualityWitnesses = new();
+    private readonly HashSet<int> instantiatedPoolQuantifiers = new();
     private string quantifierBindingNamePrefix;
     private string skolemConstantNamePrefix;
     internal VCExpressionGenerator vcExprGen;
     private Boogie2VCExprTranslator exprTranslator;
     internal static ConcurrentDictionary<string, ConcurrentBag<Type>> labelToTypes = new(); // pool name may map to multiple types
 
-    public static VCExpr Instantiate(Implementation impl, VCExpressionGenerator vcExprGen, Boogie2VCExprTranslator exprTranslator, VCExpr vcExpr)
+    public static VCExpr Instantiate(Implementation impl, VCExpressionGenerator vcExprGen,
+      Boogie2VCExprTranslator exprTranslator, VCExpr vcExpr,
+      IReadOnlyList<VCExpr> axioms, out VCExpr queryAxioms)
     {
+      queryAxioms = null;
       if (!InstantiationSourceChecker.HasInstantiationSources(impl))
       {
         return vcExpr;
       }
       var qiEngine = new QuantifierInstantiationEngine(vcExprGen, exprTranslator);
-      return qiEngine.Execute(impl, vcExpr);
+      var result = qiEngine.Execute(impl, vcExpr);
+      if (!exprTranslator.GenerationOptions.Options.KeepQuantifier && qiEngine.instantiatedPoolQuantifiers.Count > 0)
+      {
+        var retainedAxioms = new List<VCExpr>();
+        foreach (var axiom in axioms)
+        {
+          var finder = new InstantiatedQuantifierFinder();
+          finder.Traverse(axiom, qiEngine.instantiatedPoolQuantifiers);
+          if (!finder.Found)
+          {
+            retainedAxioms.Add(axiom);
+          }
+        }
+        if (retainedAxioms.Count < axioms.Count)
+        {
+          queryAxioms = vcExprGen.NAry(VCExpressionGenerator.AndOp, retainedAxioms);
+        }
+      }
+      return result;
+    }
+
+    private sealed class InstantiatedQuantifierFinder : TraversingVCExprVisitor<bool, HashSet<int>>
+    {
+      public bool Found { get; private set; }
+
+      public override bool Visit(VCExprQuantifier node, HashSet<int> instantiatedQuantifiers)
+      {
+        Found |= instantiatedQuantifiers.Contains(node.Info.uniqueId);
+        return Found || base.Visit(node, instantiatedQuantifiers);
+      }
+
+      protected override bool StandardResult(VCExpr node, HashSet<int> instantiatedQuantifiers)
+      {
+        return false;
+      }
     }
 
     private QuantifierInstantiationEngine(VCExpressionGenerator vcExprGen, Boogie2VCExprTranslator exprTranslator)
@@ -483,6 +522,12 @@ namespace Microsoft.Boogie.VCExprAST
       var instantiation = substituter.Mutate(quantifierExpr.Body, subst);
       quantifierInstantiationInfo.instances[new List<VCExpr>(instance)] =
         Skolemizer.Skolemize(this, quantifierInstantiationInfo.polarity, instantiation);
+      // The following guard ensures that a lambda that is instantiated via set-equality witnesses
+      // is not dropped by virtue of those instantiations.
+      if (quantifierExpr.Info.instantiationLabels.Values.Any(labels => labels.Count > 0))
+      {
+        instantiatedPoolQuantifiers.Add(quantifierExpr.Info.uniqueId);
+      }
     }
   }
 

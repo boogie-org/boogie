@@ -943,6 +943,7 @@ namespace VC
         Contract.Requires(callback != null);
 
         VCExpr vc;
+        VCExpr queryAxioms;
         // Lock impl since we're setting impl.Blocks that is used to generate the VC.
         lock (Implementation)
         {
@@ -961,7 +962,7 @@ namespace VC
           vc = parent.GenerateVCAux(Implementation, controlFlowVariableExpr, absyIds, checker.TheoremProver.Context);
           Contract.Assert(vc != null);
 
-          vc = QuantifierInstantiationEngine.Instantiate(Implementation, exprGen, bet, vc);
+          vc = QuantifierInstantiationEngine.Instantiate(Implementation, exprGen, bet, vc, ctx.GetAxioms(), out queryAxioms);
 
           VCExpr controlFlowFunctionAppl =
             exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
@@ -981,7 +982,7 @@ namespace VC
 
         checker.TheoremProver.SetAdditionalSmtOptions(Implementation.GetExtraSMTOptions()
           .Select(kv => new OptionValue(kv.Key, kv.Value)));
-        await checker.BeginCheck(Description, vc, reporter, timeout, rlimit, cancellationToken);
+        await checker.BeginCheck(Description, vc, reporter, timeout, rlimit, cancellationToken, queryAxioms);
       }
 
       public string Description
