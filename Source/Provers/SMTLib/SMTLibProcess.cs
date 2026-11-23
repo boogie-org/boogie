@@ -29,7 +29,7 @@ namespace Microsoft.Boogie.SMTLib
       this.options = options;
       smtProcessId = smtProcessIdSeq++;
 
-      var psi = new ProcessStartInfo(options.ExecutablePath(), string.Join(" ", options.SolverArguments))
+      var psi = new ProcessStartInfo(options.ExecutablePath(), options.SolverCommandLine())
       {
         CreateNoWindow = true,
         UseShellExecute = false,
@@ -354,6 +354,9 @@ namespace Microsoft.Boogie.SMTLib
     {
         if (e.Data == null)
         {
+          // The solver closed its output (e.g. it exited after an error), so
+          // stop waiting for responses.
+          sexpParser.AddLine(null);
           return;
         }
 

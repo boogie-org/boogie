@@ -13,17 +13,26 @@ public class SExprParser
   private int linePos;
   private string currLine;
   private readonly AsyncQueue<string> sexpLines = new();
+  private bool endOfInput;
 
   public event Action<string> ErrorHandler;
 
+  /// <summary>
+  /// Add a line of input; a null line marks the end of the input.
+  /// </summary>
   public void AddLine(string line)
   {
     sexpLines.Enqueue(line);
   }
 
-  Task<string> ReadLine()
+  async Task<string> ReadLine()
   {
-    return sexpLines.Dequeue();
+    if (endOfInput) {
+      return null;
+    }
+    var line = await sexpLines.Dequeue();
+    endOfInput = line == null;
+    return line;
   }
   
   async Task<char> SkipWs()
