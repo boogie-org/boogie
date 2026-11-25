@@ -1020,6 +1020,60 @@ namespace Microsoft.Boogie.VCExprAST
     }
   }
   
+  public class VCExprFieldUpdateOp : VCExprOp
+  {
+    public DatatypeTypeCtorDecl DatatypeTypeCtorDecl;
+
+    private readonly DatatypeAccessor datatypeAccessor;
+
+    public int ConstructorIndex => datatypeAccessor.ConstructorIndex;
+
+    public int FieldIndex => datatypeAccessor.FieldIndex;
+
+    public override int Arity => 2;
+
+    public override int TypeParamArity => 0; // datatypes work only with monomorphization
+
+    public override Type InferType(List<VCExpr> args, List<Type> typeArgs)
+    {
+      Contract.Assert(typeArgs.Count == 0);
+      return args[0].Type;
+    }
+
+    public override bool Equals(object that)
+    {
+      if (Object.ReferenceEquals(this, that))
+      {
+        return true;
+      }
+      if (that is VCExprFieldUpdateOp thatOp)
+      {
+        return DatatypeTypeCtorDecl.Equals(thatOp.DatatypeTypeCtorDecl) &&
+               ConstructorIndex == thatOp.ConstructorIndex && FieldIndex == thatOp.FieldIndex;
+      }
+      return false;
+    }
+
+    public override int GetHashCode()
+    {
+      return Arity * 1212481;
+    }
+
+    internal VCExprFieldUpdateOp(DatatypeTypeCtorDecl datatypeTypeCtorDecl, DatatypeAccessor datatypeAccessor)
+    {
+      DatatypeTypeCtorDecl = datatypeTypeCtorDecl;
+      this.datatypeAccessor = datatypeAccessor;
+    }
+
+    public override Result Accept<Result, Arg>(
+      VCExprNAry expr,
+      IVCExprOpVisitor<Result, Arg> visitor,
+      Arg arg)
+    {
+      return visitor.VisitFieldUpdateOp(expr, arg);
+    }
+  }
+
   public class VCExprIsConstructorOp : VCExprOp
   {
     public DatatypeTypeCtorDecl DatatypeTypeCtorDecl;
@@ -1914,7 +1968,8 @@ namespace Microsoft.Boogie.VCExprAST
 
     // When the quantifier to which this info is attached is skolemized,
     // each expression in instantiationExprs[L] is added to the pool of
-    // expressions for label L.
+    // expressions for label L. These expressions participate in dependency
+    // collection and are substituted along with the quantifier body.
     public readonly Dictionary<string, HashSet<VCExpr>> instantiationExprs;
     
     public VCQuantifierInfo(string qid, int uniqueId)

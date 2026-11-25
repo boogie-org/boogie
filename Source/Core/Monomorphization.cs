@@ -689,6 +689,7 @@ namespace Microsoft.Boogie
         var fieldUpdate = new FieldUpdate(fieldAccess);
         node = new NAryExpr(Token.NoToken, fieldUpdate, new List<Expr> { polymorphicMapDatatypeExpr, node });
         node.Type = polymorphicMapInfo.Datatype;
+        node.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
       }
       return node;
     }

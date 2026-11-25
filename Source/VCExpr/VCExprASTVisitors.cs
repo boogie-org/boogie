@@ -67,6 +67,7 @@ namespace Microsoft.Boogie.VCExprAST
     Result VisitImpliesOp(VCExprNAry node, Arg arg);
     Result VisitDistinctOp(VCExprNAry node, Arg arg);
     Result VisitFieldAccessOp(VCExprNAry node, Arg arg);
+    Result VisitFieldUpdateOp(VCExprNAry node, Arg arg);
     Result VisitIsConstructorOp(VCExprNAry node, Arg arg);
     Result VisitSelectOp(VCExprNAry node, Arg arg);
     Result VisitStoreOp(VCExprNAry node, Arg arg);
@@ -149,6 +150,12 @@ namespace Microsoft.Boogie.VCExprAST
     }
 
     public Result VisitFieldAccessOp(VCExprNAry node, Arg arg)
+    {
+      Contract.Requires(node != null);
+      throw new NotImplementedException();
+    }
+
+    public Result VisitFieldUpdateOp(VCExprNAry node, Arg arg)
     {
       Contract.Requires(node != null);
       throw new NotImplementedException();
@@ -1175,8 +1182,22 @@ namespace Microsoft.Boogie.VCExprAST
           newBody = Mutate(node.Body, substitution);
         Contract.Assert(newBody != null);
 
+        var instantiationLabels = new Dictionary<VCExprVar, HashSet<string>>();
+        for (int i = 0; i < boundVars.Count; i++)
+        {
+          if (node.Info.instantiationLabels.TryGetValue(node.BoundVars[i], out var labels))
+          {
+            instantiationLabels.Add(boundVars[i], new HashSet<string>(labels));
+          }
+        }
+        var instantiationExprs = node.Info.instantiationExprs.ToDictionary(
+          pair => pair.Key,
+          pair => pair.Value.Select(expression => Mutate(expression, substitution)).ToHashSet());
+        var info = new VCQuantifierInfo(node.Info.qid, node.Info.uniqueId, node.Info.weight,
+          instantiationLabels, instantiationExprs);
+
         return Gen.Quantify(node.Quan, typeParams, boundVars,
-          newTriggers, node.Info, newBody);
+          newTriggers, info, newBody);
       }
       finally
       {
@@ -1306,6 +1327,11 @@ namespace Microsoft.Boogie.VCExprAST
     }
 
     public virtual Result VisitFieldAccessOp(VCExprNAry node, Arg arg)
+    {
+      return StandardResult(node, arg);
+    }
+
+    public virtual Result VisitFieldUpdateOp(VCExprNAry node, Arg arg)
     {
       return StandardResult(node, arg);
     }

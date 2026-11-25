@@ -63,7 +63,7 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     public override async Task<SolverOutcome> Check(string descriptiveName, VCExpr vc, ErrorHandler handler, int errorLimit,
-      CancellationToken cancellationToken)
+      CancellationToken cancellationToken, VCExpr queryAxioms = null)
     {
       currentErrorHandler = handler;
       try
@@ -79,7 +79,7 @@ namespace Microsoft.Boogie.SMTLib
         }
 
         SendVCOptions();
-        PrepareCommon();
+        PrepareCommon(queryAxioms);
         FlushAxioms();
 
         OptimizationRequests.Clear();
@@ -107,7 +107,7 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    public override Task Reset(VCExpressionGenerator generator) {
+    public override Task Reset(VCExpressionGenerator generator, VCExpr queryAxioms = null) {
       return Task.CompletedTask;
     }
 

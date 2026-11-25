@@ -64,3 +64,28 @@ procedure {:inline 1} LookupLambda(i: int, n: int, PAs: [PA]int)
   assume (forall pa: PA :: PAs[pa] == 0);
   assert {:add_to_pool "A3", ADD(n)} i == n;
 }
+
+procedure INV4()
+{
+  var members: [int]bool;
+
+  members := (lambda {:pool "A4"} x: int ::
+    (exists {:pool "B4"} y: int :: x == y - 1));
+  assert {:add_to_pool "A4", 0} {:add_to_pool "B4", 1} members[0];
+}
+
+function SkolemPredicate(x: int, y: int): bool;
+
+procedure NestedSkolemization()
+{
+  var members: [int]bool;
+
+  members := (lambda {:pool "NestedAddress"} x: int ::
+    (exists {:pool "NestedIndex"} j: int :: SkolemPredicate(x, j + 1)));
+  assert (forall x: int ::
+    {:add_to_pool "NestedAddress", x}
+    (var at := x;
+      (exists i: int ::
+        {:add_to_pool "NestedIndex", i - 1}
+        SkolemPredicate(at, i))) ==> members[x]);
+}

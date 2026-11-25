@@ -168,7 +168,8 @@ public abstract class ProverInterface
     }
   }
 
-  public abstract Task<SolverOutcome> Check(string descriptiveName, VCExpr vc, ErrorHandler handler, int errorLimit, CancellationToken cancellationToken);
+  public abstract Task<SolverOutcome> Check(string descriptiveName, VCExpr vc, ErrorHandler handler, int errorLimit,
+    CancellationToken cancellationToken, VCExpr queryAxioms = null);
 
   public virtual void LogComment(string comment)
   {
@@ -179,7 +180,7 @@ public abstract class ProverInterface
   {
   }
 
-  public abstract Task Reset(VCExpressionGenerator gen);
+  public abstract Task Reset(VCExpressionGenerator gen, VCExpr queryAxioms = null);
 
   public abstract void FullReset(VCExpressionGenerator gen);
 

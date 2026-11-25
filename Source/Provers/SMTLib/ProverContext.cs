@@ -58,6 +58,7 @@ namespace Microsoft.Boogie
     }
 
     public abstract void AddAxiom(VCExpr vc);
+    public abstract List<VCExpr> GetAxioms();
     public abstract string Lookup(VCExprVar var);
     public abstract VCExpressionGenerator ExprGen { get; }
     public abstract Boogie2VCExprTranslator BoogieExprTranslator { get; }
@@ -70,6 +71,11 @@ namespace Microsoft.Boogie
   [ContractClassFor(typeof(ProverContext))]
   public abstract class ProverContextContracts : ProverContext
   {
+    public override List<VCExpr> GetAxioms()
+    {
+      throw new NotImplementedException();
+    }
+
     public override void AddAxiom(VCExpr vc)
     {
     }
@@ -244,19 +250,23 @@ namespace Microsoft.Boogie
       get
       {
         Contract.Ensures(Contract.Result<VCExpr>() != null);
-        VCExpr axioms = gen.NAry(VCExpressionGenerator.AndOp, axiomConjuncts);
-        List<VCExpr> /*!>!*/
-          distinctVars = new List<VCExpr>();
-        foreach (Variable v in distincts)
-        {
-          Contract.Assert(v != null);
-          distinctVars.Add(translator.LookupVariable(v));
-        }
-
-        axioms = gen.AndSimp(gen.Distinct(distinctVars), axioms);
-
-        return axioms;
+        return gen.NAry(VCExpressionGenerator.AndOp, GetAxioms());
       }
+    }
+
+    public override List<VCExpr> GetAxioms()
+    {
+      List<VCExpr> /*!>!*/
+        distinctVars = new List<VCExpr>();
+      foreach (Variable v in distincts)
+      {
+        Contract.Assert(v != null);
+        distinctVars.Add(translator.LookupVariable(v));
+      }
+
+      var axioms = new List<VCExpr> { gen.Distinct(distinctVars) };
+      axioms.AddRange(axiomConjuncts);
+      return axioms;
     }
 
     public override string Lookup(VCExprVar var)
