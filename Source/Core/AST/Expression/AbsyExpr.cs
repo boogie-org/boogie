@@ -3616,34 +3616,9 @@ namespace Microsoft.Boogie
 
     public NAryExpr Update(IToken token, Expr record, Expr rhs)
     {
-      var expr = Update(token, record, rhs, 0);
-      for (int i = 1; i < Accessors.Count; i++)
-      {
-        var constructor = Constructor(i);
-        var condExpr = new NAryExpr(token,
-          new IsConstructor(token, constructor.datatypeTypeCtorDecl, constructor.index), new Expr[] { record });
-        var thenExpr = Update(token, record, rhs, i);
-        expr = new NAryExpr(token, new IfThenElse(token), new Expr[] { condExpr, thenExpr, expr });
-      }
+      var expr = new NAryExpr(token, new FieldUpdate(this), new Expr[] { record, rhs });
       ResolveAndTypecheck(expr);
       return expr;
-    }
-
-    private NAryExpr Update(IToken token, Expr record, Expr rhs, int index)
-    {
-      var constructor = Constructor(index);
-      var args = Enumerable.Range(0, constructor.InParams.Count).Select(x =>
-      {
-        if (x == Accessors[index].FieldIndex)
-        {
-          return rhs;
-        }
-
-        var fieldName = constructor.InParams[x].Name;
-        var fieldAccess = new FieldAccess(tok, fieldName, DatatypeTypeCtorDecl, DatatypeTypeCtorDecl.GetAccessors(fieldName));
-        return fieldAccess.Select(token, record);
-      }).ToList();
-      return new NAryExpr(token, new FunctionCall(Constructor(index)), args);
     }
 
     private void ResolveAndTypecheck(Expr expr)

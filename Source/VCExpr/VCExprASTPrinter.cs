@@ -275,6 +275,11 @@ namespace Microsoft.Boogie.VCExprAST
     {
       return PrintNAry("FieldAccess", node, wr);
     }
+
+    public bool VisitFieldUpdateOp(VCExprNAry node, TextWriter wr)
+    {
+      return PrintNAry("FieldUpdate", node, wr);
+    }
     
     public bool VisitIsConstructorOp(VCExprNAry node, TextWriter wr)
     {
