@@ -346,6 +346,14 @@ namespace Microsoft.Boogie
       return new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, name, type), kv);
     }
 
+    public static BoundVariable FreshBoundVariable(string name, Type type, QKeyValue kv = null)
+    {
+      var variable = BoundVariable(name, type, kv);
+      variable.Name = $"{variable.Name}_{variable.UniqueId}";
+      variable.TypedIdent.Name = variable.Name;
+      return variable;
+    }
+
     public static Formal Formal(string name, Type type, bool incoming)
     {
       return new Formal(Token.NoToken, new TypedIdent(Token.NoToken, name, type), incoming);
