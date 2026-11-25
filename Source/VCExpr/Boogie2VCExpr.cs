@@ -482,11 +482,6 @@ namespace Microsoft.Boogie.VCExprAST
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
-      if (node.Fun is FieldUpdate fieldUpdate)
-      {
-        return TranslateNAryExpr(fieldUpdate.Update(Token.NoToken, node.Args[0], node.Args[1]));
-      }
-      
       bool flipContextForArg0 = false;
       if (node.Fun is UnaryOperator)
       {
@@ -1360,7 +1355,13 @@ namespace Microsoft.Boogie.VCExprAST
 
     public VCExpr Visit(FieldUpdate fieldUpdate)
     {
-      throw new Cce.UnreachableException();
+      var expr = this.args[0];
+      foreach (var accessor in fieldUpdate.FieldAccess.Accessors)
+      {
+        expr = Gen.Function(new VCExprFieldUpdateOp(fieldUpdate.DatatypeTypeCtorDecl, accessor),
+          expr, this.args[1]);
+      }
+      return expr;
     }
     
     public VCExpr Visit(IsConstructor isConstructor)
