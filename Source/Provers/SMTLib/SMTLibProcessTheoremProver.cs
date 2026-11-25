@@ -1355,8 +1355,9 @@ namespace Microsoft.Boogie.SMTLib
 
     private static SExpr ReduceLet(SExpr expr, IReadOnlyDictionary<string, SExpr> scope)
     {
-      if (expr.Name == "let" && expr.ArgCount == 2)
+      if (expr.Name == "let")
       {
+        Contract.Assert(expr.ArgCount == 2);
         // The bindings are evaluated in the enclosing scope, all at once.
         var inner = new Dictionary<string, SExpr>(scope);
         foreach (var binding in expr.Arguments[0].Arguments)
