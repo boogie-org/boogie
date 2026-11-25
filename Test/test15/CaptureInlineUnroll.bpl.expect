@@ -12,6 +12,9 @@ ControlFlow -> {
   0 3 -> 2
   else -> (- 1)
 }
+real_pow -> {
+  else -> 0.0
+}
 tickleBool -> {
   false -> true
   true -> true
@@ -42,6 +45,9 @@ ControlFlow -> {
   0 2 -> (- 1)
   0 3 -> 2
   else -> (- 1)
+}
+real_pow -> {
+  else -> 0.0
 }
 tickleBool -> {
   false -> true
@@ -78,6 +84,9 @@ ControlFlow -> {
   0 2 -> (- 3)
   0 8 -> 2
   else -> (- 3)
+}
+real_pow -> {
+  else -> 0.0
 }
 tickleBool -> {
   false -> true
@@ -120,6 +129,9 @@ ControlFlow -> {
   0 8 -> 6
   0 9 -> 8
   else -> (- 7)
+}
+real_pow -> {
+  else -> 0.0
 }
 tickleBool -> {
   false -> true
