@@ -135,20 +135,10 @@ namespace Microsoft.Boogie.VCExprAST
 
     internal VCExpr BindQuantifier(VCExprQuantifier node, Polarity polarity)
     {
-      if (node.TypeParameters.Count > 0)
-      {
-        return node;
-      }
-      var boundVariableToLabels = node.Info.instantiationLabels;
-      if (boundVariableToLabels.Count < node.BoundVars.Count ||
-          boundVariableToLabels.Any(kv => kv.Value.Count == 0))
-      {
-        return node;
-      }
       var v = new VCExprVar($"{quantifierBindingNamePrefix}{quantifierBinding.Count}", Type.Bool);
       quantifierBinding[v] = node;
       Contract.Assert(!quantifierInstantiationInfo.ContainsKey(node));
-      quantifierInstantiationInfo[node] = new QuantifierInstantiationInfo(boundVariableToLabels, polarity);
+      quantifierInstantiationInfo[node] = new QuantifierInstantiationInfo(node.Info.instantiationLabels, polarity);
       return v;
     }
 
@@ -1013,9 +1003,21 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override VCExpr Visit(VCExprQuantifier node, bool arg)
     {
-      return quantifierPolarities.TryGetValue(node, out var polarity)
-        ? qiEngine.BindQuantifier(CloseOverLetBindings(node), polarity)
-        : node;
+      if (!quantifierPolarities.TryGetValue(node, out var polarity))
+      {
+        return node;
+      }
+      if (node.TypeParameters.Count > 0)
+      {
+        return node;
+      }
+      var boundVariableToLabels = node.Info.instantiationLabels;
+      if (boundVariableToLabels.Count < node.BoundVars.Count ||
+          boundVariableToLabels.Any(kv => kv.Value.Count == 0))
+      {
+        return node;
+      }
+      return qiEngine.BindQuantifier(CloseOverLetBindings(node), polarity);
     }
 
     private VCExprQuantifier CloseOverLetBindings(VCExprQuantifier node)
