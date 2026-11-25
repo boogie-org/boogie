@@ -825,7 +825,99 @@ namespace Microsoft.Boogie.VCExprAST
     }
   }
 
-  class Skolemizer : MutatingVCExprVisitor<bool>
+  abstract class LetBindingScopeVisitor : MutatingVCExprVisitor<bool>
+  {
+    protected readonly List<VCExprLetBinding> letBindings = new();
+
+    protected LetBindingScopeVisitor(VCExpressionGenerator gen) : base(gen)
+    {
+    }
+
+    public override VCExpr Visit(VCExprLet node, bool arg)
+    {
+      var bindingByVariable = node.ToDictionary(binding => binding.V);
+      var dependencies = new GraphUtil.Graph<VCExprLetBinding>();
+      foreach (var binding in node)
+      {
+        dependencies.Nodes.Add(binding);
+        foreach (var variable in FreeVariables(binding.E))
+        {
+          if (bindingByVariable.TryGetValue(variable, out var referencedBinding))
+          {
+            // Since binding depends on referencedBinding,
+            // binding must appear before referencedBinding in letBindings.
+            // Therefore, add an edge.
+            dependencies.AddEdge(referencedBinding, binding);
+          }
+        }
+      }
+      var sortedBindings = dependencies.TopologicalSort();
+      Contract.Assert(sortedBindings.Count == node.Length);
+      var start = letBindings.Count;
+      var bindings = new List<VCExprLetBinding>();
+      foreach (var binding in sortedBindings)
+      {
+        // Visit the RHS of each binding before adding its variable to the
+        // enclosing let scope. This traversal makes sure that let bindings
+        // encountered during the traversal of the RHS are popped by the time
+        // processing of this let expression continues.
+        var translated = Gen.LetBinding(binding.V, binding.E.Accept(this, arg));
+        bindings.Add(translated);
+        letBindings.Add(translated);
+      }
+      var result = Gen.Let(bindings, node.Body.Accept(this, arg));
+      letBindings.RemoveRange(start, letBindings.Count - start);
+      return result;
+    }
+
+    protected VCExpr Close(VCExpr expression)
+    {
+      if (letBindings.Count == 0)
+      {
+        return expression;
+      }
+      var needed = FreeVariables(expression);
+      for (int i = letBindings.Count - 1; i >= 0; i--)
+      {
+        var binding = letBindings[i];
+        if (needed.Contains(binding.V))
+        {
+          needed.UnionWith(FreeVariables(binding.E));
+        }
+      }
+      for (int i = letBindings.Count - 1; i >= 0; i--)
+      {
+        var binding = letBindings[i];
+        if (needed.Contains(binding.V))
+        {
+          expression = Gen.Let(new List<VCExprLetBinding> { binding }, expression);
+        }
+      }
+      return expression;
+    }
+
+    private static HashSet<VCExprVar> FreeVariables(VCExpr expression)
+    {
+      var collector = new PoolFreeVariableCollector();
+      collector.Traverse(expression, true);
+      return collector.FreeTermVars;
+    }
+
+    private class PoolFreeVariableCollector : FreeVariableCollector
+    {
+      protected override bool VisitAfterBinding(VCExprQuantifier node, bool arg)
+      {
+        // Pool metadata may be the only reference to an enclosing let variable.
+        foreach (var expression in node.Info.instantiationExprs.Values.SelectMany(expressions => expressions))
+        {
+          expression.Accept(this, arg);
+        }
+        return base.VisitAfterBinding(node, arg);
+      }
+    }
+  }
+
+  class Skolemizer : LetBindingScopeVisitor
   {
     /*
      * The method Skolemize performs best-effort skolemization of the input expression expr.
@@ -885,7 +977,7 @@ namespace Microsoft.Boogie.VCExprAST
       var retExpr = (VCExprQuantifier) base.Visit(node, arg);
       retExpr.Info.instantiationExprs.ForEach(kv =>
       {
-        CollectionExtensions.ForEach(kv.Value, expr => { qiEngine.AddTerm(kv.Key, expr.Accept(this, arg)); });
+        CollectionExtensions.ForEach(kv.Value, expr => { qiEngine.AddTerm(kv.Key, Close(expr.Accept(this, arg))); });
       });
       foreach (var x in node.BoundVars)
       {
@@ -895,11 +987,12 @@ namespace Microsoft.Boogie.VCExprAST
     }
   }
   
-  class Factorizer : MutatingVCExprVisitor<bool>
+  class Factorizer : LetBindingScopeVisitor
   {
     /* 
      * The method Factorize factors out quantified expressions in expr replacing them with a bound variable.
      * The binding between the bound variable and the quantifier replaced by it is registered in qiEngine.
+     * Needed enclosing let definitions are retained in bodies, triggers, and pool expressions.
      */
     
     private QuantifierInstantiationEngine qiEngine;
@@ -921,8 +1014,25 @@ namespace Microsoft.Boogie.VCExprAST
     public override VCExpr Visit(VCExprQuantifier node, bool arg)
     {
       return quantifierPolarities.TryGetValue(node, out var polarity)
-        ? qiEngine.BindQuantifier(node, polarity)
+        ? qiEngine.BindQuantifier(CloseOverLetBindings(node), polarity)
         : node;
+    }
+
+    private VCExprQuantifier CloseOverLetBindings(VCExprQuantifier node)
+    {
+      if (letBindings.Count == 0)
+      {
+        return node;
+      }
+
+      var triggers = node.Triggers.Select(trigger =>
+        Gen.Trigger(trigger.Pos, trigger.Exprs.Select(Close).ToList())).ToList();
+      var sources = node.Info.instantiationExprs.ToDictionary(
+        pair => pair.Key, pair => pair.Value.Select(Close).ToHashSet());
+      var info = new VCQuantifierInfo(node.Info.qid, node.Info.uniqueId, node.Info.weight,
+        node.Info.instantiationLabels, sources);
+      return (VCExprQuantifier)Gen.Quantify(node.Quan, node.TypeParameters, node.BoundVars,
+        triggers, info, Close(node.Body));
     }
   }
   
