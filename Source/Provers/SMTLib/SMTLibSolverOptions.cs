@@ -30,6 +30,7 @@ namespace Microsoft.Boogie.SMTLib
     Z3,
     CVC5,
     YICES2,
+    SUNDANCE,
     NoOpWithZ3Options,
   }
 
@@ -47,6 +48,20 @@ namespace Microsoft.Boogie.SMTLib
     
     public SMTLibSolverOptions(SMTLibOptions libOptions) : base(libOptions)
     {
+    }
+
+    /// <summary>
+    /// The command-line arguments for a new solver process.
+    /// </summary>
+    public string SolverCommandLine()
+    {
+      if (Solver != SolverKind.SUNDANCE) {
+        return string.Join(" ", SolverArguments);
+      }
+      // Sundance takes its time limit in whole seconds, and reads its input
+      // from a file rather than from standard input.
+      var seconds = (TimeLimit + 999) / 1000;
+      return string.Join(" ", SolverArguments.Append($"--timeout {seconds}").Append("/dev/stdin"));
     }
 
     public void AddSolverArgument(string s)
@@ -109,8 +124,11 @@ namespace Microsoft.Boogie.SMTLib
           case "yices2":
             Solver = SolverKind.YICES2;
             break;
+          case "sundance":
+            Solver = SolverKind.SUNDANCE;
+            break;
           default:
-            ReportError("Invalid SOLVER value; must be 'Z3' or 'CVC5' or 'Yices2' or 'noop'");
+            ReportError("Invalid SOLVER value; must be 'Z3' or 'CVC5' or 'Yices2' or 'Sundance' or 'noop'");
             return false;
         }
 
@@ -155,6 +173,14 @@ namespace Microsoft.Boogie.SMTLib
 
           SolverBinaryName = "yices-smt2";
           break;
+        case SolverKind.SUNDANCE:
+          // Sundance has no interactive mode: it reads one script, answers its
+          // check-sat, and ignores the other commands, so it needs batch mode.
+          BatchMode = true;
+          // Verification conditions can contain quantifiers without patterns
+          SolverArguments.Add("--infer-triggers");
+          SolverBinaryName = "sundance-smt";
+          break;
         case SolverKind.NoOpWithZ3Options:
           ProverName = "noop";
           break;
@@ -177,9 +203,14 @@ namespace Microsoft.Boogie.SMTLib
           @"
 SMT-specific options:
 ~~~~~~~~~~~~~~~~~~~~~
-SOLVER=<string>           Use the given SMT solver (z3, cvc5, yices2, noop;
-                          default: z3). The noop solver never does any solving
-                          and always returns unknown.
+SOLVER=<string>           Use the given SMT solver (z3, cvc5, yices2, sundance,
+                          noop; default: z3). The noop solver never does any
+                          solving and always returns unknown. Sundance
+                          (experimental) always runs in batch mode and
+                          produces no counterexample models, so failed
+                          verification conditions are reported as
+                          inconclusive. Sundance does not support the
+                          array theory: use /useArrayAxioms.
 LOGIC=<string>            Pass (set-logic <string>) to the prover
                           (default: empty, 'ALL' for CVC5)
 USE_WEIGHTS=<bool>        Pass :weight annotations on quantified formulas

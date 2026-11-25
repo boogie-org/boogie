@@ -26,6 +26,9 @@ namespace Microsoft.Boogie.SMTLib
   ///   * `(get-model)` after returning `unsat`
   ///   * `(get-info :reason-unknown)` after returning `sat` or `unsat`
   ///
+  /// Sundance is an exception: it answers only `(check-sat)`, so it is sent
+  /// nothing else, and it produces no models.
+  ///
   /// Working non-interactively precludes certain features, including the
   /// ability to return multiple errors. The current implementation also
   /// does not support evaluating expressions in the result context,
@@ -136,15 +139,20 @@ namespace Microsoft.Boogie.SMTLib
 
     private async Task<SolverOutcome> CheckSat(CancellationToken cancellationToken)
     {
+      // Sundance only answers check-sat (and ignores the other commands), so
+      // asking it for anything else would leave us waiting for a response.
+      var answersOnlyCheckSat = options.Solver == SolverKind.SUNDANCE;
       var requests = new List<string>();
       requests.Add("(check-sat)");
-      requests.Add("(get-info :reason-unknown)");
-      if (options.Solver == SolverKind.Z3) {
-        requests.Add($"(get-info :{Z3.RlimitOption})");
-      }
-      requests.Add("(get-model)");
-      if (options.LibOptions.ProduceUnsatCores) {
-        requests.Add($"(get-unsat-core)");
+      if (!answersOnlyCheckSat) {
+        requests.Add("(get-info :reason-unknown)");
+        if (options.Solver == SolverKind.Z3) {
+          requests.Add($"(get-info :{Z3.RlimitOption})");
+        }
+        requests.Add("(get-model)");
+        if (options.LibOptions.ProduceUnsatCores) {
+          requests.Add($"(get-unsat-core)");
+        }
       }
 
       if (Process == null || HadErrors) {
@@ -170,7 +178,7 @@ namespace Microsoft.Boogie.SMTLib
           responseStack.Pop();
         }
 
-        var unknownSExp = responseStack.Pop();
+        var unknownSExp = responseStack.Count > 0 ? responseStack.Pop() : null;
         if (wasUnknown) {
           result = ParseReasonUnknown(unknownSExp, result);
         }
@@ -190,7 +198,7 @@ namespace Microsoft.Boogie.SMTLib
           errorModel = ParseErrorModel(modelSExp);
         }
 
-        if (options.LibOptions.ProduceUnsatCores) {
+        if (options.LibOptions.ProduceUnsatCores && !answersOnlyCheckSat) {
           if (responseStack.Count > 0) {
             var unsatCoreSExp = responseStack.Pop();
             if (result == SolverOutcome.Valid) {
