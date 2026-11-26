@@ -15,6 +15,8 @@ namespace Microsoft.Boogie
      * calls. The blocks in impl are sorted from entry to exit and processed in
      * reverse order, thus ensuring that a block is processed only once the wlp
      * of all its successors has been computed.
+     * Assignments use simultaneous let bindings to avoid duplicating their
+     * right-hand sides in the precondition and pool hints.
      */
 
     public static List<AssertCmd> HoistAsserts(Implementation impl, ConcurrencyOptions options)
@@ -81,7 +83,7 @@ namespace Microsoft.Boogie
             varToExpr.Add(lhs.DeepAssignedVariable, rhs);
           }
           postconditions = postconditions.Select(assertCmd =>
-            new AssertCmd(assertCmd.tok, SubstitutionHelper.Apply(varToExpr, assertCmd.Expr), Substitute(assertCmd.Attributes, varToExpr))).ToList();
+            new AssertCmd(assertCmd.tok, Substitute(assertCmd.Expr, varToExpr), Substitute(assertCmd.Attributes, varToExpr))).ToList();
         }
         else if (cmd is HavocCmd havocCmd)
         {
@@ -115,8 +117,36 @@ namespace Microsoft.Boogie
       return new QKeyValue(
         kv.tok,
         kv.Key,
-        kv.Params.Select(param => param is Expr expr ? SubstitutionHelper.Apply(always, expr) : param).ToList(),
+        kv.Params.Select(param => param is Expr expr ? Substitute(expr, always) : param).ToList(),
         newKv);
+    }
+
+    private static Expr Substitute(Expr expr, Dictionary<Variable, Expr> always)
+    {
+      var dummies = new List<Variable>();
+      var rhss = new List<Expr>();
+      var replacements = new Dictionary<Variable, Expr>();
+
+      Expr Bind(Variable variable)
+      {
+        if (!always.TryGetValue(variable, out var rhs))
+        {
+          return null;
+        }
+        if (!replacements.TryGetValue(variable, out var replacement))
+        {
+          var dummy = VarHelper.FreshBoundVariable(variable.Name, variable.TypedIdent.Type);
+          replacement = Expr.Ident(dummy);
+          replacements.Add(variable, replacement);
+          dummies.Add(dummy);
+          rhss.Add(rhs);
+        }
+        return replacement;
+      }
+
+      // An identity old-state substitution prevents falling back to Bind.
+      var body = Substituter.Apply(Bind, variable => Expr.Ident(variable), expr);
+      return dummies.Count == 0 ? body : new LetExpr(expr.tok, dummies, rhss, null, body) { Type = expr.Type };
     }
 
     private static AssertCmd Forall(IEnumerable<Variable> vars, AssertCmd assertCmd)
