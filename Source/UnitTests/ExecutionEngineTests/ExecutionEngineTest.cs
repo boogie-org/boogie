@@ -275,6 +275,41 @@ Boogie program verifier finished with 0 verified, 1 error
   }
 
   [Test]
+  public async Task ProcessProgramCancelledBeforeVerificationReturnsFalse() {
+    var options = CommandLineOptions.FromArguments(TextWriter.Null);
+    var engine = ExecutionEngine.CreateWithoutSharedCache(options);
+    var cancellationSource = new CancellationTokenSource();
+    cancellationSource.Cancel();
+
+    var result = Parser.Parse("procedure Foo(x: int) { assert true; }", "fakeFilename1", out var program);
+    Assert.AreEqual(0, result);
+    var success = await engine.ProcessProgram(TextWriter.Null, program, "fakeFilename1",
+      cancellationToken: cancellationSource.Token);
+    Assert.IsFalse(success);
+  }
+
+  [Test]
+  public async Task ProcessFilesCancelledDuringTheFirstFileReturnsFalse() {
+    var options = CommandLineOptions.FromArguments(TextWriter.Null, "-verifySeparately", "-verifySnapshots:0");
+    var cancellationSource = new CancellationTokenSource();
+    options.CreateSolver = (_, _) => {
+      cancellationSource.Cancel();
+      return new UnsatSolver();
+    };
+    var engine = ExecutionEngine.CreateWithoutSharedCache(options);
+
+    var directory = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+    Directory.CreateDirectory(directory);
+    foreach (var snapshot in new[] { "first.v0.bpl", "first.v1.bpl", "second.v0.bpl" }) {
+      await File.WriteAllTextAsync(Path.Combine(directory, snapshot), "procedure Foo(x: int) { assert true; }");
+    }
+    var files = new List<string> { Path.Combine(directory, "first.bpl"), Path.Combine(directory, "second.bpl") };
+
+    var success = await engine.ProcessFiles(TextWriter.Null, files, cancellationToken: cancellationSource.Token);
+    Assert.IsFalse(success);
+  }
+
+  [Test]
   public async Task RunCancelRunCancel() {
     var options = CommandLineOptions.FromArguments(TextWriter.Null);
     options.VcsCores = 1;
