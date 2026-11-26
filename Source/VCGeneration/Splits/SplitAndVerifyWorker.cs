@@ -119,15 +119,14 @@ namespace VC
     async Task DoWork(int iteration, Split split, CancellationToken cancellationToken)
     {
       var checker = await split.parent.CheckerPool.FindCheckerFor(split.parent.program, split, cancellationToken);
-      bool doSplit = !split.LastChance;
+      bool proverFailed;
 
       try
       {
         cancellationToken.ThrowIfCancellationRequested();
         await StartCheck(iteration, split, checker, cancellationToken);
         await checker.ProverTask;
-        var proverFailed = ProcessResultAndReleaseChecker(iteration, split, checker);
-        doSplit = doSplit && proverFailed;
+        proverFailed = ProcessResultAndReleaseChecker(iteration, split, checker);
         TotalProverElapsedTime += checker.ProverRunTime;
         await checker.GoBackToIdle();
       }
@@ -138,7 +137,9 @@ namespace VC
         throw;
       }
 
-      if (doSplit)
+      // Examine split.LastChance only if necessary since its calculation
+      // may be expensive for a large procedure
+      if (proverFailed && !split.LastChance)
       {
         await SplitOrReportProverFailure(split, callback, cancellationToken);
       }
