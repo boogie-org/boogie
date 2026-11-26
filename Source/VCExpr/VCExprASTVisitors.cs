@@ -67,6 +67,7 @@ namespace Microsoft.Boogie.VCExprAST
     Result VisitImpliesOp(VCExprNAry node, Arg arg);
     Result VisitDistinctOp(VCExprNAry node, Arg arg);
     Result VisitFieldAccessOp(VCExprNAry node, Arg arg);
+    Result VisitFieldUpdateOp(VCExprNAry node, Arg arg);
     Result VisitIsConstructorOp(VCExprNAry node, Arg arg);
     Result VisitSelectOp(VCExprNAry node, Arg arg);
     Result VisitStoreOp(VCExprNAry node, Arg arg);
@@ -149,6 +150,12 @@ namespace Microsoft.Boogie.VCExprAST
     }
 
     public Result VisitFieldAccessOp(VCExprNAry node, Arg arg)
+    {
+      Contract.Requires(node != null);
+      throw new NotImplementedException();
+    }
+
+    public Result VisitFieldUpdateOp(VCExprNAry node, Arg arg)
     {
       Contract.Requires(node != null);
       throw new NotImplementedException();
@@ -1082,10 +1089,13 @@ namespace Microsoft.Boogie.VCExprAST
   public class SubstitutingVCExprVisitor
     : MutatingVCExprVisitor<VCExprSubstitution>
   {
-    public SubstitutingVCExprVisitor(VCExpressionGenerator gen)
+    private readonly bool freshenLetBindings;
+
+    public SubstitutingVCExprVisitor(VCExpressionGenerator gen, bool freshenLetBindings = false)
       : base(gen)
     {
       Contract.Requires(gen != null);
+      this.freshenLetBindings = freshenLetBindings;
     }
 
     // can be overwritten if names of bound variables are to be changed
@@ -1224,7 +1234,7 @@ namespace Microsoft.Boogie.VCExprAST
         List<VCExprVar>
           newBoundVars = node.BoundVars;
         Contract.Assert(Cce.NonNullElements(newBoundVars));
-        if (!substitution.TypeSubstIsEmpty)
+        if (freshenLetBindings || !substitution.TypeSubstIsEmpty)
         {
           // replace each bound term variable with a fresh variable of correct type
           newBoundVars = new List<VCExprVar>();
@@ -1320,6 +1330,11 @@ namespace Microsoft.Boogie.VCExprAST
     }
 
     public virtual Result VisitFieldAccessOp(VCExprNAry node, Arg arg)
+    {
+      return StandardResult(node, arg);
+    }
+
+    public virtual Result VisitFieldUpdateOp(VCExprNAry node, Arg arg)
     {
       return StandardResult(node, arg);
     }

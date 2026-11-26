@@ -772,6 +772,47 @@ namespace Microsoft.Boogie.SMTLib
         return true;
       }
 
+      public bool VisitFieldUpdateOp(VCExprNAry node, LineariserOptions options)
+      {
+        var op = (VCExprFieldUpdateOp)node.Op;
+        var constructor = op.DatatypeTypeCtorDecl.Constructors[op.ConstructorIndex];
+        var solver = ExprLineariser.solverOptions.Solver;
+        if (solver is SolverKind.Z3 or SolverKind.NoOpWithZ3Options or SolverKind.CVC5)
+        {
+          var field = constructor.InParams[op.FieldIndex];
+          var name = ExprLineariser.Namer.GetQuotedName(field, field.Name);
+          var updateOperator = solver == SolverKind.CVC5 ? "update" : "update-field";
+          WriteApplication($"(_ {updateOperator} {name})", node, options);
+          return true;
+        }
+
+        var constructorName = ExprLineariser.Namer.GetName(constructor, constructor.Name);
+        var isConstructorName = SMTLibNameUtils.AddQuotes($"is-{constructorName}");
+        wr.Write("(ite ({0} ", isConstructorName);
+        ExprLineariser.Linearise(node[0], options);
+        wr.Write(") ({0}", SMTLibNameUtils.AddQuotes(constructorName));
+        for (int i = 0; i < constructor.InParams.Count; i++)
+        {
+          wr.Write(" ");
+          if (i == op.FieldIndex)
+          {
+            ExprLineariser.Linearise(node[1], options);
+          }
+          else
+          {
+            var field = constructor.InParams[i];
+            var name = ExprLineariser.Namer.GetQuotedName(field, field.Name);
+            wr.Write("({0} ", name);
+            ExprLineariser.Linearise(node[0], options);
+            wr.Write(")");
+          }
+        }
+        wr.Write(") ");
+        ExprLineariser.Linearise(node[0], options);
+        wr.Write(")");
+        return true;
+      }
+
       public bool VisitIsConstructorOp(VCExprNAry node, LineariserOptions options)
       {
         var op = (VCExprIsConstructorOp)node.Op;

@@ -1,26 +1,34 @@
 // RUN: %parallel-boogie -lib:base -timeLimit:0 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-datatype Tensor1D {
-    Tensor1D(start: int, dim0: int, stride0: int)
+function {:inline} Ones<T>(set: [T]bool): [One T]bool {
+    (lambda x: One T:: set[x->val])
 }
 
-datatype Tensor2D {
-    Tensor2D(start: int, dim0: int, dim1: int, stride0: int, stride1: int)
+pure procedure Map_Split_Wrapper<K,V>({:linear_in} m: Map (One K) V, m_w: [K]bool, k: [K]bool)
+    returns ({:linear} m': Map (One K) V, {:linear} l: Map (One K) V);
+requires Set_IsSubset(Ones(m_w), m->dom);
+requires Set_IsSubset(k, m_w);
+ensures Set_IsSubset(Ones(Set_Difference(m_w, k)), m'->dom);
+ensures l->dom == Ones(k);
+
+pure procedure Map_Join_Wrapper<K,V>({:linear_in} m: Map (One K) V, m_w: [K]bool, {:linear_in} l: Map (One K) V, l_w: [K]bool)
+    returns ({:linear} m': Map (One K) V);
+requires Set_IsSubset(Ones(m_w), m->dom);
+requires Set_IsSubset(Ones(l_w), l->dom);
+ensures Set_IsSubset(Ones(Set_Union(m_w, l_w)), m'->dom);
+
+datatype Tensor1D {
+    Tensor1D(start: int, dim0: int, stride0: int)
 }
 
 function {:inline} Slice1D(tensor: Tensor1D, pos0: int, dim0: int): Tensor1D {
     Tensor1D(tensor->start + pos0 * tensor->stride0, dim0, tensor->stride0)
 }
 
-function {:inline} Slice2D(tensor: Tensor2D, pos0: int, pos1: int, dim0: int, dim1: int): Tensor2D {
-    Tensor2D(tensor->start + pos0 * tensor->stride0 + pos1 * tensor->stride1,
-             dim0, dim1, tensor->stride0, tensor->stride1)
-}
-
 function {:inline} Tensor1DAddrs(tensor: Tensor1D): [int]bool {
     (lambda x: int ::
-        (exists {:pool "Tensor1DIndex"} i: int :: {:add_to_pool "A", i}
+        (exists {:pool "Tensor1DIndex"} i: int :: {:add_to_pool "Tensor1DIndexSeed", i}
         0 <= i && i < tensor->dim0 && x == tensor->start + i * tensor->stride0))
 }
 
@@ -31,32 +39,44 @@ requires tensor->stride0 > 0;
     var piece: Tensor1D;
 
     piece := Slice1D(tensor, k, tensor->dim0 - k);
-    assume (forall {:pool "A"} x: int :: (exists y: int:: {:add_to_pool "Tensor1DIndex", x + k} true));
+    assume (forall {:pool "Tensor1DIndexSeed"} x: int :: (exists y: int:: {:add_to_pool "Tensor1DIndex", x + k} true));
     assert Set_IsSubset(Tensor1DAddrs(piece), Tensor1DAddrs(tensor));
 }
 
 pure procedure Tensor1DSliceRemove(tensor: Tensor1D, k: int, {:linear_in} addresses: UnitMap (One int))
-returns ({:linear} remaining: UnitMap (One int), {:linear} removed: UnitMap (One int))
+    returns ({:linear} remaining: UnitMap (One int), {:linear} removed: UnitMap (One int))
 requires 0 <= k && k <= tensor->dim0;
 requires tensor->stride0 > 0;
-requires Vals(addresses->dom) == Tensor1DAddrs(tensor);
+requires Set_IsSubset(Ones(Tensor1DAddrs(tensor)), addresses->dom);
 {
     var piece: Tensor1D;
 
     piece := Slice1D(tensor, k, tensor->dim0 - k);
     remaining := addresses;
-    assume (forall {:pool "A"} x: int :: (exists y: int :: {:add_to_pool "Tensor1DIndex", x + k} true));
+    assume (forall {:pool "Tensor1DIndexSeed"} x: int :: (exists y: int :: {:add_to_pool "Tensor1DIndex", x + k} true));
     call remaining, removed := Map_Split_Wrapper(remaining, Tensor1DAddrs(tensor), Tensor1DAddrs(piece));
-    assert Vals(removed->dom) == Tensor1DAddrs(piece);
-    assert Vals(remaining->dom) == Set_Difference(Tensor1DAddrs(tensor), Tensor1DAddrs(piece));
+    assert removed->dom == Ones(Tensor1DAddrs(piece));
+    assert Set_IsSubset(Ones(Set_Difference(Tensor1DAddrs(tensor), Tensor1DAddrs(piece))), remaining->dom);
 }
 
-pure procedure Map_Split_Wrapper<K,V>({:linear_in} m: Map (One K) V, m_dom_vals: [K]bool, k: [K]bool)
-    returns ({:linear} m': Map (One K) V, {:linear} l: Map (One K) V);
-requires m->dom == Ones(m_dom_vals);
-requires Set_IsSubset(k, m_dom_vals);
-ensures m'->dom == Ones(Set_Difference(m_dom_vals, k));
-ensures l->dom == Ones(k);
+pure procedure Tensor1DSliceRemoveAndReturn(tensor: Tensor1D, k: int, {:linear_in} addresses: UnitMap (One int))
+    returns ({:linear} addresses': UnitMap (One int))
+requires 0 <= k && k <= tensor->dim0;
+requires tensor->stride0 > 0;
+requires Set_IsSubset(Ones(Tensor1DAddrs(tensor)), addresses->dom);
+ensures Set_IsSubset(Ones(Tensor1DAddrs(tensor)), addresses'->dom);
+{
+    var piece: Tensor1D;
+    var remaining: UnitMap (One int);
+    var removed: UnitMap (One int);
+
+    piece := Slice1D(tensor, k, tensor->dim0 - k);
+    remaining := addresses;
+    assume (forall {:pool "Tensor1DIndexSeed"} x: int :: (exists y: int :: {:add_to_pool "Tensor1DIndex", x + k} true));
+    call remaining, removed := Map_Split_Wrapper(remaining, Tensor1DAddrs(tensor), Tensor1DAddrs(piece));
+    call addresses' := Map_Join_Wrapper(remaining, Set_Difference(Tensor1DAddrs(tensor), Tensor1DAddrs(piece)),
+                                        removed, Tensor1DAddrs(piece));
+}
 
 procedure Tensor1DRepeatedSlices(tensor: Tensor1D)
 requires 0 <= tensor->dim0;
@@ -77,7 +97,7 @@ requires tensor->stride0 > 0;
         assume 0 < size && size <= remaining->dim0;
 
         // Supply index translations without adding mathematical assumptions.
-        assume (forall {:pool "A"} x: int :: (exists y: int :: {:add_to_pool "Tensor1DIndex", x,  x + consumed} true));
+        assume (forall {:pool "Tensor1DIndexSeed"} x: int :: (exists y: int :: {:add_to_pool "Tensor1DIndex", x,  x + consumed} true));
 
         piece := Slice1D(remaining, 0, size);
         assert Set_IsSubset(Tensor1DAddrs(piece), Tensor1DAddrs(remaining));
@@ -92,6 +112,23 @@ requires tensor->stride0 > 0;
     assert processed == tensor;
 }
 
+procedure Tensor1DSplitSubsetDifference(tensor: Tensor1D, k: int)
+requires 0 <= k && k <= tensor->dim0;
+requires tensor->stride0 > 0;
+{
+    var slice_0, slice_1: Tensor1D;
+    var ids, ids_0, ids_1: [int]bool;
+
+    ids := Tensor1DAddrs(tensor);
+    slice_0 := Slice1D(tensor, 0, k);
+    slice_1 := Slice1D(tensor, k, tensor->dim0 - k);
+    ids_0 := Tensor1DAddrs(slice_0);
+    ids_1 := Tensor1DAddrs(slice_1);
+    assume (forall {:pool "Tensor1DIndexSeed"} x: int ::
+        (exists y: int :: {:add_to_pool "Tensor1DIndex", x, x + k} true));
+    assert Set_IsSubset(ids_1, Set_Difference(ids, ids_0));
+}
+
 procedure Tensor1DSplitDisjoint(tensor: Tensor1D, k: int)
 requires 0 <= k && k <= tensor->dim0;
 requires tensor->stride0 != 0;
@@ -99,6 +136,16 @@ requires tensor->stride0 != 0;
     assert (forall x: int ::
         !(Tensor1DAddrs(Slice1D(tensor, 0, k))[x] &&
           Tensor1DAddrs(Slice1D(tensor, k, tensor->dim0 - k))[x]));
+}
+
+
+datatype Tensor2D {
+    Tensor2D(start: int, dim0: int, dim1: int, stride0: int, stride1: int)
+}
+
+function {:inline} Slice2D(tensor: Tensor2D, pos0: int, pos1: int, dim0: int, dim1: int): Tensor2D {
+    Tensor2D(tensor->start + pos0 * tensor->stride0 + pos1 * tensor->stride1,
+             dim0, dim1, tensor->stride0, tensor->stride1)
 }
 
 function {:inline} Tensor2DAddrs(tensor: Tensor2D): [int]bool {
@@ -116,12 +163,4 @@ requires tensor->stride1 != 0;
     assert (forall x: int ::
         !(Tensor2DAddrs(Slice2D(tensor, 0, 0, k, tensor->dim1))[x] &&
           Tensor2DAddrs(Slice2D(tensor, k, 0, tensor->dim0 - k, tensor->dim1))[x]));
-}
-
-function {:inline} Ones<T>(set: [T]bool): [One T]bool {
-    (lambda x: One T:: set[x->val])
-}
-
-function {:inline} Vals<T>(one_set: [One T]bool): [T]bool {
-    (lambda x: T:: one_set[One(x)])
 }

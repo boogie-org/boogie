@@ -1084,9 +1084,11 @@ namespace Microsoft.Boogie.SMTLib
           backgroundPredicates = @"
 (set-info :category ""industrial"")
 (declare-sort |T@U| 0)
-(declare-sort |T@T| 0)
-(declare-fun real_pow (Real Real) Real)";
+(declare-sort |T@T| 0)";
         }
+
+        backgroundPredicates += @"
+(declare-fun real_pow (Real Real) Real)";
       }
     }
 
@@ -1345,45 +1347,38 @@ namespace Microsoft.Boogie.SMTLib
       return expr.ToString().Replace(" ", "").Replace("(", "").Replace(")", "");
     }
 
-    private static SExpr ReduceLet(SExpr expr)
+    /// <summary>
+    /// Removes every <c>let</c> from a term in a solver reply by substituting its bindings, wherever
+    /// it occurs: z3 shares the subterms of a large value through nested lets, as in
+    /// <c>(let ((a!1 ...)) (let ((a!2 (store a!1 ...))) (store a!2 ...)))</c>.
+    /// </summary>
+    public static SExpr ReduceLet(SExpr expr)
     {
-      if (expr.Name != "let")
+      return ReduceLet(expr, new Dictionary<string, SExpr>());
+    }
+
+    private static SExpr ReduceLet(SExpr expr, IReadOnlyDictionary<string, SExpr> scope)
+    {
+      if (expr.Name == "let")
       {
-        return expr;
-      }
-
-      var bindings = expr.Arguments[0].Arguments;
-      var subexpr = expr.Arguments[1];
-
-      var dict = new Dictionary<string, SExpr>();
-      foreach (var binding in bindings)
-      {
-        Contract.Assert(binding.ArgCount == 1);
-        dict.Add(binding.Name, binding.Arguments[0]);
-      }
-
-      Contract.Assert(!dict.ContainsKey(subexpr.Name));
-
-      var workList = new Stack<SExpr>();
-      workList.Push(subexpr);
-      while (workList.Count > 0)
-      {
-        var curr = workList.Pop();
-        for (int i = 0; i < curr.ArgCount; i++)
+        Contract.Assert(expr.ArgCount == 2);
+        // The bindings are evaluated in the enclosing scope, all at once.
+        var inner = new Dictionary<string, SExpr>(scope);
+        foreach (var binding in expr.Arguments[0].Arguments)
         {
-          var arg = curr.Arguments[i];
-          if (dict.ContainsKey(arg.Name))
-          {
-            curr.Arguments[i] = dict[arg.Name];
-          }
-          else
-          {
-            workList.Push(arg);
-          }
+          Contract.Assert(binding.ArgCount == 1);
+          inner[binding.Name] = ReduceLet(binding.Arguments[0], scope);
         }
+
+        return ReduceLet(expr.Arguments[1], inner);
       }
 
-      return subexpr;
+      if (expr.ArgCount == 0)
+      {
+        return scope.TryGetValue(expr.Name, out var value) ? value : expr;
+      }
+
+      return new SExpr(expr.Name, expr.Arguments.Select(argument => ReduceLet(argument, scope)));
     }
 
     protected static object ParseArrayFromProverResponse(SExpr resp)
