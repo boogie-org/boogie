@@ -1082,9 +1082,11 @@ namespace Microsoft.Boogie.SMTLib
           backgroundPredicates = @"
 (set-info :category ""industrial"")
 (declare-sort |T@U| 0)
-(declare-sort |T@T| 0)
-(declare-fun real_pow (Real Real) Real)";
+(declare-sort |T@T| 0)";
         }
+
+        backgroundPredicates += @"
+(declare-fun real_pow (Real Real) Real)";
       }
     }
 

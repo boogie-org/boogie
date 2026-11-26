@@ -184,7 +184,7 @@ namespace Microsoft.Boogie
 
       private Dictionary<Variable, List<Variable>> varCopies;
       private Dictionary<Variable, Variable> copyToOriginalVar;
-      private Dictionary<Variable, Expr> varToExpr;
+      private HashSet<Variable> definedVars;
       private List<Expr> pathExprs;
 
       private Dictionary<Variable, Variable> frameIntermediateCopy;
@@ -327,11 +327,11 @@ namespace Microsoft.Boogie
 
       private void SetDefinedVariables()
       {
-        varToExpr = new Dictionary<Variable, Expr>();
+        definedVars = new HashSet<Variable>();
         foreach (var v in trc.PreStateVars)
         {
           var vFirst = varCopies[v][0];
-          varToExpr[vFirst] = Expr.Ident(vFirst);
+          definedVars.Add(vFirst);
         }
 
         if (!trc.ignorePostState)
@@ -339,7 +339,7 @@ namespace Microsoft.Boogie
           foreach (var v in trc.PostStateVars)
           {
             var vLast = varCopies[v].Last();
-            varToExpr[vLast] = Expr.Ident(vLast);
+            definedVars.Add(vLast);
           }
         }
       }
@@ -361,13 +361,27 @@ namespace Microsoft.Boogie
         }
         else if (trc.IsJoint)
         {
-          TryElimination(frameIntermediateCopy.Values.Except(varToExpr.Keys));
+          TryElimination(frameIntermediateCopy.Values.Except(definedVars));
         }
       }
 
       private void TryElimination(IEnumerable<Variable> extraDefinedVariables)
       {
-        bool Defined(Variable v) => varToExpr.ContainsKey(v) || extraDefinedVariables.Contains(v);
+        var currentDefinedVars = definedVars.Union(extraDefinedVariables).ToHashSet();
+        var introducedVariables = AllIntroducedVariables.ToHashSet();
+        var definitions = new Dictionary<Variable, Expr>();
+        var definitionOrder = new List<Variable>();
+        var replacements = new Dictionary<Variable, Variable>();
+
+        void Define(Variable variable, Expr expr)
+        {
+          currentDefinedVars.Add(variable);
+          definitions.Add(variable, expr);
+          definitionOrder.Add(variable);
+          var replacement = VarHelper.FreshBoundVariable(variable.Name, variable.TypedIdent.Type);
+          replacements.Add(variable, replacement);
+        }
+
         bool changed;
         do
         {
@@ -375,15 +389,16 @@ namespace Microsoft.Boogie
           var remainingAssignments = new List<Assignment>();
           foreach (var assignment in assignments)
           {
-            if (!Defined(assignment.Var) &&
-                VariableCollector.Collect(assignment.Expr).Intersect(AllIntroducedVariables).All(Defined))
+            if (!currentDefinedVars.Contains(assignment.Var) &&
+                VariableCollector.Collect(assignment.Expr).Intersect(introducedVariables).All(currentDefinedVars.Contains))
             {
-              varToExpr[assignment.Var] = SubstitutionHelper.Apply(varToExpr, assignment.Expr);
+              Define(assignment.Var, assignment.Expr);
               changed = true;
             }
-            else if (Defined(assignment.Var) && assignment.Expr is IdentifierExpr ie && !Defined(ie.Decl))
+            else if (currentDefinedVars.Contains(assignment.Var) && assignment.Expr is IdentifierExpr ie &&
+                     introducedVariables.Contains(ie.Decl) && !currentDefinedVars.Contains(ie.Decl))
             {
-              varToExpr[ie.Decl] = SubstitutionHelper.Apply(varToExpr, Expr.Ident(assignment.Var));
+              Define(ie.Decl, Expr.Ident(assignment.Var));
               changed = true;
             }
             else
@@ -391,16 +406,66 @@ namespace Microsoft.Boogie
               remainingAssignments.Add(assignment);
             }
           }
+          assignments = remainingAssignments;
+        } while (changed);
 
-          Substitution sub = Substituter.SubstitutionFromDictionary(varToExpr);
-          foreach (var assignment in remainingAssignments)
+        if (definitionOrder.Count == 0)
+        {
+          return;
+        }
+
+        Expr BindDefinitions(Expr expr)
+        {
+          var needed = VariableCollector.Collect(expr).ToHashSet();
+          for (int i = definitionOrder.Count - 1; i >= 0; i--)
           {
-            assignment.Expr = Substituter.Apply(sub, assignment.Expr);
+            var variable = definitionOrder[i];
+            if (needed.Contains(variable))
+            {
+              needed.UnionWith(VariableCollector.Collect(definitions[variable]));
+            }
           }
 
-          assignments = remainingAssignments;
-          assumes = SubstitutionHelper.Apply(sub, assumes).ToList();
-        } while (changed);
+          if (!definitionOrder.Any(needed.Contains))
+          {
+            return expr;
+          }
+
+          var body = SubstitutionHelper.Apply(replacements, expr);
+          for (int i = definitionOrder.Count - 1; i >= 0; i--)
+          {
+            var variable = definitionOrder[i];
+            if (needed.Contains(variable))
+            {
+              body = new LetExpr(Token.NoToken, new List<Variable> { replacements[variable] },
+                new List<Expr> { SubstitutionHelper.Apply(replacements, definitions[variable]) }, null, body)
+              {
+                Type = body.Type
+              };
+            }
+          }
+          return body;
+        }
+
+        assumes = assumes.Select(BindDefinitions).ToList();
+        var residualAssignments = new List<Assignment>();
+        foreach (var assignment in assignments)
+        {
+          if (definitions.ContainsKey(assignment.Var))
+          {
+            // Keep both sides under the same let scope when the lhs was eliminated.
+            assumes.Add(BindDefinitions(Expr.Eq(Expr.Ident(assignment.Var), assignment.Expr)));
+          }
+          else
+          {
+            assignment.Expr = BindDefinitions(assignment.Expr);
+            residualAssignments.Add(assignment);
+          }
+        }
+        assignments = residualAssignments;
+
+        // Remember eliminated versions; their uses are now scoped by lets.
+        definedVars.UnionWith(definitionOrder);
       }
 
       private void ComputeTransitionRelationExpr()
@@ -447,20 +512,13 @@ namespace Microsoft.Boogie
 
         foreach (var assignment in assignments)
         {
-          // If a variable is forward and backward assigned, we might
-          // have a substitution for the lhs here.
-          if (!varToExpr.TryGetValue(assignment.Var, out Expr x))
-          {
-            x = Expr.Ident(assignment.Var);
-          }
-
-          pathExprs.Add(Expr.Eq(x, assignment.Expr));
+          pathExprs.Add(Expr.Eq(Expr.Ident(assignment.Var), assignment.Expr));
         }
       }
 
       private IEnumerable<Variable> NotEliminatedVars =>
         pathExprs.SelectMany(x => VariableCollector.Collect(x)).Intersect(AllIntroducedVariables)
-          .Except(varToExpr.Keys);
+          .Except(definedVars);
 
       private void AddBoundVariablesForRemainingVars()
       {

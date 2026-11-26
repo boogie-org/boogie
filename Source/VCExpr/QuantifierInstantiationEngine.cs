@@ -50,6 +50,7 @@ namespace Microsoft.Boogie.VCExprAST
     private Dictionary<string, HashSet<VCExpr>> accLabelToInstances;
     private Dictionary<Function, HashSet<List<VCExpr>>> lambdaToInstances;
     private Dictionary<Function, HashSet<List<VCExpr>>> accLambdaToInstances;
+    private readonly Dictionary<Type, List<VCExprVar>> canonicalLetVariables = new();
     private readonly Dictionary<(VCExpr Left, VCExpr Right), VCExpr> setEqualityAxioms = new(new SetEqualityComparer());
     private readonly Queue<(VCExpr Left, VCExpr Right)> pendingSetEqualities = new();
     private readonly Dictionary<Type, HashSet<VCExprVar>> setEqualityWitnesses = new();
@@ -135,20 +136,10 @@ namespace Microsoft.Boogie.VCExprAST
 
     internal VCExpr BindQuantifier(VCExprQuantifier node, Polarity polarity)
     {
-      if (node.TypeParameters.Count > 0)
-      {
-        return node;
-      }
-      var boundVariableToLabels = node.Info.instantiationLabels;
-      if (boundVariableToLabels.Count < node.BoundVars.Count ||
-          boundVariableToLabels.Any(kv => kv.Value.Count == 0))
-      {
-        return node;
-      }
       var v = new VCExprVar($"{quantifierBindingNamePrefix}{quantifierBinding.Count}", Type.Bool);
       quantifierBinding[v] = node;
       Contract.Assert(!quantifierInstantiationInfo.ContainsKey(node));
-      quantifierInstantiationInfo[node] = new QuantifierInstantiationInfo(boundVariableToLabels, polarity);
+      quantifierInstantiationInfo[node] = new QuantifierInstantiationInfo(node.Info.instantiationLabels, polarity);
       return v;
     }
 
@@ -158,7 +149,14 @@ namespace Microsoft.Boogie.VCExprAST
       {
         labelToInstances[label] = new HashSet<VCExpr>();
       }
-      labelToInstances[label].Add(term);
+      labelToInstances[label].Add(FreshenPoolTerm(term));
+    }
+
+    private VCExpr FreshenPoolTerm(VCExpr term)
+    {
+      var substituter = new SubstitutingVCExprVisitor(vcExprGen, freshenLetBindings: true);
+      return substituter.Mutate(term,
+        new VCExprSubstitution(new Dictionary<VCExprVar, VCExpr>(), new Dictionary<TypeVariable, Type>()));
     }
 
     public bool IsQuantifierBinding(VCExprVar vcExprVar)
@@ -235,7 +233,18 @@ namespace Microsoft.Boogie.VCExprAST
 
     public void AddLambdaInstances(Dictionary<Function, HashSet<List<VCExpr>>> lambdaFunctionToInstances)
     {
-      AddDictionary(lambdaFunctionToInstances, this.lambdaToInstances);
+      foreach (var pair in lambdaFunctionToInstances)
+      {
+        if (!lambdaToInstances.TryGetValue(pair.Key, out var instances))
+        {
+          instances = new HashSet<List<VCExpr>>(new ListComparer<VCExpr>());
+          lambdaToInstances.Add(pair.Key, instances);
+        }
+        foreach (var instance in pair.Value)
+        {
+          instances.Add(instance.Select(FreshenPoolTerm).ToList());
+        }
+      }
     }
 
     public static HashSet<string> FindInstantiationHints(Variable v)
@@ -325,7 +334,13 @@ namespace Microsoft.Boogie.VCExprAST
     {
       impl.Blocks.ForEach(block => block.Cmds.OfType<PredicateCmd>().ForEach(predicateCmd =>
       {
-        AddDictionary(FindInstantiationSources(predicateCmd, exprTranslator), labelToInstances);
+        foreach (var pair in FindInstantiationSources(predicateCmd, exprTranslator))
+        {
+          foreach (var term in pair.Value)
+          {
+            AddTerm(pair.Key, term);
+          }
+        }
       }));
       vcExpr = Skolemizer.Skolemize(this, Polarity.Negative, vcExpr);
       while (labelToInstances.Count > 0 || lambdaToInstances.Count > 0 || pendingSetEqualities.Count > 0)
@@ -500,7 +515,11 @@ namespace Microsoft.Boogie.VCExprAST
     private void InstantiateQuantifierAtInstance(VCExprQuantifier quantifierExpr, List<VCExpr> instance)
     {
       var quantifierInstantiationInfo = this.quantifierInstantiationInfo[quantifierExpr];
-      if (quantifierInstantiationInfo.instances.ContainsKey(instance))
+      var canonicalInstance = instance.Select(term =>
+        new InstanceCanonicalizer(vcExprGen, canonicalLetVariables).Mutate(term,
+          new VCExprSubstitution(new Dictionary<VCExprVar, VCExpr>(), new Dictionary<TypeVariable, Type>())))
+        .ToList();
+      if (quantifierInstantiationInfo.instances.ContainsKey(canonicalInstance))
       {
         return;
       }
@@ -520,13 +539,53 @@ namespace Microsoft.Boogie.VCExprAST
           x => instance[x]), new Dictionary<TypeVariable, Type>());
       var substituter = new SubstitutingVCExprVisitor(vcExprGen);
       var instantiation = substituter.Mutate(quantifierExpr.Body, subst);
-      quantifierInstantiationInfo.instances[new List<VCExpr>(instance)] =
+      quantifierInstantiationInfo.instances[canonicalInstance] =
         Skolemizer.Skolemize(this, quantifierInstantiationInfo.polarity, instantiation);
       // The following guard ensures that a lambda that is instantiated via set-equality witnesses
       // is not dropped by virtue of those instantiations.
       if (quantifierExpr.Info.instantiationLabels.Values.Any(labels => labels.Count > 0))
       {
         instantiatedPoolQuantifiers.Add(quantifierExpr.Info.uniqueId);
+      }
+    }
+
+    private sealed class InstanceCanonicalizer : SubstitutingVCExprVisitor
+    {
+      private readonly Dictionary<Type, List<VCExprVar>> variables;
+      private int nextVariable;
+
+      public InstanceCanonicalizer(VCExpressionGenerator gen, Dictionary<Type, List<VCExprVar>> variables)
+        : base(gen)
+      {
+        this.variables = variables;
+      }
+
+      public override VCExpr Visit(VCExprLet node, VCExprSubstitution substitution)
+      {
+        substitution.PushScope();
+        var boundVariables = new List<VCExprVar>();
+        foreach (var binding in node)
+        {
+          var type = binding.V.Type;
+          if (!variables.TryGetValue(type, out var canonicalVariables))
+          {
+            canonicalVariables = new List<VCExprVar>();
+            variables.Add(type, canonicalVariables);
+          }
+          while (canonicalVariables.Count <= nextVariable)
+          {
+            canonicalVariables.Add(Gen.Variable($"$canonicalLet{canonicalVariables.Count}", type));
+          }
+          var variable = canonicalVariables[nextVariable++];
+          boundVariables.Add(variable);
+          substitution[binding.V] = variable;
+        }
+
+        var bindings = node.Select((binding, index) =>
+          Gen.LetBinding(boundVariables[index], Mutate(binding.E, substitution))).ToList();
+        var body = Mutate(node.Body, substitution);
+        substitution.PopScope();
+        return Gen.Let(bindings, body);
       }
     }
   }
@@ -825,7 +884,99 @@ namespace Microsoft.Boogie.VCExprAST
     }
   }
 
-  class Skolemizer : MutatingVCExprVisitor<bool>
+  abstract class LetBindingScopeVisitor : MutatingVCExprVisitor<bool>
+  {
+    protected readonly List<VCExprLetBinding> letBindings = new();
+
+    protected LetBindingScopeVisitor(VCExpressionGenerator gen) : base(gen)
+    {
+    }
+
+    public override VCExpr Visit(VCExprLet node, bool arg)
+    {
+      var bindingByVariable = node.ToDictionary(binding => binding.V);
+      var dependencies = new GraphUtil.Graph<VCExprLetBinding>();
+      foreach (var binding in node)
+      {
+        dependencies.Nodes.Add(binding);
+        foreach (var variable in FreeVariables(binding.E))
+        {
+          if (bindingByVariable.TryGetValue(variable, out var referencedBinding))
+          {
+            // Since binding depends on referencedBinding,
+            // binding must appear before referencedBinding in letBindings.
+            // Therefore, add an edge.
+            dependencies.AddEdge(referencedBinding, binding);
+          }
+        }
+      }
+      var sortedBindings = dependencies.TopologicalSort();
+      Contract.Assert(sortedBindings.Count == node.Length);
+      var start = letBindings.Count;
+      var bindings = new List<VCExprLetBinding>();
+      foreach (var binding in sortedBindings)
+      {
+        // Visit the RHS of each binding before adding its variable to the
+        // enclosing let scope. This traversal makes sure that let bindings
+        // encountered during the traversal of the RHS are popped by the time
+        // processing of this let expression continues.
+        var translated = Gen.LetBinding(binding.V, binding.E.Accept(this, arg));
+        bindings.Add(translated);
+        letBindings.Add(translated);
+      }
+      var result = Gen.Let(bindings, node.Body.Accept(this, arg));
+      letBindings.RemoveRange(start, letBindings.Count - start);
+      return result;
+    }
+
+    protected VCExpr Close(VCExpr expression)
+    {
+      if (letBindings.Count == 0)
+      {
+        return expression;
+      }
+      var needed = FreeVariables(expression);
+      for (int i = letBindings.Count - 1; i >= 0; i--)
+      {
+        var binding = letBindings[i];
+        if (needed.Contains(binding.V))
+        {
+          needed.UnionWith(FreeVariables(binding.E));
+        }
+      }
+      for (int i = letBindings.Count - 1; i >= 0; i--)
+      {
+        var binding = letBindings[i];
+        if (needed.Contains(binding.V))
+        {
+          expression = Gen.Let(new List<VCExprLetBinding> { binding }, expression);
+        }
+      }
+      return expression;
+    }
+
+    private static HashSet<VCExprVar> FreeVariables(VCExpr expression)
+    {
+      var collector = new PoolFreeVariableCollector();
+      collector.Traverse(expression, true);
+      return collector.FreeTermVars;
+    }
+
+    private class PoolFreeVariableCollector : FreeVariableCollector
+    {
+      protected override bool VisitAfterBinding(VCExprQuantifier node, bool arg)
+      {
+        // Pool metadata may be the only reference to an enclosing let variable.
+        foreach (var expression in node.Info.instantiationExprs.Values.SelectMany(expressions => expressions))
+        {
+          expression.Accept(this, arg);
+        }
+        return base.VisitAfterBinding(node, arg);
+      }
+    }
+  }
+
+  class Skolemizer : LetBindingScopeVisitor
   {
     /*
      * The method Skolemize performs best-effort skolemization of the input expression expr.
@@ -885,7 +1036,7 @@ namespace Microsoft.Boogie.VCExprAST
       var retExpr = (VCExprQuantifier) base.Visit(node, arg);
       retExpr.Info.instantiationExprs.ForEach(kv =>
       {
-        CollectionExtensions.ForEach(kv.Value, expr => { qiEngine.AddTerm(kv.Key, expr.Accept(this, arg)); });
+        CollectionExtensions.ForEach(kv.Value, expr => { qiEngine.AddTerm(kv.Key, Close(expr.Accept(this, arg))); });
       });
       foreach (var x in node.BoundVars)
       {
@@ -895,11 +1046,12 @@ namespace Microsoft.Boogie.VCExprAST
     }
   }
   
-  class Factorizer : MutatingVCExprVisitor<bool>
+  class Factorizer : LetBindingScopeVisitor
   {
     /* 
      * The method Factorize factors out quantified expressions in expr replacing them with a bound variable.
      * The binding between the bound variable and the quantifier replaced by it is registered in qiEngine.
+     * Needed enclosing let definitions are retained in bodies, triggers, and pool expressions.
      */
     
     private QuantifierInstantiationEngine qiEngine;
@@ -920,9 +1072,38 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override VCExpr Visit(VCExprQuantifier node, bool arg)
     {
-      return quantifierPolarities.TryGetValue(node, out var polarity)
-        ? qiEngine.BindQuantifier(node, polarity)
-        : node;
+      if (!quantifierPolarities.TryGetValue(node, out var polarity))
+      {
+        return node;
+      }
+      if (node.TypeParameters.Count > 0)
+      {
+        return node;
+      }
+      var boundVariableToLabels = node.Info.instantiationLabels;
+      if (boundVariableToLabels.Count < node.BoundVars.Count ||
+          boundVariableToLabels.Any(kv => kv.Value.Count == 0))
+      {
+        return node;
+      }
+      return qiEngine.BindQuantifier(CloseOverLetBindings(node), polarity);
+    }
+
+    private VCExprQuantifier CloseOverLetBindings(VCExprQuantifier node)
+    {
+      if (letBindings.Count == 0)
+      {
+        return node;
+      }
+
+      var triggers = node.Triggers.Select(trigger =>
+        Gen.Trigger(trigger.Pos, trigger.Exprs.Select(Close).ToList())).ToList();
+      var sources = node.Info.instantiationExprs.ToDictionary(
+        pair => pair.Key, pair => pair.Value.Select(Close).ToHashSet());
+      var info = new VCQuantifierInfo(node.Info.qid, node.Info.uniqueId, node.Info.weight,
+        node.Info.instantiationLabels, sources);
+      return (VCExprQuantifier)Gen.Quantify(node.Quan, node.TypeParameters, node.BoundVars,
+        triggers, info, Close(node.Body));
     }
   }
   

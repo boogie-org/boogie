@@ -13,6 +13,9 @@ k!1 -> {
   0 -> (_ (+zero) 8 24)
   else -> (_ (+zero) 8 24)
 }
+real_pow -> {
+  else -> 0.0
+}
 tickleBool -> {
   false -> true
   true -> true
