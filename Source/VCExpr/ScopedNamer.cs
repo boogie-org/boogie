@@ -17,6 +17,9 @@ namespace Microsoft.Boogie.VCExprAST
       boogieDeterminedNames.Add(name);
     }
       
+    // The SMT-LIB prover reserves the names {:builtin} functions print as; NextFreeName skips them.
+    public ISet<string> ReservedNames = new HashSet<string>();
+
     public string Spacer = "@@";
     protected IDictionary<Object, string> GlobalNames;
 
@@ -43,6 +46,7 @@ namespace Microsoft.Boogie.VCExprAST
       Contract.Requires(namer != null);
 
       Spacer = namer.Spacer;
+      ReservedNames = namer.ReservedNames;
       GlobalNames = new Dictionary<Object, string>(namer.GlobalNames);
       LocalNames = new List<IDictionary<Object, string>>();
 
@@ -117,7 +121,7 @@ namespace Microsoft.Boogie.VCExprAST
         counter = 0;
       }
 
-      while (UsedNames.Contains(candidate))
+      while (UsedNames.Contains(candidate) || ReservedNames.Contains(candidate))
       {
         candidate = baseName + Spacer + counter;
         counter = counter + 1;

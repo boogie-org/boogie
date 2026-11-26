@@ -438,9 +438,11 @@ namespace Microsoft.Boogie
     public static readonly VCExprOp ToIntOp = new VCExprNAryOp(1, Type.Int);
     public static readonly VCExprOp ToRealOp = new VCExprNAryOp(1, Type.Real);
 
-    public static readonly VCExprOp TickleBoolOp = new VCExprCustomOp("tickleBool", 1, Type.Bool);
+    public const string TickleBoolName = "tickleBool";
+    public static readonly VCExprOp TickleBoolOp = new VCExprCustomOp(TickleBoolName, 1, Type.Bool);
 
-    public static readonly VCExprOp TimeoutDiagnosticsOp = new VCExprCustomOp("timeoutDiagnostics", 1, Type.Bool);
+    public const string TimeoutDiagnosticsName = "timeoutDiagnostics";
+    public static readonly VCExprOp TimeoutDiagnosticsOp = new VCExprCustomOp(TimeoutDiagnosticsName, 1, Type.Bool);
 
     // These operators are temporarily added to VCExprs to track where labels for optimization and unsat
     // core generation should go, but don't appear in the final SMT-Lib output.
