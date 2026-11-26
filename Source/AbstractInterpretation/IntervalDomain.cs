@@ -697,6 +697,12 @@ namespace Microsoft.Boogie.AbstractInterpretation
               var n = new Node(v, null, BigInteger.One);
               return new E(n);
             }
+
+            var pushed = Expr.Not(e.Args[0]);
+            if (pushed is not NAryExpr { Fun: UnaryOperator { Op: UnaryOperator.Opcode.Not } })
+            {
+              return Constraint(pushed, state);
+            }
           }
         }
         else if (e.Fun is BinaryOperator)
