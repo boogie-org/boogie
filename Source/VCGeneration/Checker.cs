@@ -68,7 +68,8 @@ namespace Microsoft.Boogie
 
       status = CheckerStatus.Idle;
       // Test beginCheck first: only once it has completed is ProverTask the task it started.
-      if (beginCheck is { IsCompleted: false } || ProverTask is { IsCompleted: false }) {
+      var checkStillRunning = beginCheck is { IsCompleted: false } || ProverTask is { IsCompleted: false };
+      if (checkStillRunning) {
         Pool.CheckerDied();
         Close();
         return;
