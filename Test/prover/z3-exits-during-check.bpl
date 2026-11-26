@@ -1,4 +1,4 @@
-// RUN: %boogie /proverOpt:C:"-T:1" "%s" > "%t"
+// RUN: ! %boogie /proverOpt:C:"-T:1" "%s" > "%t"
 // RUN: %OutputCheck --file-to-check "%t" "%s"
 // CHECK-L: Verification encountered solver exception (Cubes1)
 // CHECK-L: Verification encountered solver exception (Cubes2)
