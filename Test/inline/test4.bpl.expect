@@ -64,7 +64,7 @@ implementation {:inline 1} find(A: [int]int, size: int, x: int) returns (ret: in
     goto anon4_LoopHead;
 
   anon4_LoopDone:
-    assume {:partition} size <= i;
+    assume {:partition} !(i < size);
     goto anon3;
 
   anon3:
@@ -192,7 +192,7 @@ implementation main(x: int)
     goto inline$find$0$Return;
 
   inline$find$0$anon4_LoopDone:
-    assume {:partition} inline$find$0$size <= inline$find$0$i;
+    assume {:partition} !(inline$find$0$i < inline$find$0$size);
     goto inline$find$0$anon3;
 
   inline$find$0$Return:
@@ -290,7 +290,7 @@ implementation {:inline 1} find(A: [int]int, size: int, x: int) returns (ret: in
     return;
 
   anon4_LoopDone:
-    assume {:partition} size <= i;
+    assume {:partition} !(i < size);
     goto anon3;
 }
 
