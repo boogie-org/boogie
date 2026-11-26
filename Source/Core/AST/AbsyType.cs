@@ -1065,6 +1065,18 @@ namespace Microsoft.Boogie
 
   //=====================================================================
 
+  // The float operators mean these SMT-LIB terms (RNE rounds to nearest, ties to even):
+  //
+  //   x == y, x != y    (= x y), (not (= x y))
+  //   x < y, x <= y     (fp.lt x y), (fp.leq x y)
+  //   x > y, x >= y     (fp.gt x y), (fp.geq x y)
+  //   x + y, x - y      (fp.add RNE x y), (fp.sub RNE x y)
+  //   x * y, x / y      (fp.mul RNE x y), (fp.div RNE x y)
+  //
+  // So == is not IEEE 754 equality (fp.eq): NaN == NaN, and 0.0 != -0.0.
+  // The comparisons, however, are IEEE 754's: false if an operand is NaN, and blind to the sign of zero.
+  // Hence the order is not total: !(x < y) does not imply y <= x, and a NaN satisfies no bound.
+  //
   //Note that the functions in this class were directly copied from the BV class just below
   public class FloatType : Type
   {
