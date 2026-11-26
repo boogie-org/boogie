@@ -94,13 +94,14 @@ namespace VC
       }
     }
 
-    public void CheckerDied()
+    public void DiscardChecker(Checker checker)
     {
       lock (availableCheckers) {
         if (!disposed) {
           checkersSemaphore.Release();
         }
       }
+      checker.Close();
     }
   }
 }

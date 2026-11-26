@@ -70,8 +70,7 @@ namespace Microsoft.Boogie
       // Test beginCheck first: only once it has completed is ProverTask the task it started.
       var checkStillRunning = beginCheck is { IsCompleted: false } || ProverTask is { IsCompleted: false };
       if (checkStillRunning) {
-        Pool.CheckerDied();
-        Close();
+        Pool.DiscardChecker(this);
         return;
       }
       try {
@@ -79,8 +78,7 @@ namespace Microsoft.Boogie
         Pool.AddChecker(this);
       }
       catch(TimeoutException) {
-        Pool.CheckerDied();
-        Close();
+        Pool.DiscardChecker(this);
       }
     }
 
