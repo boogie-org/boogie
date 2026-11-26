@@ -16,6 +16,9 @@ ControlFlow -> {
   0 4 -> 2
   else -> (- 3)
 }
+real_pow -> {
+  else -> 0.0
+}
 tickleBool -> {
   false -> true
   true -> true

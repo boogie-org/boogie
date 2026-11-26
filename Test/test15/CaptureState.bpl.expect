@@ -29,6 +29,9 @@ k!0 -> {
   T@Ref!val!0 T@FieldName!val!0 -> (- 8)
   else -> (- 8)
 }
+real_pow -> {
+  else -> 0.0
+}
 tickleBool -> {
   false -> true
   true -> true
