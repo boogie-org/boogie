@@ -119,19 +119,28 @@ namespace VC
     async Task DoWork(int iteration, Split split, CancellationToken cancellationToken)
     {
       var checker = await split.parent.CheckerPool.FindCheckerFor(split.parent.program, split, cancellationToken);
+      bool doSplit = !split.LastChance;
 
       try
       {
         cancellationToken.ThrowIfCancellationRequested();
         await StartCheck(iteration, split, checker, cancellationToken);
         await checker.ProverTask;
-        await ProcessResultAndReleaseChecker(iteration, split, checker, cancellationToken);
+        var proverFailed = ProcessResultAndReleaseChecker(iteration, split, checker);
+        doSplit = doSplit && proverFailed;
         TotalProverElapsedTime += checker.ProverRunTime;
+        await checker.GoBackToIdle();
       }
       catch
       {
-        await checker.GoBackToIdle();
+        checker.Close();
+        checker.Pool.CheckerDied();
         throw;
+      }
+
+      if (doSplit)
+      {
+        await SplitOrReportProverFailure(split, callback, cancellationToken);
       }
     }
 
@@ -165,8 +174,7 @@ namespace VC
 
     private Implementation Implementation => run.Implementation;
 
-    private async Task ProcessResultAndReleaseChecker(int iteration, Split split, Checker checker,
-      CancellationToken cancellationToken)
+    private bool ProcessResultAndReleaseChecker(int iteration, Split split, Checker checker)
     {
       if (TrackingProgress)
       {
@@ -207,12 +215,10 @@ namespace VC
 
       if (proverFailed)
       {
-        await HandleProverFailure(split, checker, callback, result, cancellationToken);
+        HandleProverFailure(split, checker, callback, result);
       }
-      else
-      {
-        await checker.GoBackToIdle();
-      }
+
+      return proverFailed;
     }
 
     public static bool IsProverFailed(SolverOutcome outcome)
@@ -275,8 +281,8 @@ namespace VC
       }
     }
 
-    private async Task HandleProverFailure(Split split, Checker checker, VerifierCallback callback,
-      VerificationRunResult verificationRunResult, CancellationToken cancellationToken)
+    private void HandleProverFailure(Split split, Checker checker, VerifierCallback callback,
+      VerificationRunResult verificationRunResult)
     {
       if (split.LastChance)
       {
@@ -295,12 +301,12 @@ namespace VC
           CounterExamples = split.Counterexamples
         };
         vcOutcome = VcOutcome.Errors;
-        await checker.GoBackToIdle();
-        return;
       }
+    }
 
-      await checker.GoBackToIdle();
-
+    private async Task SplitOrReportProverFailure(Split split, VerifierCallback callback,
+      CancellationToken cancellationToken)
+    {
       if (maxKeepGoingSplits > 1)
       {
         var newSplits = Split.DoSplit(split, maxVcCost, maxKeepGoingSplits);

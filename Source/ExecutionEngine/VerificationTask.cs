@@ -123,6 +123,7 @@ public class VerificationTask : IVerificationTask {
       yield return new Queued();
     }
     var checker = await checkerTask;
+    var completed = false;
     try
     {
       yield return new Running();
@@ -140,10 +141,16 @@ public class VerificationTask : IVerificationTask {
       var result = Split.ReadOutcome(0, checker, collector);
 
       CacheStatus = new Completed(result);
+      completed = true;
       yield return CacheStatus;
     }
     finally {
-      await checker.GoBackToIdle();
+      if (completed) {
+        await checker.GoBackToIdle();
+      } else {
+        checker.Close();
+        checker.Pool.CheckerDied();
+      }
     }
   }
 
