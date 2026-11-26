@@ -36,7 +36,7 @@ public sealed class ImplementationRunResult
 
   public VcOutcome VcOutcome { get; set; }
   public List<Counterexample> Errors = new();
-  public List<VerificationRunResult> RunResults;
+  public List<VerificationRunResult> RunResults = new();
 
   public ErrorInformation ErrorBeforeVerification { get; set; }
 
