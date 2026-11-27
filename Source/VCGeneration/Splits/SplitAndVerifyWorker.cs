@@ -126,7 +126,7 @@ namespace VC
         cancellationToken.ThrowIfCancellationRequested();
         await StartCheck(iteration, split, checker, cancellationToken);
         await checker.ProverTask;
-        proverFailed = ProcessResultAndReleaseChecker(iteration, split, checker);
+        proverFailed = ProcessResult(iteration, split, checker);
         TotalProverElapsedTime += checker.ProverRunTime;
         await checker.GoBackToIdle();
       }
@@ -175,7 +175,7 @@ namespace VC
 
     private Implementation Implementation => run.Implementation;
 
-    private bool ProcessResultAndReleaseChecker(int iteration, Split split, Checker checker)
+    private bool ProcessResult(int iteration, Split split, Checker checker)
     {
       if (TrackingProgress)
       {
