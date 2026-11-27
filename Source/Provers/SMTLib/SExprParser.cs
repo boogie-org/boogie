@@ -162,6 +162,7 @@ public class SExprParser
         if (top)
         {
           ParseError("stray ')'");
+          Shift();
         }
 
         break;

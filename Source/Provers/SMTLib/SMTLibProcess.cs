@@ -162,7 +162,7 @@ namespace Microsoft.Boogie.SMTLib
           var response = await GetProverResponse();
           if (response == null)
           {
-            throw new ProverDiedException();
+            continue;
           }
 
           if (IsPong(response))
