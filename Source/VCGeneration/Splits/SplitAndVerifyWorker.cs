@@ -124,11 +124,25 @@ namespace VC
       try
       {
         cancellationToken.ThrowIfCancellationRequested();
-        await StartCheck(iteration, split, checker, cancellationToken);
-        await checker.ProverTask;
-        proverFailed = ProcessResult(iteration, split, checker);
-        TotalProverElapsedTime += checker.ProverRunTime;
-        await checker.GoBackToIdle();
+        var result = await StartCheck(iteration, split, checker, cancellationToken);
+        var beganInTime = result == null;
+        if (beganInTime)
+        {
+          await checker.ProverTask;
+          result = split.ReadOutcome(iteration, checker, callback);
+        }
+        proverFailed = ProcessResult(split, checker, result);
+        TotalProverElapsedTime += result.RunTime;
+        if (beganInTime)
+        {
+          await checker.GoBackToIdle();
+        }
+        else
+        {
+          // The check that timed out may still be sending its VC to the solver.
+          checker.Close();
+          checker.Pool.CheckerDied();
+        }
       }
       catch
       {
@@ -145,7 +159,8 @@ namespace VC
       }
     }
 
-    private async Task StartCheck(int iteration, Split split, Checker checker, CancellationToken cancellationToken)
+    private async Task<VerificationRunResult> StartCheck(int iteration, Split split, Checker checker,
+      CancellationToken cancellationToken)
     {
       if (options.Trace && DoSplitting)
       {
@@ -166,16 +181,12 @@ namespace VC
         run.Implementation.GetTimeLimit(options);
       var beginCheckTask = split.BeginCheck(run.OutputWriter, checker, callback, mvInfo, timeout,
         Implementation.GetResourceLimit(options), cancellationToken);
-      if (timeout != 0)
-      {
-        beginCheckTask = beginCheckTask.WaitAsync(TimeSpan.FromSeconds(timeout), cancellationToken);
-      }
-      await beginCheckTask;
+      return await split.WaitForBeginCheck(beginCheckTask, iteration, timeout, callback, cancellationToken);
     }
 
     private Implementation Implementation => run.Implementation;
 
-    private bool ProcessResult(int iteration, Split split, Checker checker)
+    private bool ProcessResult(Split split, Checker checker, VerificationRunResult result)
     {
       if (TrackingProgress)
       {
@@ -185,7 +196,6 @@ namespace VC
         }
       }
 
-      var result = split.ReadOutcome(iteration, checker, callback);
       lock (this)
       {
         vcOutcome = MergeOutcomes(vcOutcome, result.Outcome);
