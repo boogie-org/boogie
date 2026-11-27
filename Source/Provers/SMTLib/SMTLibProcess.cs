@@ -91,7 +91,15 @@ namespace Microsoft.Boogie.SMTLib
 
     private void IndicateEndOfInput()
     {
-      solver.StandardInput.Close();
+      try
+      {
+        solver.StandardInput.Close();
+      }
+      catch (IOException)
+      {
+        sexpParser.EndInput();
+      }
+
       toProver = null;
     }
 
@@ -125,8 +133,18 @@ namespace Microsoft.Boogie.SMTLib
         Console.WriteLine("[SMT-INP-{0}] {1}", smtProcessId, log);
       }
 
-      toProver.WriteLine(cmd);
-      toProver.Flush();
+      try
+      {
+        toProver.WriteLine(cmd);
+        toProver.Flush();
+      }
+      catch (IOException)
+      {
+        // Boogie also writes after the solver has answered, so the next read, not this write, reports that the solver
+        // is gone. The pipe stays broken, so every later write, flush or close would throw again.
+        toProver = TextWriter.Null;
+        sexpParser.EndInput();
+      }
     }
 
     public override async Task<SExpr> SendRequest(string request, CancellationToken cancellationToken = default) {
