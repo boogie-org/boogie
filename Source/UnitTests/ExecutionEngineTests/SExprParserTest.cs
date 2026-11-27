@@ -22,4 +22,14 @@ public class SExprParserTest {
     Assert.AreEqual(0, (await Parse()).Count);
     Assert.IsTrue(parser.EndOfInput);
   }
+
+  [Test]
+  public async Task AStrayClosingParenthesisIsReadOnlyOnce() {
+    var parser = new SExprParser();
+    parser.AddLine(") (pong)");
+
+    Task<List<SExpr>> Parse() => parser.ParseSExprs(true).ToListAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(10));
+    Assert.AreEqual(0, (await Parse()).Count);
+    Assert.AreEqual("pong", (await Parse()).Single().Name);
+  }
 }
