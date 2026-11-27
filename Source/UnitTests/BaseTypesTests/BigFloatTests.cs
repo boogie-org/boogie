@@ -2715,15 +2715,17 @@ namespace BaseTypesTests
         [Test]
         public void TestFromRationalOverflow()
         {
-            // Test overflow in scaleBits calculation
-            // Create a case where denominator.GetBitLength() - numerator.GetBitLength() > int.MaxValue
-            var hugeDenominator = ((BigInteger.One << int.MaxValue) << int.MaxValue) << int.MaxValue; // 2^6442450941
+            // A ratio far below the smallest subnormal underflows to zero.
+            // Since .NET 9 a BigInteger holds fewer than int.MaxValue bits, so the
+            // bit-length difference that scaleBits adds up can no longer exceed
+            // int.MaxValue; 2^10000000 stands in for the larger denominator this
+            // test used before.
+            var hugeDenominator = BigInteger.One << 10000000;
             var tinyNumerator = BigInteger.One; // Bit length = 1
 
-            // This would cause scaleBits calculation to overflow if not handled properly
             var success = BigFloat.FromRational(tinyNumerator, hugeDenominator, 53, 11, out var result);
 
-            Assert.IsFalse(success, "Should fail when scaleBits calculation would overflow");
+            Assert.IsFalse(success, "Should fail for ratios that underflow");
             Assert.IsTrue(result.IsZero, "Result should be zero when conversion fails due to underflow");
 
             // Test case where the result would overflow to infinity
