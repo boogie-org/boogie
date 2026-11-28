@@ -23,6 +23,7 @@ namespace VC
 
     public async Task<Checker> FindCheckerFor(Program program, Split? split, CancellationToken cancellationToken)
     {
+      ObjectDisposedException.ThrowIf(disposed, this);
       await checkersSemaphore.WaitAsync(cancellationToken);
       try {
         if (!availableCheckers.TryPop(out var checker)) {
@@ -58,7 +59,7 @@ namespace VC
       lock(availableCheckers)
       {
         disposed = true;
-        checkersSemaphore.Dispose();
+        // Leave checkersSemaphore undisposed: FindCheckerFor, AddChecker and CheckerDied may still use it.
         while (availableCheckers.TryPop(out var checker)) {
           checker.Close();
         }
@@ -87,9 +88,9 @@ namespace VC
       lock (availableCheckers) {
         if (disposed) {
           checker.Close();
-          return;
+        } else {
+          availableCheckers.Push(checker);
         }
-        availableCheckers.Push(checker);
         checkersSemaphore.Release();
       }
     }
