@@ -53,7 +53,20 @@ namespace Microsoft.Boogie
     public VCGenOptions Options => Pool.Options;
     public CheckerPool Pool { get; }
 
-    public void GetReady()
+    internal void Prepare(Program program, Split split)
+    {
+      if (WillingToHandle(program) &&
+          (split == null || SolverOptions.RandomSeed == split.RandomSeed && !Options.Prune))
+      {
+        GetReady();
+        return;
+      }
+
+      Target(program, TheoremProver.Context, split);
+      GetReady();
+    }
+
+    private void GetReady()
     {
       Contract.Requires(IsIdle);
 
@@ -77,7 +90,7 @@ namespace Microsoft.Boogie
 
     public Task ProverTask { get; set; }
 
-    public bool WillingToHandle(Program prog)
+    private bool WillingToHandle(Program prog)
     {
       return status == CheckerStatus.Idle && (prog == null || Program == prog);
     }
@@ -126,7 +139,7 @@ namespace Microsoft.Boogie
       gen = prover.VCExprGen;
     }
 
-    public void Target(Program prog, ProverContext ctx, Split split)
+    private void Target(Program prog, ProverContext ctx, Split split)
     {
       /* We should not traverse implementations other than the current one, because they might be in the process of being modified.
        */
