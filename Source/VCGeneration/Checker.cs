@@ -292,6 +292,13 @@ namespace Microsoft.Boogie
         ProverStopwatch.Stop();
       }
 
+      hasOutput = true;
+      proverRunTime = ProverStopwatch.Elapsed;
+      if (outputExn != null)
+      {
+        return;
+      }
+
       switch (outcome)
       {
         case SolverOutcome.Valid:
@@ -313,9 +320,6 @@ namespace Microsoft.Boogie
           thmProver.LogComment("Undetermined");
           break;
       }
-
-      hasOutput = true;
-      proverRunTime = ProverStopwatch.Elapsed;
     }
 
     public async Task BeginCheck(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler, uint timeout,
