@@ -130,6 +130,16 @@ namespace Microsoft.Boogie.SMTLib
 
         return result;
       }
+      // The limit can run out under any request the check makes, not only the one asking the solver to decide, so
+      // this is caught around the whole check rather than around that request. SMTLibBatchTheoremProver reports
+      // the same answer the same way; the restart is what the out of memory case also asks for.
+      catch (TimeoutException)
+      {
+        currentErrorHandler.OnResourceExceeded("hard solver timeout");
+        resourceCount = -1;
+        processNeedsRestart = true;
+        return SolverOutcome.TimeOut;
+      }
       finally
       {
         currentErrorHandler = null;
