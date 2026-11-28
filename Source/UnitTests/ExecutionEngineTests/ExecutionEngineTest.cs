@@ -51,6 +51,60 @@ public class ExecutionEngineTest {
   }
 
   [Test]
+  public void TaskStartsWhileTheThreadPoolIsStarved()
+  {
+    // The scheduler has threads of its own, so handing one of them a task must not need a thread pool thread.
+    var scheduler = CustomStackSizePoolTaskScheduler.Create(ExecutionEngine.StackSize, 1);
+    var factory = new TaskFactory(scheduler);
+    var thread = factory.StartNew(() => Thread.CurrentThread).Result;
+    // Let the thread wait for a task first, so that handing it one has to wake it.
+    Assert.IsTrue(SpinWait.SpinUntil(() => thread.ThreadState.HasFlag(System.Threading.ThreadState.WaitSleepJoin),
+      TimeSpan.FromSeconds(10)));
+    ThreadPool.GetMinThreads(out var minWorkers, out _);
+    ThreadPool.GetMaxThreads(out var maxWorkers, out var maxCompletionPorts);
+    var unblock = new TaskCompletionSource();
+    // Capped at its minimum, the pool has no thread for anything queued after these work items until they end.
+    Assert.IsTrue(ThreadPool.SetMaxThreads(minWorkers, maxCompletionPorts));
+    try {
+      for (int i = 0; i < minWorkers; i++) {
+        ThreadPool.UnsafeQueueUserWorkItem(_ => unblock.Task.Wait(), null);
+      }
+      Assert.IsTrue(factory.StartNew(() => { }).Wait(TimeSpan.FromSeconds(2)));
+    } finally {
+      ThreadPool.SetMaxThreads(maxWorkers, maxCompletionPorts);
+      unblock.SetResult();
+      scheduler.Dispose();
+    }
+  }
+
+  [Test]
+  public async Task TaskThatRunsWhenItsSchedulerIsDisposedCompletes()
+  {
+    var scheduler = CustomStackSizePoolTaskScheduler.Create(ExecutionEngine.StackSize, 1);
+    using var started = new ManualResetEventSlim();
+    // Not a ManualResetEventSlim: once set, that returns without noticing an interrupt that came first.
+    using var release = new ManualResetEvent(false);
+    var task = new TaskFactory(scheduler).StartNew(() => {
+      started.Set();
+      release.WaitOne();
+    });
+    Assert.IsTrue(started.Wait(TimeSpan.FromSeconds(10)));
+    scheduler.Dispose();
+    release.Set();
+    await task;
+  }
+
+  [Test]
+  public void DisposeWhileThreadsStartWaiting()
+  {
+    // Each iteration races Dispose against the threads starting to wait for their first task.
+    // On the x64 CI runners, two threads with this stack size hit the race far more often than four.
+    for (var i = 0; i < 4000; i++) {
+      CustomStackSizePoolTaskScheduler.Create(ExecutionEngine.StackSize, 2).Dispose();
+    }
+  }
+
+  [Test]
   public void ResolutionErrorOnGetVerificationTasks()
   {
     var programString = @"
