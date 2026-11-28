@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using Microsoft.Boogie;
 
@@ -12,7 +13,7 @@ public class SExprParser
 {
   private int linePos;
   private string currLine;
-  private readonly AsyncQueue<string> sexpLines = new();
+  private readonly Channel<string> sexpLines = Channel.CreateUnbounded<string>();
 
   public event Action<string> ErrorHandler;
 
@@ -20,12 +21,12 @@ public class SExprParser
 
   public void AddLine(string line)
   {
-    sexpLines.Enqueue(line);
+    sexpLines.Writer.TryWrite(line);
   }
 
   public void EndInput()
   {
-    sexpLines.Enqueue(null);
+    sexpLines.Writer.TryWrite(null);
   }
 
   async Task<string> ReadLine()
@@ -35,7 +36,7 @@ public class SExprParser
       return null;
     }
 
-    var line = await sexpLines.Dequeue();
+    var line = await sexpLines.Reader.ReadAsync();
     if (line == null)
     {
       EndOfInput = true;
