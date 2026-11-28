@@ -442,6 +442,69 @@ procedure Foo(x: int) {
     Assert.AreEqual(expected2, statusList2.Where(s => s is not Queued));
   }
 
+  // The first check is cancelled while it sends its VC, or the (pop 1) that follows the solver's answer.
+  [TestCase("(assert (not")]
+  [TestCase("(pop 1)")]
+  public async Task CancelledCheckDoesNotShareItsSolverWithTheNextCheck(string blockedPrefix) {
+    var harness = new BlockedSendHarness(blockedPrefix);
+    var task = (await harness.Engine.GetVerificationTasks(harness.Parse()))[0];
+    try {
+      var firstStatuses = task.TryRun()!;
+      await harness.Blocked.WaitAsync();
+      task.Cancel();
+      Assert.IsTrue(await firstStatuses.ToTask() is Stale);
+
+      Assert.IsTrue(await task.TryRun()!.ToTask() is Completed);
+    } finally {
+      harness.Unblock();
+    }
+    Assert.AreEqual(0, harness.OverlappingSends);
+  }
+
+  [Test]
+  public async Task CancelledCommandLineCheckDoesNotShareItsSolverWithTheNextRun() {
+    var harness = new BlockedSendHarness("(assert (not");
+    var cancellationSource = new CancellationTokenSource();
+    try {
+      var firstRun = harness.Verify(cancellationSource.Token);
+      await harness.Blocked.WaitAsync();
+      cancellationSource.Cancel();
+      Assert.AreEqual(PipelineOutcome.Cancelled, await firstRun);
+
+      // The first check is still sending its VC.
+      Assert.AreEqual(PipelineOutcome.VerificationCompleted, await harness.Verify(CancellationToken.None));
+    } finally {
+      harness.Unblock();
+    }
+    Assert.AreEqual(0, harness.OverlappingSends);
+  }
+
+  [Test]
+  public async Task TimedOutSplitGivesItsCheckerBackOnceWhenAPartThrows() {
+    var options = CommandLineOptions.FromArguments(TextWriter.Null);
+    options.VcsCores = 1;
+    options.VcsMaxKeepGoingSplits = 2;
+    options.CreateSolver = (_, _) => new TimeOutThenBreakSolver();
+    var engine = ExecutionEngine.CreateWithoutSharedCache(options);
+    Assert.AreEqual(0, Parser.Parse(@"
+procedure Foo(x: int) {
+  if (x > 0) {
+    assert x > 1;
+  } else {
+    assert x < 1;
+  }
+}", "fakeFilename1", out var program));
+    engine.ResolveAndTypecheck(program, "fakeFilename1", out _);
+    var stats = new PipelineStatistics();
+    // Foo's check times out, so Foo is split in two, and sending the VC of the second part breaks the pipe.
+    await engine.InferAndVerify(TextWriter.Null, program, stats);
+    Assert.AreEqual(1, stats.InconclusiveCount);
+
+    await engine.CheckerPool.FindCheckerFor(null, null, CancellationToken.None);
+    Assert.IsFalse(engine.CheckerPool.FindCheckerFor(null, null, CancellationToken.None).IsCompleted,
+      "The pool handed out its one checker twice.");
+  }
+
   [Test]
   public async Task FromSeedResetsState() {
     var options = CommandLineOptions.FromArguments(TextWriter.Null);
@@ -610,4 +673,106 @@ procedure easy() ensures 1 + 1 == 0; {
     engine.Inline(program);
     return program;
   }
+
+  private class BlockedSendHarness {
+    private readonly SemaphoreSlim unblock = new(0);
+    private readonly List<SendCountingSolver> solvers = new();
+    private int matchingSends;
+
+    public ExecutionEngine Engine { get; }
+    public SemaphoreSlim Blocked { get; } = new(0);
+
+    public BlockedSendHarness(string blockedPrefix) {
+      var options = CommandLineOptions.FromArguments(TextWriter.Null);
+      options.VcsCores = 1;
+      // With a time limit, a run stops waiting for its check as soon as it is cancelled.
+      options.TimeLimit = 10;
+      options.CreateSolver = (_, _) => {
+        lock (solvers) {
+          var solver = new SendCountingSolver(request => {
+            if (request.StartsWith(blockedPrefix) && Interlocked.Increment(ref matchingSends) == 1) {
+              Blocked.Release();
+              unblock.Wait();
+            }
+          });
+          solvers.Add(solver);
+          return solver;
+        }
+      };
+      // Two threads, so the runs can go on while the blocked send occupies one.
+      Engine = new ExecutionEngine(options, new VerificationResultCache(),
+        CustomStackSizePoolTaskScheduler.Create(ExecutionEngine.StackSize, 2), true);
+    }
+
+    public Program Parse() {
+      Assert.AreEqual(0, Parser.Parse("procedure Foo(x: int) {\n  assert true;\n}", "fakeFilename1", out var program));
+      return program;
+    }
+
+    /// <summary>
+    /// Verifies a fresh copy of the program the way the command line does.
+    /// </summary>
+    public Task<PipelineOutcome> Verify(CancellationToken cancellationToken) {
+      var program = Parse();
+      Assert.AreEqual(PipelineOutcome.ResolvedAndTypeChecked, Engine.ResolveAndTypecheck(program, "fakeFilename1", out _));
+      return Engine.InferAndVerify(TextWriter.Null, program, new PipelineStatistics(), cancellationToken: cancellationToken);
+    }
+
+    public void Unblock() => unblock.Release();
+
+    public int OverlappingSends {
+      get {
+        lock (solvers) {
+          return solvers.Sum(solver => solver.OverlappingSends);
+        }
+      }
+    }
+  }
+
+  private class SendCountingSolver : UnsatSolver {
+    private readonly Action<string> beforeSend;
+    private int activeSends;
+    private int overlappingSends;
+
+    public SendCountingSolver(Action<string> beforeSend) {
+      this.beforeSend = beforeSend;
+    }
+
+    public int OverlappingSends => overlappingSends;
+
+    public override void Send(string request) {
+      if (Interlocked.Increment(ref activeSends) > 1) {
+        Interlocked.Increment(ref overlappingSends);
+      }
+      try {
+        beforeSend(request);
+        base.Send(request);
+      } finally {
+        Interlocked.Decrement(ref activeSends);
+      }
+    }
+
+    // Answer asynchronously, as a solver process does, so a check that waits for an answer returns to its caller.
+    public override async Task PingPong() {
+      await Task.Yield();
+    }
+  }
+
+  private class TimeOutThenBreakSolver : UnsatSolver {
+    private int vcs;
+
+    public override void Send(string request) {
+      if (request.StartsWith("(assert (not") && ++vcs == 3) {
+        throw new IOException("Broken pipe");
+      }
+      if (request == "(check-sat)" && vcs == 1) {
+        responses.Enqueue(new SExpr("unknown"));
+      } else if (request == "(get-info :reason-unknown)") {
+        responses.Enqueue(new SExpr(":reason-unknown", new SExpr("timeout")));
+      } else {
+        base.Send(request);
+      }
+    }
+  }
+
 }
