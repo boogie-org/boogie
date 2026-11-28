@@ -53,6 +53,19 @@ namespace Microsoft.Boogie
     public VCGenOptions Options => Pool.Options;
     public CheckerPool Pool { get; }
 
+    public void Prepare(Program program, Split split)
+    {
+      if (WillingToHandle(program) &&
+          (split == null || SolverOptions.RandomSeed == split.RandomSeed && !Options.Prune))
+      {
+        GetReady();
+        return;
+      }
+
+      Target(program, TheoremProver.Context, split);
+      GetReady();
+    }
+
     public void GetReady()
     {
       Contract.Requires(IsIdle);

@@ -28,7 +28,7 @@ namespace VC
         if (!availableCheckers.TryPop(out var checker)) {
           checker ??= CreateNewChecker();
         }
-        PrepareChecker(program, split, checker);
+        checker.Prepare(program, split);
         return checker;
       } catch (Exception) {
         checkersSemaphore.Release();
@@ -63,19 +63,6 @@ namespace VC
           checker.Close();
         }
       }
-    }
-
-    void PrepareChecker(Program program, Split? split, Checker checker)
-    {
-      if (checker.WillingToHandle(program) && 
-          (split == null || checker.SolverOptions.RandomSeed == split.RandomSeed && !Options.Prune))
-      {
-        checker.GetReady();
-        return;
-      }
-
-      checker.Target(program, checker.TheoremProver.Context, split);
-      checker.GetReady();
     }
 
     public void AddChecker(Checker checker)
