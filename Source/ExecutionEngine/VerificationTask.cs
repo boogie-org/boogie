@@ -131,17 +131,16 @@ public class VerificationTask : IVerificationTask {
       var collector = new VerificationResultCollector(Split.Options);
       var beginCheckTask = engine.LargeThreadTaskFactory.StartNew(() => Split.BeginCheck(Split.Run.OutputWriter, checker, collector,
         modelViewInfo, timeout, Split.Run.Implementation.GetResourceLimit(Split.Options), cancellationToken), cancellationToken).Unwrap();
-      if (timeout != 0)
+      var result = await Split.WaitForBeginCheck(beginCheckTask, 0, timeout, collector, cancellationToken);
+      // A check that timed out may still be sending its VC to the solver, so it doesn't count as completed.
+      if (result == null)
       {
-        beginCheckTask = beginCheckTask.WaitAsync(TimeSpan.FromSeconds(timeout), cancellationToken);
+        await checker.ProverTask.WaitAsync(cancellationToken);
+        result = Split.ReadOutcome(0, checker, collector);
+        completed = true;
       }
-      await beginCheckTask;
-
-      await checker.ProverTask.WaitAsync(cancellationToken);
-      var result = Split.ReadOutcome(0, checker, collector);
 
       CacheStatus = new Completed(result);
-      completed = true;
       yield return CacheStatus;
     }
     finally {
