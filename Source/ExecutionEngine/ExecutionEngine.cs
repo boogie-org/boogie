@@ -199,7 +199,7 @@ namespace Microsoft.Boogie
         case PipelineOutcome.Done:
         case PipelineOutcome.VerificationCompleted:
           Options.Printer.WriteTrailer(output, stats);
-          return true;
+          return stats.SolverExceptionCount == 0;
         case PipelineOutcome.FatalError:
         case PipelineOutcome.Cancelled:
           return false;
@@ -1031,9 +1031,11 @@ namespace Microsoft.Boogie
           verificationResult.Errors = null;
           verificationResult.VcOutcome = VcOutcome.Inconclusive;
         }
-        catch (ProverDiedException)
+        catch (ProverDiedException e)
         {
-          throw;
+          Options.Printer.AdvisoryWriteLine(traceWriter, "Advisory: {0} SKIPPED: {1}", impl.VerboseName, e.Message);
+          verificationResult.Errors = null;
+          verificationResult.VcOutcome = VcOutcome.SolverException;
         }
         catch (UnexpectedProverOutputException upo)
         {
